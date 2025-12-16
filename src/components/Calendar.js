@@ -93,12 +93,33 @@ export default function CalendarScreen() {
         <Text style={styles.fabText}>＋</Text>
       </Pressable>
 
-      {/* CATÁLOGO */}
-      <Modal transparent visible={showHabitModal}>
+      {/* MODAL: CATÁLOGO DE HÁBITOS */}
+      {/* MODAL: CATÁLOGO DE HÁBITOS */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={showHabitModal}
+        onRequestClose={() => setShowHabitModal(false)}
+      >
         <View style={styles.modalOverlay}>
-          <HabitModal onSelect={handleHabitSelected} />
+          <HabitModal
+            onSelect={(habit) => {
+              setShowHabitModal(false);
+              setSelectedHabit(habit);
+
+              // abrir directamente el modal dinámico
+              setTimeout(() => {
+                setShowFormModal(true);
+              }, 150);
+            }}
+            onClose={() => {
+              setShowHabitModal(false);
+            }}
+          />
         </View>
       </Modal>
+
+
 
       {/* FORM DINÁMICO */}
       <Modal transparent visible={showFormModal}>

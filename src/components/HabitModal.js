@@ -6,10 +6,12 @@ import {
   Pressable,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabase';
 
-export default function HabitModal({ onSelect }) {
+export default function HabitModal({ onSelect, onClose }) {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -18,43 +20,58 @@ export default function HabitModal({ onSelect }) {
   }, []);
 
   async function loadHabits() {
-    const { data } = await supabase
+    setLoading(true);
+
+    const { data, error } = await supabase
       .from('habit_templates')
-      .select('id, title, category, type, icon, order_index')
+      .select(`
+        id,
+        title,
+        category,
+        type,
+        icon,
+        config
+      `)
       .eq('is_active', true)
       .order('order_index', { ascending: true });
 
-    setHabits(data || []);
+    if (!error && data) {
+      setHabits(data);
+    }
+
     setLoading(false);
   }
 
-  const grouped = habits.reduce((acc, h) => {
-    acc[h.category] = acc[h.category] || [];
-    acc[h.category].push(h);
+  // Agrupar por categoría
+  const grouped = habits.reduce((acc, habit) => {
+    acc[habit.category] = acc[habit.category] || [];
+    acc[habit.category].push(habit);
     return acc;
   }, {});
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text>Cargando hábitos…</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Agregar hábito</Text>
+    <View style={styles.sheet}>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Agregar hábito</Text>
+        <Pressable onPress={onClose}>
+          <Ionicons name="close" size={24} />
+        </Pressable>
+      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {Object.entries(grouped).map(
-          ([category, items]) => (
+      {loading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" />
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {Object.keys(grouped).map((category) => (
             <View key={category} style={styles.section}>
               <Text style={styles.sectionTitle}>
                 {category}
               </Text>
 
-              {items.map((habit) => (
+              {grouped[category].map((habit) => (
                 <Pressable
                   key={habit.id}
                   style={styles.item}
@@ -70,43 +87,61 @@ export default function HabitModal({ onSelect }) {
                 </Pressable>
               ))}
             </View>
-          )
-        )}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
+/* ======================
+   ESTILOS
+====================== */
+
 const styles = StyleSheet.create({
-  container: {
+  sheet: {
     backgroundColor: '#fff7ed',
     padding: 20,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 16,
   },
-  section: { marginBottom: 20 },
+  loading: {
+    padding: 40,
+  },
+  section: {
+    marginBottom: 20,
+  },
   sectionTitle: {
     fontWeight: '600',
     marginBottom: 8,
-    color: '#6b7280',
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 14,
+    padding: 12,
     borderRadius: 14,
-    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#fde68a',
+    marginBottom: 8,
   },
-  icon: { width: 36, height: 36, marginRight: 12 },
-  itemText: { fontSize: 16 },
+  icon: {
+    width: 32,
+    height: 32,
+    marginRight: 12,
+  },
+  itemText: {
+    fontSize: 15,
+  },
 });
