@@ -41,8 +41,60 @@ function getTodayLocal() {
 const today = getTodayLocal();
 
 /* =========================
-   HELPERS
+   DATE HELPERS (GLOBAL)
 ========================= */
+
+function parseLocalDate(dateString) {
+  const [y, m, d] = dateString.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+const DAY_MAP = {
+  sun: 0,
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+  sat: 6,
+};
+
+function generateWeeklyDates(schedule) {
+  const results = [];
+
+  const start = parseLocalDate(schedule.startDate);
+  const end = schedule.endDate
+    ? parseLocalDate(schedule.endDate)
+    : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
+
+  schedule.daysOfWeek.forEach((dayKey) => {
+    const targetDay = DAY_MAP[dayKey];
+
+    let cursor = new Date(start);
+
+    // mover al primer día correcto (en LOCAL)
+    while (cursor.getDay() !== targetDay) {
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    // repetir semanalmente
+    while (cursor <= end) {
+      if (cursor >= start) {
+        results.push(formatLocalDate(cursor));
+      }
+      cursor.setDate(cursor.getDate() + 7);
+    }
+  });
+
+  return results.sort();
+}
+
 
 function formatDate(dateString) {
   const [y, m, d] = dateString.split('-').map(Number);
@@ -123,44 +175,72 @@ export default function Calendar() {
 
   function handleSaveHabit(payload) {
     const updated = { ...activities };
-    const date = payload.schedule.startDate;
+    const { schedule, habit, description, data } = payload;
 
-    if (!updated[date]) updated[date] = [];
+    let datesToCreate = [];
 
-    // El form envía "data", lo guardamos como "data" (para compatibilidad)
-    const activityData = payload.data || {};
+    if (schedule.frequency === 'once') {
+      datesToCreate = [schedule.startDate];
+    }
 
-    // Si estamos editando, actualizamos la actividad existente
-    if (editingActivity) {
-      updated[date] = updated[date].map((act) =>
-        act.id === editingActivity.id
-          ? {
-              ...act,
-              title: payload.habit.title,
-              icon: payload.habit.icon,
-              description: payload.description || null,
-              data: activityData,
-            }
-          : act
-      );
-    } else {
-      // Si es nuevo, lo agregamos
+    if (schedule.frequency === 'daily') {
+      const start = parseLocalDate(schedule.startDate);
+      const end = schedule.endDate
+        ? new Date(schedule.endDate)
+        : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        datesToCreate.push(formatLocalDate(d));
+      }
+    }
+
+    if (schedule.frequency === 'weekly') {
+      datesToCreate = generateWeeklyDates(schedule);
+    }
+
+    if (schedule.frequency === 'monthly') {
+      const start = parseLocalDate(schedule.startDate);
+      const end = schedule.endDate
+        ? new Date(schedule.endDate)
+        : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
+
+      let d = new Date(start);
+      while (d <= end) {
+        datesToCreate.push(formatLocalDate(d));
+        d.setMonth(d.getMonth() + 1);
+      }
+    }
+
+    if (schedule.frequency === 'yearly') {
+      const start = parseLocalDate(schedule.startDate);;
+      const end = schedule.endDate
+        ? new Date(schedule.endDate)
+        : new Date(start.getFullYear() + 5, start.getMonth(), start.getDate());
+
+      let d = new Date(start);
+      while (d <= end) {
+        datesToCreate.push(formatLocalDate(d));
+        d.setFullYear(d.getFullYear() + 1);
+      }
+    }
+
+    datesToCreate.forEach((date) => {
+      if (!updated[date]) updated[date] = [];
+
       updated[date].push({
         id: uuidv4(),
-        habit_id: payload.habit.id,
-        title: payload.habit.title,
-        icon: payload.habit.icon,
-        description: payload.description || null,
-        data: activityData,
+        habit_id: habit.id,
+        title: habit.title,
+        icon: habit.icon,
+        description: description || null,
+        data: data || {},
         date,
       });
-    }
+    });
 
     saveActivities(updated);
     setShowFormModal(false);
-    setEditingActivity(null);
   }
-
   /* =========================
      CHECKLIST
   ========================= */
@@ -177,7 +257,7 @@ export default function Calendar() {
 
       const data = { ...act.data };
       const list = [...(data[listType] || [])];
-      
+
       if (list[index]) {
         list[index] = {
           ...list[index],
@@ -226,16 +306,16 @@ export default function Calendar() {
       date: activity.date,
       title: activity.title
     });
-    
+
     const updated = { ...activities };
-    
+
     if (updated[activity.date]) {
       const before = updated[activity.date].length;
       const beforeIds = updated[activity.date].map(a => a.id);
-      
+
       console.log('📋 IDs antes:', beforeIds);
       console.log('🎯 ID a borrar:', activity.id);
-      
+
       updated[activity.date] = updated[activity.date].filter(
         (act) => {
           const keep = act.id !== activity.id;
@@ -243,21 +323,21 @@ export default function Calendar() {
           return keep;
         }
       );
-      
+
       const after = updated[activity.date].length;
-      
+
       console.log(`✅ Borrado: ${before} -> ${after} actividades en ${activity.date}`);
-      
+
       // Limpia el día si no quedan actividades
       if (updated[activity.date].length === 0) {
         delete updated[activity.date];
       }
-      
+
       // Cierra el swipeable
       if (swipeableRefs.current[activity.id]) {
         swipeableRefs.current[activity.id].close();
       }
-      
+
       saveActivities(updated);
     } else {
       console.log('❌ Fecha no encontrada:', activity.date);
@@ -270,23 +350,23 @@ export default function Calendar() {
       desde: activity.date,
       title: activity.title
     });
-    
+
     console.log('🔍 Activity completo:', JSON.stringify(activity, null, 2));
-    
+
     const updated = { ...activities };
     let totalDeleted = 0;
-    
+
     // Itera sobre todas las fechas
     Object.keys(updated).forEach((date) => {
       // Solo elimina en fechas >= a la fecha seleccionada
       if (date >= activity.date) {
         const before = updated[date].length;
-        
+
         console.log(`📅 Procesando ${date}:`);
         updated[date].forEach(a => {
           console.log(`  - ${a.title} (habit_id: ${a.habit_id})`);
         });
-        
+
         // Filtra las actividades con el mismo habit_id
         updated[date] = updated[date].filter(
           (act) => {
@@ -298,22 +378,22 @@ export default function Calendar() {
             return keep;
           }
         );
-        
+
         const after = updated[date].length;
         console.log(`   Resultado: ${before} -> ${after}`);
-        
+
         // Limpia el día si no quedan actividades
         if (updated[date].length === 0) {
           delete updated[date];
         }
       }
     });
-    
+
     // Cierra todos los swipeables
     Object.values(swipeableRefs.current).forEach(ref => {
       if (ref) ref.close();
     });
-    
+
     console.log(`✅ Eliminación masiva completada. Total borrados: ${totalDeleted}`);
     saveActivities(updated);
   }
@@ -321,7 +401,7 @@ export default function Calendar() {
   function editActivity(activity) {
     // Buscamos el template original del hábito
     const habitTemplate = habits.find(h => h.id === activity.habit_id);
-    
+
     setEditingActivity(activity);
     setSelectedHabit(habitTemplate || activity);
     setShowFormModal(true);
@@ -369,7 +449,7 @@ export default function Calendar() {
         <View style={styles.content}>
           <View style={styles.dateHeader}>
             <View style={styles.dateIconContainer}>
-              <Ionicons name="calendar" size={24} color="#fb7185" />
+              <Ionicons name="calendar" size={26} color="#fff" />
             </View>
             <View style={styles.dateTextContainer}>
               <Text style={styles.dayTitle}>{formatDate(selectedDate)}</Text>
@@ -467,13 +547,21 @@ export default function Calendar() {
                           >
                             <View style={styles.expandBtnContent}>
                               <Ionicons
-                                name={expanded[activity.id] ? 'chevron-up' : 'chevron-down'}
-                                size={18}
+                                name={expanded[activity.id] ? 'chevron-up-circle' : 'chevron-down-circle'}
+                                size={20}
                                 color="#fb7185"
                               />
                               <Text style={styles.expandText}>
                                 {expanded[activity.id] ? 'Ocultar lista' : 'Ver lista completa'}
                               </Text>
+                              {!expanded[activity.id] && (
+                                <View style={styles.expandCount}>
+                                  <Text style={styles.expandCountText}>
+                                    {(hasMarket ? activity.data.market.length : 0) +
+                                      (hasVitamins ? activity.data.vitamins.length : 0)}
+                                  </Text>
+                                </View>
+                              )}
                             </View>
                           </Pressable>
 
@@ -482,8 +570,15 @@ export default function Calendar() {
                               {hasMarket && (
                                 <View style={styles.checklistSection}>
                                   <View style={styles.checklistHeader}>
-                                    <Ionicons name="cart" size={16} color="#fb7185" />
-                                    <Text style={styles.checklistTitle}>Mercado</Text>
+                                    <View style={styles.checklistIconBg}>
+                                      <Ionicons name="cart" size={16} color="#fb7185" />
+                                    </View>
+                                    <Text style={styles.checklistTitle}>Lista de Mercado</Text>
+                                    <View style={styles.checklistBadge}>
+                                      <Text style={styles.checklistBadgeText}>
+                                        {activity.data.market.filter(i => i.checked).length}/{activity.data.market.length}
+                                      </Text>
+                                    </View>
                                   </View>
                                   <ChecklistTable
                                     items={activity.data.market}
@@ -498,8 +593,15 @@ export default function Calendar() {
                               {hasVitamins && (
                                 <View style={styles.checklistSection}>
                                   <View style={styles.checklistHeader}>
-                                    <Ionicons name="fitness" size={16} color="#fb7185" />
+                                    <View style={styles.checklistIconBg}>
+                                      <Ionicons name="fitness" size={16} color="#fb7185" />
+                                    </View>
                                     <Text style={styles.checklistTitle}>Vitaminas</Text>
+                                    <View style={styles.checklistBadge}>
+                                      <Text style={styles.checklistBadgeText}>
+                                        {activity.data.vitamins.filter(i => i.checked).length}/{activity.data.vitamins.length}
+                                      </Text>
+                                    </View>
                                   </View>
                                   <ChecklistTable
                                     items={activity.data.vitamins}
@@ -545,35 +647,74 @@ export default function Calendar() {
           <Pressable style={styles.modal} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
-              <Text style={styles.modalTitle}>Selecciona un hábito</Text>
+              <View style={styles.modalTitleContainer}>
+                <Ionicons name="grid" size={24} color="#fb7185" />
+                <Text style={styles.modalTitle}>Selecciona un hábito</Text>
+              </View>
               <Pressable onPress={() => setShowHabitModal(false)} style={styles.modalClose}>
-                <Ionicons name="close" size={24} color="#6b7280" />
+                <Ionicons name="close-circle" size={28} color="#6b7280" />
               </Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {habits.map((habit) => (
-                <Pressable
-                  key={habit.id}
-                  style={styles.habitItem}
-                  onPress={() => {
-                    setSelectedHabit(habit);
-                    setEditingActivity(null);
-                    setShowHabitModal(false);
-                    setTimeout(() => setShowFormModal(true), 150);
-                  }}
-                >
-                  <View style={styles.habitRow}>
-                    {habit.icon ? (
-                      <Image source={{ uri: habit.icon }} style={styles.habitIcon} />
-                    ) : (
-                      <View style={styles.habitIconPlaceholder}>
-                        <Ionicons name="sparkles" size={20} color="#fb7185" />
-                      </View>
-                    )}
-                    <Text style={styles.habitText}>{habit.title}</Text>
-                    <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
+              {/* Agrupar hábitos por categoría */}
+              {Object.entries(
+                habits.reduce((acc, habit) => {
+                  const category = habit.category || 'Sin categoría';
+                  if (!acc[category]) acc[category] = [];
+                  acc[category].push(habit);
+                  return acc;
+                }, {})
+              ).map(([category, categoryHabits]) => (
+                <View key={category} style={styles.categorySection}>
+                  <View style={styles.categoryHeader}>
+                    <View style={styles.categoryIconContainer}>
+                      <Ionicons
+                        name={
+                          category === 'Hogar' ? 'home' :
+                            category === 'Vida económica' ? 'wallet' :
+                              category === 'Salud' ? 'fitness' :
+                                category === 'Social' ? 'people' :
+                                  category === 'Productividad' ? 'briefcase' :
+                                    'apps'
+                        }
+                        size={20}
+                        color="#fb7185"
+                      />
+                    </View>
+                    <Text style={styles.categoryTitle}>{category}</Text>
+                    <View style={styles.categoryCount}>
+                      <Text style={styles.categoryCountText}>{categoryHabits.length}</Text>
+                    </View>
                   </View>
-                </Pressable>
+
+                  <View style={styles.habitsGrid}>
+                    {categoryHabits.map((habit) => (
+                      <Pressable
+                        key={habit.id}
+                        style={styles.habitItem}
+                        onPress={() => {
+                          setSelectedHabit(habit);
+                          setEditingActivity(null);
+                          setShowHabitModal(false);
+                          setTimeout(() => setShowFormModal(true), 150);
+                        }}
+                      >
+                        <View style={styles.habitIconWrapper}>
+                          {habit.icon ? (
+                            <Image source={{ uri: habit.icon }} style={styles.habitIcon} />
+                          ) : (
+                            <View style={styles.habitIconPlaceholder}>
+                              <Ionicons name="sparkles" size={24} color="#fb7185" />
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.habitText} numberOfLines={2}>
+                          {habit.title}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
               ))}
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -603,21 +744,79 @@ export default function Calendar() {
 ========================= */
 
 const calendarTheme = {
-  calendarBackground: '#fff',
+  calendarBackground: '#ffffff',
   selectedDayBackgroundColor: '#fb7185',
   selectedDayTextColor: '#ffffff',
   todayTextColor: '#fb7185',
+  todayBackgroundColor: '#ffe4e6',
   dayTextColor: '#1f2937',
   textDisabledColor: '#d1d5db',
   dotColor: '#fb7185',
   selectedDotColor: '#ffffff',
-  arrowColor: '#fb7185',
-  monthTextColor: '#1f2937',
-  textMonthFontWeight: '600',
-  textDayFontSize: 14,
-  textMonthFontSize: 18,
-  textDayHeaderFontSize: 12,
+  arrowColor: '#1f2937',
+  monthTextColor: '#111827',
+  indicatorColor: '#fb7185',
+  textDayFontWeight: '500',
+  textMonthFontWeight: '700',
   textDayHeaderFontWeight: '600',
+  textDayFontSize: 15,
+  textMonthFontSize: 18,
+  textDayHeaderFontSize: 13,
+  'stylesheet.calendar.header': {
+    monthText: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#111827',
+      marginVertical: 10,
+    },
+    dayHeader: {
+      marginTop: 2,
+      marginBottom: 7,
+      width: 32,
+      textAlign: 'center',
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#6b7280',
+    },
+    week: {
+      marginTop: 7,
+      marginBottom: 7,
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+    },
+  },
+  'stylesheet.day.basic': {
+    base: {
+      width: 32,
+      height: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    text: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: '#1f2937',
+    },
+    today: {
+      backgroundColor: '#ffe4e6',
+      borderRadius: 16,
+    },
+    todayText: {
+      color: '#fb7185',
+      fontWeight: '700',
+    },
+    selected: {
+      backgroundColor: '#fb7185',
+      borderRadius: 16,
+    },
+    selectedText: {
+      color: '#ffffff',
+      fontWeight: '700',
+    },
+    disabledText: {
+      color: '#d1d5db',
+    },
+  },
 };
 
 const styles = StyleSheet.create({
@@ -637,31 +836,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomWidth: 2,
+    borderBottomColor: '#e5e7eb',
   },
   dateIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#ffe4e6',
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#fb7185',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
+    shadowColor: '#fb7185',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   dateTextContainer: {
     flex: 1,
   },
   dayTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
     textTransform: 'capitalize',
+    letterSpacing: -0.5,
   },
   activityCount: {
     fontSize: 14,
     color: '#6b7280',
-    marginTop: 2,
+    marginTop: 3,
+    fontWeight: '500',
   },
 
   // Empty State
@@ -695,33 +901,38 @@ const styles = StyleSheet.create({
   // Card
   card: {
     backgroundColor: '#fff',
-    padding: 18,
-    borderRadius: 16,
-    marginBottom: 12,
+    padding: 20,
+    borderRadius: 18,
+    marginBottom: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   cardIconContainer: {
-    marginRight: 12,
+    marginRight: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   cardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
   },
   cardIconPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: '#ffe4e6',
     justifyContent: 'center',
     alignItems: 'center',
@@ -734,79 +945,142 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: '700',
+    color: '#111827',
     flex: 1,
+    letterSpacing: -0.3,
   },
   cardBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffe4e6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
     gap: 4,
+    borderWidth: 1,
+    borderColor: '#fecdd3',
   },
   cardBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fb7185',
+    letterSpacing: 0.3,
   },
 
   // Description
   descriptionContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-    gap: 8,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1.5,
+    borderTopColor: '#e5e7eb',
+    gap: 10,
   },
   cardDesc: {
     flex: 1,
     fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
+    color: '#4b5563',
+    lineHeight: 21,
+    fontWeight: '500',
   },
 
   // Expand Button
   expandBtn: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1.5,
+    borderTopColor: '#e5e7eb',
+    backgroundColor: '#fef2f2',
+    marginHorizontal: -20,
+    marginBottom: -20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
   },
   expandBtnContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
+    paddingVertical: 8,
   },
   expandText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fb7185',
+    letterSpacing: 0.2,
+  },
+  expandCount: {
+    backgroundColor: '#fb7185',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  expandCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   // Checklist
   checklistContainer: {
-    marginTop: 12,
+    marginTop: 16,
     gap: 12,
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+    paddingBottom: 4,
   },
   checklistSection: {
-    gap: 8,
+    gap: 12,
+    backgroundColor: '#fff',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#fecdd3',
+    shadowColor: '#fb7185',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   checklistHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    gap: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#fecdd3',
+  },
+  checklistIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#ffe4e6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   checklistTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: 0.3,
+  },
+  checklistBadge: {
+    backgroundColor: '#fb7185',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  checklistBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   // Swipe Actions
@@ -865,76 +1139,138 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modal: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '90%',
     paddingBottom: 20,
   },
   modalHeader: {
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 8,
     paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
+    paddingBottom: 20,
+    borderBottomWidth: 2,
     borderBottomColor: '#f3f4f6',
+    position: 'relative',
   },
   modalHandle: {
     width: 40,
-    height: 4,
+    height: 5,
     backgroundColor: '#d1d5db',
-    borderRadius: 2,
+    borderRadius: 3,
     marginBottom: 16,
   },
+  modalTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
   },
   modalClose: {
     position: 'absolute',
-    right: 20,
-    top: 20,
-    padding: 4,
+    right: 16,
+    top: 16,
   },
 
-  // Habit Item
-  habitItem: {
-    backgroundColor: '#fafafa',
-    marginHorizontal: 20,
-    marginTop: 12,
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
+  // Category Section
+  categorySection: {
+    marginTop: 20,
+    paddingHorizontal: 20,
   },
-  habitRow: {
+  categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 12,
+    gap: 10,
   },
-  habitIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    marginRight: 12,
-  },
-  habitIconPlaceholder: {
-    width: 40,
-    height: 40,
+  categoryIconContainer: {
+    width: 36,
+    height: 36,
     borderRadius: 10,
     backgroundColor: '#ffe4e6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  habitText: {
+  categoryTitle: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: 0.2,
+  },
+  categoryCount: {
+    backgroundColor: '#fb7185',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 28,
+    alignItems: 'center',
+  },
+  categoryCountText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Habits Grid
+  habitsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  habitItem: {
+    width: '47%',
+    backgroundColor: '#fafafa',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    alignItems: 'center',
+    gap: 10,
+  },
+  habitIconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+  },
+  habitIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+  },
+  habitIconPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#ffe4e6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  habitText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#1f2937',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

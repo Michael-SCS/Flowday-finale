@@ -20,10 +20,16 @@
         "foregroundImage": "./assets/Flowday.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.bekuro.flowday"
     },
     "web": {
       "favicon": "./assets/Flowday.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7d7c5fe0-57b8-4372-86de-43ac80e82fdd"
+      }
     }
   }
 }

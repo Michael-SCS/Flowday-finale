@@ -9,6 +9,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +28,14 @@ const WEEK_DAYS = [
   { key: 'sun', label: 'D' },
 ];
 
+const FREQUENCIES = [
+  { key: 'once', label: 'Una vez', icon: 'radio-button-on' },
+  { key: 'daily', label: 'Diaria', icon: 'today' },
+  { key: 'weekly', label: 'Semanal', icon: 'calendar' },
+  { key: 'monthly', label: 'Mensual', icon: 'calendar-outline' },
+  { key: 'yearly', label: 'Anual', icon: 'time' },
+];
+
 /* ======================
    COMPONENTE
 ====================== */
@@ -37,9 +46,6 @@ export default function HabitFormModal({
   onSave,
   onClose,
 }) {
-  /* ======================
-     FECHA BASE
-  ====================== */
   const baseDate = useMemo(() => {
     if (typeof selectedDate === 'string') {
       const [y, m, d] = selectedDate.split('-').map(Number);
@@ -50,28 +56,13 @@ export default function HabitFormModal({
 
   const [startDate, setStartDate] = useState(baseDate);
   const [endDate, setEndDate] = useState(baseDate);
-
-  // 👉 NUEVO: ¿tiene fin?
   const [hasEndDate, setHasEndDate] = useState(false);
-
-  // Picker único
-  const [activePicker, setActivePicker] = useState(null); // 'start' | 'end'
-
-  /* ======================
-     FRECUENCIA
-  ====================== */
+  const [activePicker, setActivePicker] = useState(null);
   const [frequency, setFrequency] = useState('once');
   const [daysOfWeek, setDaysOfWeek] = useState([]);
-
-  /* ======================
-     DATA
-  ====================== */
   const [description, setDescription] = useState('');
   const [formData, setFormData] = useState({});
 
-  /* ======================
-     RESET AL ABRIR
-  ====================== */
   useEffect(() => {
     setStartDate(baseDate);
     setEndDate(baseDate);
@@ -83,9 +74,6 @@ export default function HabitFormModal({
     setActivePicker(null);
   }, [habit, baseDate]);
 
-  /* ======================
-     CONFIG DESDE SUPABASE
-  ====================== */
   const config = useMemo(() => {
     if (!habit?.config) return null;
     if (typeof habit.config === 'object') return habit.config;
@@ -96,14 +84,9 @@ export default function HabitFormModal({
     }
   }, [habit]);
 
-  /* ======================
-     HELPERS
-  ====================== */
   function toggleDay(day) {
     setDaysOfWeek((prev) =>
-      prev.includes(day)
-        ? prev.filter((d) => d !== day)
-        : [...prev, day]
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
   }
 
@@ -111,9 +94,6 @@ export default function HabitFormModal({
     setFormData((prev) => ({ ...prev, [key]: value }));
   }
 
-  /* ======================
-     RENDER DINÁMICO
-  ====================== */
   function renderField(field) {
     const value = formData[field.key];
 
@@ -123,6 +103,8 @@ export default function HabitFormModal({
         return (
           <TextInput
             style={styles.input}
+            placeholder={field.label}
+            placeholderTextColor="#9ca3af"
             keyboardType={field.type === 'number' ? 'numeric' : 'default'}
             value={value || ''}
             onChangeText={(v) => updateField(field.key, v)}
@@ -131,13 +113,13 @@ export default function HabitFormModal({
 
       case 'checklist':
         return (
-          <View style={styles.row}>
+          <View style={styles.optionsWrap}>
             {field.options.map((opt) => {
               const selected = (value || []).includes(opt);
               return (
                 <Pressable
                   key={opt}
-                  style={[styles.chip, selected && styles.chipActive]}
+                  style={[styles.optionBtn, selected && styles.optionBtnActive]}
                   onPress={() => {
                     const next = selected
                       ? value.filter((v) => v !== opt)
@@ -145,7 +127,14 @@ export default function HabitFormModal({
                     updateField(field.key, next);
                   }}
                 >
-                  <Text>{opt}</Text>
+                  <Ionicons
+                    name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={18}
+                    color={selected ? '#fff' : '#fb7185'}
+                  />
+                  <Text style={[styles.optionTxt, selected && styles.optionTxtActive]}>
+                    {opt}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -158,9 +147,13 @@ export default function HabitFormModal({
           <>
             {items.map((item, i) => (
               <View key={i} style={styles.marketRow}>
+                <View style={styles.marketNum}>
+                  <Text style={styles.marketNumTxt}>{i + 1}</Text>
+                </View>
                 <TextInput
                   style={[styles.input, { flex: 2 }]}
                   placeholder="Producto"
+                  placeholderTextColor="#9ca3af"
                   value={item.name}
                   onChangeText={(v) => {
                     const copy = [...items];
@@ -169,8 +162,9 @@ export default function HabitFormModal({
                   }}
                 />
                 <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder="Cant."
+                  style={[styles.input, { width: 60 }]}
+                  placeholder="Cant"
+                  placeholderTextColor="#9ca3af"
                   keyboardType="numeric"
                   value={item.qty}
                   onChangeText={(v) => {
@@ -180,8 +174,9 @@ export default function HabitFormModal({
                   }}
                 />
                 <TextInput
-                  style={[styles.input, { flex: 1 }]}
+                  style={[styles.input, { width: 70 }]}
                   placeholder="$"
+                  placeholderTextColor="#9ca3af"
                   keyboardType="numeric"
                   value={item.price}
                   onChangeText={(v) => {
@@ -190,11 +185,19 @@ export default function HabitFormModal({
                     updateField(field.key, copy);
                   }}
                 />
+                <Pressable
+                  onPress={() => {
+                    const copy = items.filter((_, idx) => idx !== i);
+                    updateField(field.key, copy);
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                </Pressable>
               </View>
             ))}
 
             <Pressable
-              style={styles.addItem}
+              style={styles.addBtn}
               onPress={() =>
                 updateField(field.key, [
                   ...(items || []),
@@ -202,7 +205,8 @@ export default function HabitFormModal({
                 ])
               }
             >
-              <Text style={styles.addItemText}>+ Agregar item</Text>
+              <Ionicons name="add-circle" size={20} color="#fb7185" />
+              <Text style={styles.addTxt}>Agregar producto</Text>
             </Pressable>
           </>
         );
@@ -212,278 +216,500 @@ export default function HabitFormModal({
     }
   }
 
-  /* ======================
-     GUARDAR
-  ====================== */
   function handleSave() {
+    if (frequency === 'weekly' && daysOfWeek.length === 0) {
+      Alert.alert('Error', 'Selecciona al menos un día de la semana');
+      return;
+    }
+
     onSave({
       habit,
       description,
       data: formData,
       schedule: {
         startDate: startDate.toISOString().split('T')[0],
-        endDate: hasEndDate
-          ? endDate.toISOString().split('T')[0]
-          : null, // 🔥 INFINITO REAL
+        endDate: hasEndDate ? endDate.toISOString().split('T')[0] : null,
         frequency,
         daysOfWeek: frequency === 'weekly' ? daysOfWeek : [],
       },
     });
   }
 
-  /* ======================
-     UI
-  ====================== */
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.overlay}
     >
+      <Pressable style={styles.backdrop} onPress={onClose} />
+
       <View style={styles.sheet}>
-        {/* HEADER */}
+        {/* HEADER SIMPLE */}
         <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Image source={{ uri: habit.icon }} style={styles.icon} />
+            <View>
+              <Text style={styles.title}>{habit.title}</Text>
+              {habit.category && (
+                <Text style={styles.category}>{habit.category}</Text>
+              )}
+            </View>
+          </View>
           <Pressable onPress={onClose}>
-            <Ionicons name="arrow-back" size={24} />
-          </Pressable>
-
-          <Text style={styles.title}>{habit.title}</Text>
-
-          <Pressable onPress={onClose}>
-            <Ionicons name="close" size={24} />
+            <Ionicons name="close" size={28} color="#111" />
           </Pressable>
         </View>
 
-        <ScrollView keyboardShouldPersistTaps="handled">
-          <View style={styles.iconBox}>
-            <Image source={{ uri: habit.icon }} style={styles.icon} />
-          </View>
-
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* PERIODO */}
-          <Text style={styles.label}>Periodo</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>📅 Periodo</Text>
 
-          {/* INICIO */}
-          <Pressable
-            style={styles.dateBox}
-            onPress={() => setActivePicker('start')}
-          >
-            <Text>Inicio</Text>
-            <Text>{startDate.toLocaleDateString()}</Text>
-          </Pressable>
-
-          {/* TOGGLE FIN */}
-          <Pressable
-            style={styles.endToggle}
-            onPress={() => setHasEndDate((v) => !v)}
-          >
-            <Ionicons
-              name={hasEndDate ? 'checkbox' : 'square-outline'}
-              size={20}
-            />
-            <Text style={{ marginLeft: 8 }}>
-              ¿Esta actividad tiene fin?
-            </Text>
-          </Pressable>
-
-          {/* FIN */}
-          {hasEndDate && (
             <Pressable
-              style={styles.dateBox}
-              onPress={() => setActivePicker('end')}
+              style={styles.box}
+              onPress={() => setActivePicker('start')}
             >
-              <Text>Fin</Text>
-              <Text>{endDate.toLocaleDateString()}</Text>
+              <Text style={styles.boxLabel}>Inicio</Text>
+              <View style={styles.boxRight}>
+                <Text style={styles.boxValue}>
+                  {startDate.toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </View>
             </Pressable>
-          )}
 
-          {/* PICKER */}
-          {activePicker && (
-            <View style={styles.pickerWrapper}>
-              <DateTimePicker
-                value={activePicker === 'start' ? startDate : endDate}
-                mode="date"
-                minimumDate={
-                  activePicker === 'end' ? startDate : undefined
-                }
-                display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                themeVariant="light"
-                onChange={(_, date) => {
-                  if (!date) {
-                    setActivePicker(null);
-                    return;
-                  }
-
-                  if (activePicker === 'start') {
-                    setStartDate(date);
-                    if (date > endDate) setEndDate(date);
-                  } else {
-                    setEndDate(date);
-                  }
-
-                  if (Platform.OS === 'android') {
-                    setActivePicker(null);
-                  }
-                }}
+            <Pressable
+              style={styles.checkRow}
+              onPress={() => setHasEndDate((v) => !v)}
+            >
+              <Ionicons
+                name={hasEndDate ? 'checkbox' : 'square-outline'}
+                size={22}
+                color="#fb7185"
               />
-            </View>
-          )}
+              <Text style={styles.checkTxt}>¿Tiene fecha de fin?</Text>
+            </Pressable>
+
+            {hasEndDate && (
+              <Pressable
+                style={styles.box}
+                onPress={() => setActivePicker('end')}
+              >
+                <Text style={styles.boxLabel}>Fin</Text>
+                <View style={styles.boxRight}>
+                  <Text style={styles.boxValue}>
+                    {endDate.toLocaleDateString('es-ES', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                </View>
+              </Pressable>
+            )}
+
+            {activePicker && (
+              <View style={styles.picker}>
+                <DateTimePicker
+                  value={activePicker === 'start' ? startDate : endDate}
+                  mode="date"
+                  minimumDate={activePicker === 'end' ? startDate : undefined}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                  onChange={(_, date) => {
+                    if (!date) {
+                      setActivePicker(null);
+                      return;
+                    }
+                    if (activePicker === 'start') {
+                      setStartDate(date);
+                      if (date > endDate) setEndDate(date);
+                    } else {
+                      setEndDate(date);
+                    }
+                    if (Platform.OS === 'android') setActivePicker(null);
+                  }}
+                />
+              </View>
+            )}
+          </View>
 
           {/* FRECUENCIA */}
-          <Text style={styles.label}>Frecuencia</Text>
-          <View style={styles.row}>
-            {[
-              ['once', 'Una vez'],
-              ['daily', 'Diaria'],
-              ['weekly', 'Semanal'],
-              ['monthly', 'Mensual'],
-              ['yearly', 'Anual'],
-            ].map(([k, l]) => (
-              <Pressable
-                key={k}
-                style={[styles.chip, frequency === k && styles.chipActive]}
-                onPress={() => setFrequency(k)}
-              >
-                <Text>{l}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <View style={styles.section}>
+            <Text style={styles.label}>🔁 Frecuencia</Text>
 
-          {frequency === 'weekly' && (
-            <View style={styles.row}>
-              {WEEK_DAYS.map((d) => (
+            <View style={styles.freqGrid}>
+              {FREQUENCIES.map((f) => (
                 <Pressable
-                  key={d.key}
-                  style={[
-                    styles.dayChip,
-                    daysOfWeek.includes(d.key) &&
-                      styles.dayChipActive,
-                  ]}
-                  onPress={() => toggleDay(d.key)}
+                  key={f.key}
+                  style={[styles.freqBtn, frequency === f.key && styles.freqBtnActive]}
+                  onPress={() => setFrequency(f.key)}
                 >
-                  <Text>{d.label}</Text>
+                  <Ionicons
+                    name={f.icon}
+                    size={20}
+                    color={frequency === f.key ? '#fff' : '#fb7185'}
+                  />
+                  <Text style={[styles.freqTxt, frequency === f.key && styles.freqTxtActive]}>
+                    {f.label}
+                  </Text>
                 </Pressable>
               ))}
             </View>
-          )}
 
-          {/* CAMPOS EXTRA */}
+            {frequency === 'weekly' && (
+              <>
+                <Text style={styles.sublabel}>Selecciona los días:</Text>
+                <View style={styles.daysRow}>
+                  {WEEK_DAYS.map((d) => (
+                    <Pressable
+                      key={d.key}
+                      style={[
+                        styles.dayBtn,
+                        daysOfWeek.includes(d.key) && styles.dayBtnActive,
+                      ]}
+                      onPress={() => toggleDay(d.key)}
+                    >
+                      <Text
+                        style={[
+                          styles.dayTxt,
+                          daysOfWeek.includes(d.key) && styles.dayTxtActive,
+                        ]}
+                      >
+                        {d.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* CAMPOS PERSONALIZADOS */}
           {config?.fields?.map((field) => (
-            <View key={field.key}>
-              <Text style={styles.label}>{field.label}</Text>
+            <View key={field.key} style={styles.section}>
+              <Text style={styles.label}>
+                {field.type === 'market' ? '🛒' : field.type === 'checklist' ? '✅' : '✏️'}{' '}
+                {field.label}
+              </Text>
               {renderField(field)}
             </View>
           ))}
 
-          {/* DESCRIPCIÓN */}
-          <Text style={styles.label}>Descripción</Text>
-          <TextInput
-            style={[styles.input, { minHeight: 80 }]}
-            multiline
-            value={description}
-            onChangeText={setDescription}
-          />
+          {/* NOTAS */}
+          <View style={styles.section}>
+            <Text style={styles.label}>📝 Notas</Text>
+            <TextInput
+              style={[styles.input, styles.textarea]}
+              placeholder="Agrega detalles adicionales..."
+              placeholderTextColor="#9ca3af"
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              value={description}
+              onChangeText={setDescription}
+            />
+          </View>
+
+          <View style={{ height: 100 }} />
         </ScrollView>
 
-        <Pressable style={styles.save} onPress={handleSave}>
-          <Text style={styles.saveText}>Guardar</Text>
-        </Pressable>
+        {/* FOOTER */}
+        <View style={styles.footer}>
+          <Pressable style={styles.saveBtn} onPress={handleSave}>
+            <Ionicons name="checkmark-circle" size={24} color="#fff" />
+            <Text style={styles.saveTxt}>Guardar</Text>
+          </Pressable>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
 /* ======================
-   ESTILOS
+   ESTILOS SIMPLES
 ====================== */
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
   sheet: {
-    backgroundColor: '#fff7ed',
-    padding: 20,
+    backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '95%',
+    maxHeight: '92%',
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
-  title: { fontSize: 16, fontWeight: '600' },
-  iconBox: { alignItems: 'center', marginVertical: 10 },
-  icon: { width: 48, height: 48 },
-  label: { marginTop: 16, marginBottom: 6, fontWeight: '600' },
-
-  dateBox: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    backgroundColor: '#fff',
-    borderColor: '#fde68a',
-    marginBottom: 8,
-  },
-
-  endToggle: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
+    gap: 12,
+    flex: 1,
+  },
+  icon: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111',
+  },
+  category: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
   },
 
-  pickerWrapper: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+  // Sections
+  section: {
+    padding: 20,
+    gap: 12,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 4,
+  },
+  sublabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
     marginTop: 8,
   },
 
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#fde68a',
-    borderRadius: 12,
-    padding: 12,
-  },
-
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    padding: 10,
+  // Boxes
+  box: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
+    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    backgroundColor: '#fff',
-    borderColor: '#fde68a',
+    borderColor: '#e5e7eb',
   },
-  chipActive: { backgroundColor: '#fde68a' },
+  boxLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  boxRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  boxValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111',
+  },
 
-  dayChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  // Checkbox
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  checkTxt: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#4b5563',
+  },
+
+  // Picker
+  picker: {
+    backgroundColor: '#fafafa',
+    borderRadius: 12,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: '#e5e7eb',
+  },
+
+  // Frequency
+  freqGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  freqBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#fecdd3',
+    backgroundColor: '#fff',
+    minWidth: '30%',
+  },
+  freqBtnActive: {
+    backgroundColor: '#fb7185',
+    borderColor: '#fb7185',
+  },
+  freqTxt: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fb7185',
+  },
+  freqTxtActive: {
+    color: '#fff',
+  },
+
+  // Days
+  daysRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dayBtn: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dayBtnActive: {
+    backgroundColor: '#fb7185',
+    borderColor: '#fb7185',
+  },
+  dayTxt: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#6b7280',
+  },
+  dayTxtActive: {
+    color: '#fff',
+  },
+
+  // Inputs
+  input: {
+    backgroundColor: '#fafafa',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#111',
+  },
+  textarea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+
+  // Options
+  optionsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  optionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#fecdd3',
     backgroundColor: '#fff',
   },
-  dayChipActive: { backgroundColor: '#fde68a' },
-
-  marketRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  addItem: {
-    padding: 12,
-    marginTop: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#fde68a',
-  },
-  addItemText: { textAlign: 'center', color: '#fb7185' },
-
-  save: {
+  optionBtnActive: {
     backgroundColor: '#fb7185',
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 12,
+    borderColor: '#fb7185',
   },
-  saveText: {
-    color: '#fff',
-    textAlign: 'center',
+  optionTxt: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#fb7185',
+  },
+  optionTxtActive: {
+    color: '#fff',
+  },
+
+  // Market
+  marketRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  marketNum: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#fb7185',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  marketNumTxt: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#fecdd3',
+    backgroundColor: '#fffbfb',
+  },
+  addTxt: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fb7185',
+  },
+
+  // Footer
+  footer: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#fb7185',
+    padding: 18,
+    borderRadius: 14,
+  },
+  saveTxt: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '800',
   },
 });
