@@ -7,9 +7,9 @@ import {
   Pressable,
   Image,
   SafeAreaView,
+  Modal,
 } from 'react-native';
 import { supabase } from '../utils/supabase';
-import { Picker } from '@react-native-picker/picker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -41,6 +41,17 @@ export default function Register({ navigation }) {
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showGenderModal, setShowGenderModal] =
+    useState(false);
+
+  const genderOptions = [
+    'Masculino',
+    'Femenino',
+    'No binario',
+    'Género fluido',
+    'Prefiero no decirlo',
+    'Otro',
+  ];
 
   async function handleRegister() {
     setError('');
@@ -110,48 +121,35 @@ export default function Register({ navigation }) {
             onChangeText={setApellido}
           />
 
-          <View style={styles.row}>
-            <TextInput
-              style={[styles.input, styles.half]}
-              placeholder="Edad"
-              keyboardType="numeric"
-              value={edad}
-              onChangeText={setEdad}
-            />
+          <TextInput
+            style={styles.input}
+            placeholder="Edad"
+            keyboardType="numeric"
+            value={edad}
+            onChangeText={setEdad}
+          />
 
-            <View
-              style={[
-                styles.input,
-                styles.half,
-                styles.pickerBox,
-              ]}
+          <View style={styles.genderField}>
+            <Text style={styles.genderLabel}>Género</Text>
+            <Pressable
+              style={styles.genderSelect}
+              onPress={() => setShowGenderModal(true)}
             >
-              <Picker
-                selectedValue={genero}
-                onValueChange={setGenero}
+              <Text
+                style={
+                  genero
+                    ? styles.genderValue
+                    : styles.genderPlaceholder
+                }
               >
-                <Picker.Item
-                  label="Selecciona género"
-                  value=""
-                />
-                <Picker.Item
-                  label="Masculino"
-                  value="masculino"
-                />
-                <Picker.Item
-                  label="Femenino"
-                  value="femenino"
-                />
-                <Picker.Item
-                  label="No binario"
-                  value="no_binario"
-                />
-                <Picker.Item
-                  label="Prefiero no decirlo"
-                  value="no_especifica"
-                />
-              </Picker>
-            </View>
+                {genero || 'Selecciona género'}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={18}
+                color="#6b7280"
+              />
+            </Pressable>
           </View>
 
           <TextInput
@@ -212,6 +210,42 @@ export default function Register({ navigation }) {
           </Pressable>
         </View>
       </KeyboardAwareScrollView>
+
+      {/* MODAL GÉNERO */}
+      <Modal
+        visible={showGenderModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGenderModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowGenderModal(false)}
+        >
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.modalTitle}>
+              Selecciona tu género
+            </Text>
+            {genderOptions.map((option) => (
+              <Pressable
+                key={option}
+                style={styles.genderOption}
+                onPress={() => {
+                  setGenero(option);
+                  setShowGenderModal(false);
+                }}
+              >
+                <Text style={styles.genderOptionText}>
+                  {option}
+                </Text>
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -227,7 +261,9 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 48,
   },
   card: {
     backgroundColor: '#fff',
@@ -258,19 +294,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 14,
     marginBottom: 12,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  half: {
-    flex: 1,
-  },
-  pickerBox: {
-    justifyContent: 'center',
-    paddingHorizontal: 0,
-    paddingVertical: 0,
   },
   passwordBox: {
     flexDirection: 'row',
@@ -309,5 +332,91 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     textAlign: 'center',
     marginBottom: 8,
+  },
+  genderField: {
+    width: '100%',
+    marginBottom: 4,
+  },
+  genderLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4b5563',
+    marginBottom: 6,
+  },
+  genderChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  genderChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+  },
+  genderChipActive: {
+    borderColor: '#fb7185',
+    backgroundColor: '#ffe4e6',
+  },
+  genderChipText: {
+    fontSize: 13,
+    color: '#4b5563',
+    fontWeight: '600',
+  },
+  genderChipTextActive: {
+    color: '#b91c1c',
+  },
+  genderSelect: {
+    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  genderValue: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  genderPlaceholder: {
+    color: '#9ca3af',
+    fontSize: 15,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
+    color: '#111827',
+  },
+  genderOption: {
+    paddingVertical: 10,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+  },
+  genderOptionText: {
+    fontSize: 15,
+    color: '#111827',
+    textAlign: 'center',
   },
 });

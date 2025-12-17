@@ -10,11 +10,20 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [showGenderModal, setShowGenderModal] = useState(false);
 
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [edad, setEdad] = useState('');
   const [genero, setGenero] = useState('');
+  const genderOptions = [
+    'Masculino',
+    'Femenino',
+    'No binario',
+    'Género fluido',
+    'Prefiero no decirlo',
+    'Otro',
+  ];
 
   const loadProfile = async () => {
     try {
@@ -193,35 +202,42 @@ export default function ProfileScreen() {
                     </View>
                   </View>
 
-                  <View style={styles.fieldRow}>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Edad</Text>
-                      <View style={styles.inputWrapper}>
-                        <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
-                        <TextInput
-                          style={styles.input}
-                          value={edad}
-                          onChangeText={setEdad}
-                          placeholder="Edad"
-                          placeholderTextColor="#9ca3af"
-                          keyboardType="numeric"
-                        />
-                      </View>
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Edad</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
+                      <TextInput
+                        style={styles.input}
+                        value={edad}
+                        onChangeText={setEdad}
+                        placeholder="Edad"
+                        placeholderTextColor="#9ca3af"
+                        keyboardType="numeric"
+                      />
                     </View>
+                  </View>
 
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Género</Text>
-                      <View style={styles.inputWrapper}>
-                        <Ionicons name="male-female-outline" size={18} color="#9ca3af" />
-                        <TextInput
-                          style={styles.input}
-                          value={genero}
-                          onChangeText={setGenero}
-                          placeholder="Género"
-                          placeholderTextColor="#9ca3af"
-                        />
-                      </View>
-                    </View>
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Género</Text>
+                    <Pressable
+                      style={styles.genderSelect}
+                      onPress={() => setShowGenderModal(true)}
+                    >
+                      <Text
+                        style={
+                          genero
+                            ? styles.genderValue
+                            : styles.genderPlaceholder
+                        }
+                      >
+                        {genero || 'Selecciona género'}
+                      </Text>
+                      <Ionicons
+                        name="chevron-down"
+                        size={18}
+                        color="#6b7280"
+                      />
+                    </Pressable>
                   </View>
                 </View>
 
@@ -241,7 +257,7 @@ export default function ProfileScreen() {
                   disabled={saving}
                 >
                   <Ionicons 
-                    name={saving ? "hourglass" : "save"} 
+                    name={saving ? 'hourglass' : 'save'} 
                     size={20} 
                     color="#fff" 
                   />
@@ -381,6 +397,42 @@ export default function ProfileScreen() {
               <Ionicons name="checkmark-circle" size={22} color="#fff" />
               <Text style={styles.modalCloseButtonText}>Entendido</Text>
             </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* MODAL GÉNERO */}
+      <Modal
+        visible={showGenderModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowGenderModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowGenderModal(false)}
+        >
+          <Pressable
+            style={styles.genderModalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.genderModalTitle}>
+              Selecciona tu género
+            </Text>
+            {genderOptions.map((option) => (
+              <Pressable
+                key={option}
+                style={styles.genderOption}
+                onPress={() => {
+                  setGenero(option);
+                  setShowGenderModal(false);
+                }}
+              >
+                <Text style={styles.genderOptionText}>
+                  {option}
+                </Text>
+              </Pressable>
+            ))}
           </Pressable>
         </Pressable>
       </Modal>
@@ -563,6 +615,120 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#4b5563',
     fontWeight: '500',
+  },
+  genderChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  genderChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+  },
+  genderChipActive: {
+    borderColor: '#fb7185',
+    backgroundColor: '#ffe4e6',
+  },
+  genderChipText: {
+    fontSize: 13,
+    color: '#4b5563',
+    fontWeight: '600',
+  },
+  genderChipTextActive: {
+    color: '#b91c1c',
+  },
+  genderSelect: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  genderValue: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  genderPlaceholder: {
+    color: '#9ca3af',
+    fontSize: 15,
+  },
+  genderModalContent: {
+    width: '86%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+  },
+  genderModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
+    color: '#111827',
+  },
+  genderOption: {
+    paddingVertical: 10,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+  },
+  genderOptionText: {
+    fontSize: 15,
+    color: '#111827',
+    textAlign: 'center',
+  },
+  genderSelect: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  genderValue: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  genderPlaceholder: {
+    color: '#9ca3af',
+    fontSize: 15,
+  },
+  genderModalContent: {
+    width: '86%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+  },
+  genderModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
+    color: '#111827',
+  },
+  genderOption: {
+    paddingVertical: 10,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+  },
+  genderOptionText: {
+    fontSize: 15,
+    color: '#111827',
+    textAlign: 'center',
   },
 
   // Success

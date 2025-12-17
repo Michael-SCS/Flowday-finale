@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, TextInput, Modal } from 'react-native';
+import { View, Text, Pressable, StyleSheet, TextInput, Modal, ScrollView } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -329,7 +329,7 @@ export default function PomodoroScreen() {
           </Pressable>
         </View>
       ) : (
-        <>
+        <View style={styles.mainContent}>
           <View style={styles.timerCard}>
             <View style={styles.timerCircle}>
               <View style={styles.timerInner}>
@@ -392,7 +392,7 @@ export default function PomodoroScreen() {
               <Ionicons name="settings-outline" size={22} color="#fb7185" />
             </Pressable>
           </View>
-        </>
+        </View>
       )}
 
       {/* MODAL DE CONFIGURACIÓN */}
@@ -425,14 +425,18 @@ export default function PomodoroScreen() {
               </Pressable>
             </View>
 
-            {/* PRESETS */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="flash" size={20} color="#fb7185" />
-                <Text style={styles.sectionTitle}>Ajustes rápidos</Text>
-              </View>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              {/* PRESETS */}
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="flash" size={20} color="#fb7185" />
+                  <Text style={styles.sectionTitle}>Ajustes rápidos</Text>
+                </View>
 
-              <View style={styles.presetsGrid}>
+                <View style={styles.presetsGrid}>
                 {PRESETS.map((preset) => {
                   const isActive = !useCustom && preset.id === selectedPresetId;
                   return (
@@ -479,85 +483,86 @@ export default function PomodoroScreen() {
                 </Pressable>
               </View>
 
-              {useCustom && (
-                <View style={styles.customRow}>
-                  <View style={styles.customField}>
-                    <Text style={styles.label}>Trabajo (min)</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="numeric"
-                      placeholder="25"
-                      placeholderTextColor="#9ca3af"
-                      value={customWork}
-                      onChangeText={setCustomWork}
-                    />
+                {useCustom && (
+                  <View style={styles.customRow}>
+                    <View style={styles.customField}>
+                      <Text style={styles.label}>Trabajo (min)</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        placeholder="25"
+                        placeholderTextColor="#9ca3af"
+                        value={customWork}
+                        onChangeText={setCustomWork}
+                      />
+                    </View>
+                    <View style={styles.customField}>
+                      <Text style={styles.label}>Descanso (min)</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        placeholder="5"
+                        placeholderTextColor="#9ca3af"
+                        value={customRest}
+                        onChangeText={setCustomRest}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.customField}>
-                    <Text style={styles.label}>Descanso (min)</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="numeric"
-                      placeholder="5"
-                      placeholderTextColor="#9ca3af"
-                      value={customRest}
-                      onChangeText={setCustomRest}
-                    />
-                  </View>
-                </View>
-              )}
-            </View>
-
-            {/* SESIONES */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="repeat" size={20} color="#fb7185" />
-                <Text style={styles.sectionTitle}>Sesiones</Text>
+                )}
               </View>
 
-              <View style={styles.sessionsCard}>
-                <View style={styles.sessionsInfo}>
-                  <Text style={styles.sessionsMainText}>
-                    {totalSessions} sesiones
-                  </Text>
-                  <Text style={styles.sessionsSubText}>
-                    {workMinutes} min trabajo • {restMinutes} min descanso
-                  </Text>
-                  <View style={styles.totalBadge}>
-                    <Ionicons name="time" size={14} color="#fb7185" />
-                    <Text style={styles.totalText}>
-                      Total: {totalPlanMinutes} min
+              {/* SESIONES */}
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="repeat" size={20} color="#fb7185" />
+                  <Text style={styles.sectionTitle}>Sesiones</Text>
+                </View>
+
+                <View style={styles.sessionsCard}>
+                  <View style={styles.sessionsInfo}>
+                    <Text style={styles.sessionsMainText}>
+                      {totalSessions} sesiones
                     </Text>
+                    <Text style={styles.sessionsSubText}>
+                      {workMinutes} min trabajo • {restMinutes} min descanso
+                    </Text>
+                    <View style={styles.totalBadge}>
+                      <Ionicons name="time" size={14} color="#fb7185" />
+                      <Text style={styles.totalText}>
+                        Total: {totalPlanMinutes} min
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                <View style={styles.sessionsControls}>
-                  <Pressable
-                    style={styles.sessionsButton}
-                    onPress={() => handleChangeSessions(-1)}
-                  >
-                    <Ionicons name="remove" size={20} color="#fb7185" />
-                  </Pressable>
-                  <View style={styles.sessionsCountContainer}>
-                    <Text style={styles.sessionsCount}>{totalSessions}</Text>
+                  <View style={styles.sessionsControls}>
+                    <Pressable
+                      style={styles.sessionsButton}
+                      onPress={() => handleChangeSessions(-1)}
+                    >
+                      <Ionicons name="remove" size={20} color="#fb7185" />
+                    </Pressable>
+                    <View style={styles.sessionsCountContainer}>
+                      <Text style={styles.sessionsCount}>{totalSessions}</Text>
+                    </View>
+                    <Pressable
+                      style={styles.sessionsButton}
+                      onPress={() => handleChangeSessions(1)}
+                    >
+                      <Ionicons name="add" size={20} color="#fb7185" />
+                    </Pressable>
                   </View>
-                  <Pressable
-                    style={styles.sessionsButton}
-                    onPress={() => handleChangeSessions(1)}
-                  >
-                    <Ionicons name="add" size={20} color="#fb7185" />
-                  </Pressable>
                 </View>
               </View>
-            </View>
 
-            {/* BOTÓN GUARDAR */}
-            <Pressable
-              style={styles.modalSaveButton}
-              onPress={handleSaveSettings}
-            >
-              <Ionicons name="checkmark-circle" size={24} color="#fff" />
-              <Text style={styles.modalSaveButtonText}>Guardar configuración</Text>
-            </Pressable>
+              {/* BOTÓN GUARDAR */}
+              <Pressable
+                style={styles.modalSaveButton}
+                onPress={handleSaveSettings}
+              >
+                <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                <Text style={styles.modalSaveButtonText}>Guardar configuración</Text>
+              </Pressable>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -573,9 +578,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 32,
     paddingBottom: 24,
     backgroundColor: '#fafafa',
+  },
+
+  mainContent: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
 
   // Header
@@ -621,9 +631,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timerCircle: {
-    width: 280,
-    height: 280,
-    borderRadius: 140,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
     borderWidth: 8,
     borderColor: '#ffe4e6',
     alignItems: 'center',
@@ -637,16 +647,16 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   timerInner: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
+    width: 190,
+    height: 190,
+    borderRadius: 95,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   timerText: {
-    fontSize: 56,
+    fontSize: 46,
     fontWeight: '800',
     color: '#111827',
     letterSpacing: -2,
@@ -708,6 +718,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
+    marginTop: 16,
   },
   mainButton: {
     flex: 1,
@@ -785,8 +796,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: '85%',
-    paddingBottom: 20,
+    maxHeight: '90%',
+    paddingBottom: 8,
+  },
+  modalScrollContent: {
+    paddingBottom: 24,
   },
   modalHeader: {
     alignItems: 'center',
@@ -824,7 +838,7 @@ const styles = StyleSheet.create({
   // Sections
   section: {
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 18,
   },
   sectionHeader: {
     flexDirection: 'row',

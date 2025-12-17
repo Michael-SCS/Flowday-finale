@@ -21,6 +21,8 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { supabase } from '../utils/supabase';
 import HabitFormModal from './HabitFormModal';
 import ChecklistTable from './ChecklistTable';
+import MarketTable from './MarketTable';
+import VitaminsTable from './VitaminsTable';
 import { v4 as uuidv4 } from 'uuid';
 
 /* =========================
@@ -119,7 +121,12 @@ export default function Calendar() {
   const [selectedHabit, setSelectedHabit] = useState(null);
   const [editingActivity, setEditingActivity] = useState(null);
 
-  const [expanded, setExpanded] = useState({});
+  const [marketModalVisible, setMarketModalVisible] = useState(false);
+  const [marketModalData, setMarketModalData] = useState(null);
+  const [vitaminsModalVisible, setVitaminsModalVisible] = useState(false);
+  const [vitaminsModalData, setVitaminsModalData] = useState(null);
+  const [checklistModalVisible, setChecklistModalVisible] = useState(false);
+  const [checklistModalData, setChecklistModalData] = useState(null);
   const swipeableRefs = React.useRef({});
 
   /* =========================
@@ -174,6 +181,33 @@ export default function Calendar() {
   ========================= */
 
   function handleSaveHabit(payload) {
+    // Si venimos desde una edición, actualizamos SOLO esa actividad
+    if (editingActivity && payload.editingActivityId === editingActivity.id) {
+      const updated = { ...activities };
+      const { habit, description, data } = payload;
+      const dateKey = editingActivity.date;
+
+      if (updated[dateKey]) {
+        updated[dateKey] = updated[dateKey].map((act) => {
+          if (act.id !== editingActivity.id) return act;
+          return {
+            ...act,
+            habit_id: habit.id,
+            title: habit.title,
+            icon: habit.icon,
+            description: description || null,
+            data: data || {},
+          };
+        });
+
+        saveActivities(updated);
+      }
+
+      setEditingActivity(null);
+      setShowFormModal(false);
+      return;
+    }
+
     const updated = { ...activities };
     const { schedule, habit, description, data } = payload;
 
@@ -235,6 +269,7 @@ export default function Calendar() {
         description: description || null,
         data: data || {},
         date,
+        completed: false,
       });
     });
 
@@ -245,10 +280,6 @@ export default function Calendar() {
      CHECKLIST
   ========================= */
 
-  function toggleExpand(id) {
-    setExpanded((p) => ({ ...p, [id]: !p[id] }));
-  }
-
   function toggleChecklistItem(activity, listType, index) {
     const updated = { ...activities };
 
@@ -256,7 +287,17 @@ export default function Calendar() {
       if (act.id !== activity.id) return act;
 
       const data = { ...act.data };
-      const list = [...(data[listType] || [])];
+      const originalList = data[listType] || [];
+
+      // Normalizamos: si vienen strings (p.ej. checklist de espacios),
+      // los convertimos a objetos con label/checked; si ya son objetos (mercado),
+      // los dejamos igual.
+      const list = originalList.map((item) => {
+        if (typeof item === 'string') {
+          return { label: item, checked: false };
+        }
+        return item;
+      });
 
       if (list[index]) {
         list[index] = {
@@ -271,6 +312,22 @@ export default function Calendar() {
           ...data,
           [listType]: list,
         },
+      };
+    });
+
+    saveActivities(updated);
+  }
+
+  function toggleCompleted(activity) {
+    const updated = { ...activities };
+
+    if (!updated[activity.date]) return;
+
+    updated[activity.date] = updated[activity.date].map((act) => {
+      if (act.id !== activity.id) return act;
+      return {
+        ...act,
+        completed: !act.completed,
       };
     });
 
@@ -408,15 +465,81 @@ export default function Calendar() {
   }
 
   /* =========================
-     CHECKLIST HELPERS
+     CHECKLIST / MARKET HELPERS
   ========================= */
 
-  function hasChecklist(activity) {
-    // Verifica si la actividad tiene alguna lista en data
-    return activity.data && (
-      (activity.data.market && activity.data.market.length > 0) ||
-      (activity.data.vitamins && activity.data.vitamins.length > 0)
-    );
+  function getHabitTemplateForActivity(activity) {
+    return habits.find((h) => h.id === activity.habit_id);
+  }
+
+  function parseHabitConfig(habit) {
+    if (!habit?.config) return null;
+    if (typeof habit.config === 'object') return habit.config;
+    try {
+      return JSON.parse(habit.config);
+    } catch {
+      return null;
+    }
+  }
+
+  function getMarketFieldMeta(activity) {
+    const habitTemplate = getHabitTemplateForActivity(activity);
+    const config = parseHabitConfig(habitTemplate);
+    const field = config?.fields?.find((f) => f.type === 'market');
+
+    if (!field) {
+      return { key: null, label: null };
+    }
+
+    return {
+      key: field.key || 'market',
+      label: field.label || 'Lista de mercado',
+    };
+  }
+
+  function getChecklistFieldMeta(activity) {
+    const habitTemplate = getHabitTemplateForActivity(activity);
+    const config = parseHabitConfig(habitTemplate);
+    const field = config?.fields?.find((f) => f.type === 'checklist');
+
+    if (!field) {
+      return { key: null, label: null };
+    }
+
+    return {
+      key: field.key,
+      label: field.label || 'Checklist',
+    };
+  }
+
+  function getTextFieldMeta(activity) {
+    const habitTemplate = getHabitTemplateForActivity(activity);
+    const config = parseHabitConfig(habitTemplate);
+    const field = config?.fields?.find((f) => f.type === 'text');
+
+    if (!field) {
+      return { key: null, label: null };
+    }
+
+    return {
+      key: field.key,
+      label: field.label || '',
+    };
+  }
+
+  function getVitaminsFieldMeta(activity) {
+    const habitTemplate = getHabitTemplateForActivity(activity);
+    const config = parseHabitConfig(habitTemplate);
+    const field = config?.fields?.find((f) => f.type === 'vitamins');
+
+    if (!field) {
+      return { key: null, label: null };
+    }
+
+    return {
+      key: field.key || 'vitamins',
+      label: field.label || 'Vitaminas',
+    };
   }
 
   /* =========================
@@ -463,15 +586,77 @@ export default function Calendar() {
           <ScrollView showsVerticalScrollIndicator={false}>
             {activities[selectedDate]?.length ? (
               activities[selectedDate].map((activity) => {
-                const isExpandable = hasChecklist(activity);
-                const hasMarket = activity.data?.market?.length > 0;
-                const hasVitamins = activity.data?.vitamins?.length > 0;
-
                 // IMPORTANTE: Agregamos la fecha al objeto activity
                 const activityWithDate = {
                   ...activity,
-                  date: selectedDate
+                  date: selectedDate,
                 };
+
+                const { key: marketKey, label: marketLabel } =
+                  getMarketFieldMeta(activityWithDate);
+                const { key: checklistKey, label: checklistLabel } =
+                  getChecklistFieldMeta(activityWithDate);
+                const { key: vitaminsKey, label: vitaminsLabel } =
+                  getVitaminsFieldMeta(activityWithDate);
+                const { key: textKey, label: textLabel } =
+                  getTextFieldMeta(activityWithDate);
+
+                const hasMarket =
+                  !!(
+                    marketKey &&
+                    activityWithDate.data?.[marketKey] &&
+                    Array.isArray(activityWithDate.data[marketKey]) &&
+                    activityWithDate.data[marketKey].length > 0
+                  );
+
+                const hasChecklist =
+                  !!(
+                    checklistKey &&
+                    activityWithDate.data?.[checklistKey] &&
+                    Array.isArray(activityWithDate.data[checklistKey]) &&
+                    activityWithDate.data[checklistKey].length > 0
+                  );
+
+                const hasVitamins =
+                  !!(
+                    vitaminsKey &&
+                    activityWithDate.data?.[vitaminsKey] &&
+                    Array.isArray(activityWithDate.data[vitaminsKey]) &&
+                    activityWithDate.data[vitaminsKey].length > 0
+                  );
+
+                let friendlySubtitle = null;
+                const rawTextValue = textKey
+                  ? activityWithDate.data?.[textKey]
+                  : null;
+
+                if (rawTextValue) {
+                  const titleLower = (activityWithDate.title || '').toLowerCase();
+                  const answer = String(rawTextValue).trim();
+
+                  if (titleLower.includes('estudiar')) {
+                    friendlySubtitle = `Hoy debes estudiar: ${answer}`;
+                  } else if (titleLower.includes('leer') && titleLower.includes('libro')) {
+                    friendlySubtitle = `Hoy leerás ${answer}`;
+                  } else if (
+                    titleLower.includes('llamar') &&
+                    (titleLower.includes('amigo') || titleLower.includes('amig'))
+                  ) {
+                    friendlySubtitle = `Recuerda: llamarás a ${answer}`;
+                  } else if (titleLower.includes('cumple')) {
+                    friendlySubtitle = `Hoy es el cumpleaños de: ${answer}`;
+                  } else if (titleLower.includes('cuidar') && titleLower.includes('piel')) {
+                    friendlySubtitle = `Hoy cuidarás tu piel con: ${answer}`;
+                  } else if (titleLower.includes('beber') && titleLower.includes('agua')) {
+                    friendlySubtitle = `Hoy tu objetivo de agua es: ${answer}`;
+                  } else if (textLabel) {
+                    friendlySubtitle = `${textLabel} ${answer}`.trim();
+                  } else {
+                    friendlySubtitle = answer;
+                  }
+                }
+
+                const isCompleted = !!activityWithDate.completed;
 
                 return (
                   <Swipeable
@@ -504,7 +689,33 @@ export default function Calendar() {
                     overshootLeft={false}
                     overshootRight={false}
                   >
-                    <View style={styles.card}>
+                    <Pressable
+                      style={[styles.card, isCompleted && styles.cardCompleted]}
+                      onPress={() => {
+                        if (hasMarket) {
+                          setMarketModalData({
+                            activity: activityWithDate,
+                            marketKey,
+                            marketLabel,
+                          });
+                          setMarketModalVisible(true);
+                        } else if (hasVitamins) {
+                          setVitaminsModalData({
+                            activity: activityWithDate,
+                            vitaminsKey,
+                            vitaminsLabel,
+                          });
+                          setVitaminsModalVisible(true);
+                        } else if (hasChecklist) {
+                          setChecklistModalData({
+                            activity: activityWithDate,
+                            checklistKey,
+                            checklistLabel,
+                          });
+                          setChecklistModalVisible(true);
+                        }
+                      }}
+                    >
                       {/* HEADER */}
                       <View style={styles.cardHeader}>
                         <View style={styles.cardIconContainer}>
@@ -520,13 +731,48 @@ export default function Calendar() {
                           )}
                         </View>
                         <View style={styles.cardHeaderText}>
-                          <Text style={styles.cardTitle}>{activity.title}</Text>
-                          {isExpandable && (
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              style={[
+                                styles.cardTitle,
+                                isCompleted && styles.cardTitleCompleted,
+                              ]}
+                            >
+                              {activity.title}
+                            </Text>
+                            {friendlySubtitle && (
+                              <Text
+                                style={[
+                                  styles.cardSubtitle,
+                                  isCompleted && styles.cardSubtitleCompleted,
+                                ]}
+                              >
+                                {friendlySubtitle}
+                              </Text>
+                            )}
+                          </View>
+                          <View style={styles.cardRightActions}>
+                            <Pressable
+                              onPress={() => toggleCompleted(activityWithDate)}
+                              style={styles.completeBtn}
+                            >
+                              <Ionicons
+                                name={
+                                  isCompleted
+                                    ? 'checkmark-circle'
+                                    : 'checkmark-circle-outline'
+                                }
+                                size={22}
+                                color={isCompleted ? '#22c55e' : '#9ca3af'}
+                              />
+                            </Pressable>
+                          {hasMarket && (
                             <View style={styles.cardBadge}>
                               <Ionicons name="list" size={12} color="#fb7185" />
                               <Text style={styles.cardBadgeText}>Lista</Text>
                             </View>
                           )}
+                          </View>
                         </View>
                       </View>
 
@@ -538,85 +784,7 @@ export default function Calendar() {
                         </View>
                       )}
 
-                      {/* EXPAND CHECKLIST */}
-                      {isExpandable && (
-                        <>
-                          <Pressable
-                            onPress={() => toggleExpand(activity.id)}
-                            style={styles.expandBtn}
-                          >
-                            <View style={styles.expandBtnContent}>
-                              <Ionicons
-                                name={expanded[activity.id] ? 'chevron-up-circle' : 'chevron-down-circle'}
-                                size={20}
-                                color="#fb7185"
-                              />
-                              <Text style={styles.expandText}>
-                                {expanded[activity.id] ? 'Ocultar lista' : 'Ver lista completa'}
-                              </Text>
-                              {!expanded[activity.id] && (
-                                <View style={styles.expandCount}>
-                                  <Text style={styles.expandCountText}>
-                                    {(hasMarket ? activity.data.market.length : 0) +
-                                      (hasVitamins ? activity.data.vitamins.length : 0)}
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                          </Pressable>
-
-                          {expanded[activity.id] && (
-                            <View style={styles.checklistContainer}>
-                              {hasMarket && (
-                                <View style={styles.checklistSection}>
-                                  <View style={styles.checklistHeader}>
-                                    <View style={styles.checklistIconBg}>
-                                      <Ionicons name="cart" size={16} color="#fb7185" />
-                                    </View>
-                                    <Text style={styles.checklistTitle}>Lista de Mercado</Text>
-                                    <View style={styles.checklistBadge}>
-                                      <Text style={styles.checklistBadgeText}>
-                                        {activity.data.market.filter(i => i.checked).length}/{activity.data.market.length}
-                                      </Text>
-                                    </View>
-                                  </View>
-                                  <ChecklistTable
-                                    items={activity.data.market}
-                                    columns={{ qty: true, extra: true }}
-                                    onToggle={(index) =>
-                                      toggleChecklistItem(activityWithDate, 'market', index)
-                                    }
-                                  />
-                                </View>
-                              )}
-
-                              {hasVitamins && (
-                                <View style={styles.checklistSection}>
-                                  <View style={styles.checklistHeader}>
-                                    <View style={styles.checklistIconBg}>
-                                      <Ionicons name="fitness" size={16} color="#fb7185" />
-                                    </View>
-                                    <Text style={styles.checklistTitle}>Vitaminas</Text>
-                                    <View style={styles.checklistBadge}>
-                                      <Text style={styles.checklistBadgeText}>
-                                        {activity.data.vitamins.filter(i => i.checked).length}/{activity.data.vitamins.length}
-                                      </Text>
-                                    </View>
-                                  </View>
-                                  <ChecklistTable
-                                    items={activity.data.vitamins}
-                                    columns={{ qty: false, extra: true }}
-                                    onToggle={(index) =>
-                                      toggleChecklistItem(activityWithDate, 'vitamins', index)
-                                    }
-                                  />
-                                </View>
-                              )}
-                            </View>
-                          )}
-                        </>
-                      )}
-                    </View>
+                    </Pressable>
                   </Swipeable>
                 );
               })
@@ -635,6 +803,319 @@ export default function Calendar() {
           </ScrollView>
         </View>
       </CalendarProvider>
+
+      {/* MARKET LIST MODAL */}
+      <Modal
+        transparent
+        visible={marketModalVisible && !!marketModalData}
+        animationType="slide"
+        onRequestClose={() => setMarketModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setMarketModalVisible(false)}
+        >
+          <Pressable
+            style={styles.modal}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {marketModalData && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={styles.modalHandle} />
+                  <View style={styles.modalTitleContainer}>
+                    <Ionicons name="cart" size={24} color="#fb7185" />
+                    <Text style={styles.modalTitle}>
+                      {marketModalData.marketLabel || 'Lista de mercado'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setMarketModalVisible(false)}
+                    style={styles.modalClose}
+                  >
+                    <Ionicons name="close-circle" size={28} color="#6b7280" />
+                  </Pressable>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  style={{ maxHeight: '80%' }}
+                >
+                  <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
+                      {marketModalData.activity.title}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                      {formatDate(marketModalData.activity.date)}
+                    </Text>
+
+                    <View style={styles.checklistSection}>
+                      <View style={styles.checklistHeader}>
+                        <View style={styles.checklistIconBg}>
+                          <Ionicons name="cart" size={16} color="#fb7185" />
+                        </View>
+                        <Text style={styles.checklistTitle}>
+                          {marketModalData.marketLabel || 'Lista de compras'}
+                        </Text>
+                        <View style={styles.checklistBadge}>
+                          {(() => {
+                            const allItems =
+                              (activities[marketModalData.activity.date] || []).find(
+                                (a) => a.id === marketModalData.activity.id
+                              )?.data[marketModalData.marketKey] || [];
+                            const checkedCount = allItems.filter((i) => i.checked)
+                              .length;
+                            return (
+                              <Text style={styles.checklistBadgeText}>
+                                {checkedCount}/{allItems.length}
+                              </Text>
+                            );
+                          })()}
+                        </View>
+                      </View>
+
+                      {(() => {
+                        const allItems =
+                          (activities[marketModalData.activity.date] || []).find(
+                            (a) => a.id === marketModalData.activity.id
+                          )?.data[marketModalData.marketKey] || [];
+
+                        return (
+                          <MarketTable
+                            items={allItems}
+                            onToggle={(index) =>
+                              toggleChecklistItem(
+                                marketModalData.activity,
+                                marketModalData.marketKey,
+                                index
+                              )
+                            }
+                          />
+                        );
+                      })()}
+                    </View>
+                  </View>
+                  <View style={{ height: 24 }} />
+                </ScrollView>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* VITAMINS LIST MODAL */}
+      <Modal
+        transparent
+        visible={vitaminsModalVisible && !!vitaminsModalData}
+        animationType="slide"
+        onRequestClose={() => setVitaminsModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setVitaminsModalVisible(false)}
+        >
+          <Pressable
+            style={styles.modal}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {vitaminsModalData && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={styles.modalHandle} />
+                  <View style={styles.modalTitleContainer}>
+                    <Ionicons name="medkit" size={24} color="#22c55e" />
+                    <Text style={styles.modalTitle}>
+                      {vitaminsModalData.vitaminsLabel || 'Vitaminas a tomar'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setVitaminsModalVisible(false)}
+                    style={styles.modalClose}
+                  >
+                    <Ionicons name="close-circle" size={28} color="#6b7280" />
+                  </Pressable>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  style={{ maxHeight: '80%' }}
+                >
+                  <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
+                      {vitaminsModalData.activity.title}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                      {formatDate(vitaminsModalData.activity.date)}
+                    </Text>
+
+                    <View style={styles.checklistSection}>
+                      <View style={styles.checklistHeader}>
+                        <View style={styles.checklistIconBg}>
+                          <Ionicons name="medkit" size={16} color="#22c55e" />
+                        </View>
+                        <Text style={styles.checklistTitle}>
+                          {vitaminsModalData.vitaminsLabel || 'Vitaminas'}
+                        </Text>
+                        <View style={styles.checklistBadge}>
+                          {(() => {
+                            const allItems =
+                              (activities[vitaminsModalData.activity.date] || []).find(
+                                (a) => a.id === vitaminsModalData.activity.id
+                              )?.data[vitaminsModalData.vitaminsKey] || [];
+                            const checkedCount = allItems.filter((i) => i.checked)
+                              .length;
+                            return (
+                              <Text style={styles.checklistBadgeText}>
+                                {checkedCount}/{allItems.length}
+                              </Text>
+                            );
+                          })()}
+                        </View>
+                      </View>
+
+                      {(() => {
+                        const allItems =
+                          (activities[vitaminsModalData.activity.date] || []).find(
+                            (a) => a.id === vitaminsModalData.activity.id
+                          )?.data[vitaminsModalData.vitaminsKey] || [];
+
+                        return (
+                          <VitaminsTable
+                            items={allItems}
+                            onToggle={(index) =>
+                              toggleChecklistItem(
+                                vitaminsModalData.activity,
+                                vitaminsModalData.vitaminsKey,
+                                index
+                              )
+                            }
+                          />
+                        );
+                      })()}
+                    </View>
+                  </View>
+                  <View style={{ height: 24 }} />
+                </ScrollView>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* CHECKLIST (ESPACIOS) MODAL */}
+      <Modal
+        transparent
+        visible={checklistModalVisible && !!checklistModalData}
+        animationType="slide"
+        onRequestClose={() => setChecklistModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setChecklistModalVisible(false)}
+        >
+          <Pressable
+            style={styles.modal}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {checklistModalData && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={styles.modalHandle} />
+                  <View style={styles.modalTitleContainer}>
+                    <Ionicons name="checkbox" size={24} color="#fb7185" />
+                    <Text style={styles.modalTitle}>
+                      {checklistModalData.checklistLabel || 'Checklist'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setChecklistModalVisible(false)}
+                    style={styles.modalClose}
+                  >
+                    <Ionicons name="close-circle" size={28} color="#6b7280" />
+                  </Pressable>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  style={{ maxHeight: '80%' }}
+                >
+                  <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
+                      {checklistModalData.activity.title}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                      {formatDate(checklistModalData.activity.date)}
+                    </Text>
+
+                    <View style={styles.checklistSection}>
+                      <View style={styles.checklistHeader}>
+                        <View style={styles.checklistIconBg}>
+                          <Ionicons name="home" size={16} color="#fb7185" />
+                        </View>
+                        <Text style={styles.checklistTitle}>
+                          {checklistModalData.checklistLabel || 'Espacios a organizar'}
+                        </Text>
+                        <View style={styles.checklistBadge}>
+                          {(() => {
+                            const allItems =
+                              (activities[checklistModalData.activity.date] || []).find(
+                                (a) => a.id === checklistModalData.activity.id
+                              )?.data[checklistModalData.checklistKey] || [];
+
+                            const normalized = allItems.map((item) => {
+                              if (typeof item === 'string') {
+                                return { label: item, checked: false };
+                              }
+                              return item;
+                            });
+
+                            const checkedCount = normalized.filter((i) => i.checked)
+                              .length;
+                            return (
+                              <Text style={styles.checklistBadgeText}>
+                                {checkedCount}/{normalized.length}
+                              </Text>
+                            );
+                          })()}
+                        </View>
+                      </View>
+
+                      {(() => {
+                        const allItems =
+                          (activities[checklistModalData.activity.date] || []).find(
+                            (a) => a.id === checklistModalData.activity.id
+                          )?.data[checklistModalData.checklistKey] || [];
+
+                        const normalized = allItems.map((item) => {
+                          if (typeof item === 'string') {
+                            return { label: item, checked: false };
+                          }
+                          return item;
+                        });
+
+                        return (
+                          <ChecklistTable
+                            items={normalized}
+                            columns={{ qty: false, extra: false }}
+                            onToggle={(index) =>
+                              toggleChecklistItem(
+                                checklistModalData.activity,
+                                checklistModalData.checklistKey,
+                                index
+                              )
+                            }
+                          />
+                        );
+                      })()}
+                    </View>
+                  </View>
+                  <View style={{ height: 24 }} />
+                </ScrollView>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* FAB */}
       <Pressable style={styles.fab} onPress={() => setShowHabitModal(true)}>
@@ -912,6 +1393,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#e5e7eb',
   },
+  cardCompleted: {
+    opacity: 0.6,
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -949,6 +1433,27 @@ const styles = StyleSheet.create({
     color: '#111827',
     flex: 1,
     letterSpacing: -0.3,
+  },
+  cardTitleCompleted: {
+    textDecorationLine: 'line-through',
+    color: '#6b7280',
+  },
+  cardSubtitle: {
+    marginTop: 2,
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  cardSubtitleCompleted: {
+    color: '#9ca3af',
+  },
+  cardRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  completeBtn: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
   },
   cardBadge: {
     flexDirection: 'row',

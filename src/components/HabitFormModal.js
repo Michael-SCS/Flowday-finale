@@ -43,6 +43,7 @@ const FREQUENCIES = [
 export default function HabitFormModal({
   habit,
   selectedDate,
+  editingActivity,
   onSave,
   onClose,
 }) {
@@ -69,10 +70,10 @@ export default function HabitFormModal({
     setHasEndDate(false);
     setFrequency('once');
     setDaysOfWeek([]);
-    setDescription('');
-    setFormData({});
+    setDescription(editingActivity?.description || '');
+    setFormData(editingActivity?.data || {});
     setActivePicker(null);
-  }, [habit, baseDate]);
+  }, [habit, baseDate, editingActivity]);
 
   const config = useMemo(() => {
     if (!habit?.config) return null;
@@ -211,6 +212,65 @@ export default function HabitFormModal({
           </>
         );
 
+      case 'vitamins': {
+        const vitamins = value || [];
+        return (
+          <>
+            {vitamins.map((item, i) => (
+              <View key={i} style={styles.marketRow}>
+                <View style={styles.marketNum}>
+                  <Text style={styles.marketNumTxt}>{i + 1}</Text>
+                </View>
+                <TextInput
+                  style={[styles.input, { flex: 2 }]}
+                  placeholder="Vitamina"
+                  placeholderTextColor="#9ca3af"
+                  value={item.name}
+                  onChangeText={(v) => {
+                    const copy = [...vitamins];
+                    copy[i].name = v;
+                    updateField(field.key, copy);
+                  }}
+                />
+                <TextInput
+                  style={[styles.input, { width: 70 }]}
+                  placeholder="Cant"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                  value={item.qty}
+                  onChangeText={(v) => {
+                    const copy = [...vitamins];
+                    copy[i].qty = v;
+                    updateField(field.key, copy);
+                  }}
+                />
+                <Pressable
+                  onPress={() => {
+                    const copy = vitamins.filter((_, idx) => idx !== i);
+                    updateField(field.key, copy);
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                </Pressable>
+              </View>
+            ))}
+
+            <Pressable
+              style={styles.addBtn}
+              onPress={() =>
+                updateField(field.key, [
+                  ...(vitamins || []),
+                  { name: '', qty: '' },
+                ])
+              }
+            >
+              <Ionicons name="add-circle" size={20} color="#22c55e" />
+              <Text style={styles.addTxt}>Agregar vitamina</Text>
+            </Pressable>
+          </>
+        );
+      }
+
       default:
         return null;
     }
@@ -226,6 +286,7 @@ export default function HabitFormModal({
       habit,
       description,
       data: formData,
+      editingActivityId: editingActivity?.id || null,
       schedule: {
         startDate: startDate.toISOString().split('T')[0],
         endDate: hasEndDate ? endDate.toISOString().split('T')[0] : null,

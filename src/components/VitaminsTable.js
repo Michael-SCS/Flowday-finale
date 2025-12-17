@@ -2,27 +2,22 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function MarketTable({ items = [], onToggle }) {
+export default function VitaminsTable({ items = [], onToggle }) {
   return (
     <View style={styles.table}>
       {/* HEADER */}
       <View style={[styles.row, styles.header]}>
         <Text style={[styles.cell, styles.check]} />
-        <Text style={[styles.cell, styles.product]}>Producto</Text>
+        <Text style={[styles.cell, styles.name]}>Vitamina</Text>
         <Text style={[styles.cell, styles.qty]}>Cant.</Text>
-        <Text style={[styles.cell, styles.price]}>$</Text>
       </View>
 
       {items.map((item, index) => {
-        const product = item.product || item.name || '';
+        const name = item.name || item.label || '';
         const qty =
           item.quantity !== undefined && item.quantity !== null
             ? String(item.quantity)
             : item.qty || '';
-        const price =
-          item.price !== undefined && item.price !== null
-            ? String(item.price)
-            : '';
 
         return (
           <View key={index} style={styles.row}>
@@ -33,22 +28,21 @@ export default function MarketTable({ items = [], onToggle }) {
               <Ionicons
                 name={item.checked ? 'checkbox' : 'square-outline'}
                 size={18}
-                color={item.checked ? '#f97316' : '#9ca3af'}
+                color={item.checked ? '#22c55e' : '#9ca3af'}
               />
             </Pressable>
 
             <Text
               style={[
                 styles.cell,
-                styles.product,
+                styles.name,
                 item.checked && styles.checkedText,
               ]}
             >
-              {product}
+              {name}
             </Text>
 
             <Text style={[styles.cell, styles.qty]}>{qty}</Text>
-            <Text style={[styles.cell, styles.price]}>{price}</Text>
           </View>
         );
       })}
@@ -62,7 +56,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: '#bbf7d0',
   },
   row: {
     flexDirection: 'row',
@@ -70,16 +64,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    backgroundColor: '#fde68a',
+    backgroundColor: '#bbf7d0',
   },
   cell: {
     padding: 10,
     fontSize: 13,
   },
   check: { width: 36, textAlign: 'center' },
-  product: { flex: 2 },
-  qty: { width: 50, textAlign: 'center' },
-  price: { width: 70, textAlign: 'center' },
+  name: { flex: 2 },
+  qty: { width: 60, textAlign: 'center' },
   checkedText: {
     textDecorationLine: 'line-through',
     color: '#9ca3af',
