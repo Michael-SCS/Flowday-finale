@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,10 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 
+/* ======================
+   CONSTANTES
+====================== */
+
 const WEEK_DAYS = [
   { key: 'mon', label: 'L' },
   { key: 'tue', label: 'M' },
@@ -23,6 +27,10 @@ const WEEK_DAYS = [
   { key: 'sun', label: 'D' },
 ];
 
+/* ======================
+   COMPONENTE
+====================== */
+
 export default function HabitFormModal({
   habit,
   selectedDate,
@@ -30,9 +38,9 @@ export default function HabitFormModal({
   onClose,
 }) {
   /* ======================
-     FECHAS (FIX)
+     FECHA BASE
   ====================== */
-  const initialDate = useMemo(() => {
+  const baseDate = useMemo(() => {
     if (typeof selectedDate === 'string') {
       const [y, m, d] = selectedDate.split('-').map(Number);
       return new Date(y, m - 1, d);
@@ -40,10 +48,14 @@ export default function HabitFormModal({
     return new Date();
   }, [selectedDate]);
 
-  const [startDate, setStartDate] = useState(initialDate);
-  const [endDate, setEndDate] = useState(null);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [startDate, setStartDate] = useState(baseDate);
+  const [endDate, setEndDate] = useState(baseDate);
+
+  // 👉 NUEVO: ¿tiene fin?
+  const [hasEndDate, setHasEndDate] = useState(false);
+
+  // Picker único
+  const [activePicker, setActivePicker] = useState(null); // 'start' | 'end'
 
   /* ======================
      FRECUENCIA
@@ -52,17 +64,41 @@ export default function HabitFormModal({
   const [daysOfWeek, setDaysOfWeek] = useState([]);
 
   /* ======================
-     DATA DINÁMICA
+     DATA
   ====================== */
   const [description, setDescription] = useState('');
   const [formData, setFormData] = useState({});
 
-  const config = habit.config
-    ? typeof habit.config === 'string'
-      ? JSON.parse(habit.config)
-      : habit.config
-    : null;
+  /* ======================
+     RESET AL ABRIR
+  ====================== */
+  useEffect(() => {
+    setStartDate(baseDate);
+    setEndDate(baseDate);
+    setHasEndDate(false);
+    setFrequency('once');
+    setDaysOfWeek([]);
+    setDescription('');
+    setFormData({});
+    setActivePicker(null);
+  }, [habit, baseDate]);
 
+  /* ======================
+     CONFIG DESDE SUPABASE
+  ====================== */
+  const config = useMemo(() => {
+    if (!habit?.config) return null;
+    if (typeof habit.config === 'object') return habit.config;
+    try {
+      return JSON.parse(habit.config);
+    } catch {
+      return null;
+    }
+  }, [habit]);
+
+  /* ======================
+     HELPERS
+  ====================== */
   function toggleDay(day) {
     setDaysOfWeek((prev) =>
       prev.includes(day)
@@ -76,7 +112,7 @@ export default function HabitFormModal({
   }
 
   /* ======================
-     RENDER CAMPOS DESDE SUPABASE
+     RENDER DINÁMICO
   ====================== */
   function renderField(field) {
     const value = formData[field.key];
@@ -101,10 +137,7 @@ export default function HabitFormModal({
               return (
                 <Pressable
                   key={opt}
-                  style={[
-                    styles.chip,
-                    selected && styles.chipActive,
-                  ]}
+                  style={[styles.chip, selected && styles.chipActive]}
                   onPress={() => {
                     const next = selected
                       ? value.filter((v) => v !== opt)
@@ -169,9 +202,7 @@ export default function HabitFormModal({
                 ])
               }
             >
-              <Text style={styles.addItemText}>
-                + Agregar item
-              </Text>
+              <Text style={styles.addItemText}>+ Agregar item</Text>
             </Pressable>
           </>
         );
@@ -181,21 +212,22 @@ export default function HabitFormModal({
     }
   }
 
+  /* ======================
+     GUARDAR
+  ====================== */
   function handleSave() {
     onSave({
-      habit_id: habit.id,
-      title: habit.title,
-      icon: habit.icon,
+      habit,
+      description,
+      data: formData,
       schedule: {
         startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate
+        endDate: hasEndDate
           ? endDate.toISOString().split('T')[0]
-          : null,
+          : null, // 🔥 INFINITO REAL
         frequency,
         daysOfWeek: frequency === 'weekly' ? daysOfWeek : [],
       },
-      description,
-      data: formData,
     });
   }
 
@@ -226,57 +258,73 @@ export default function HabitFormModal({
             <Image source={{ uri: habit.icon }} style={styles.icon} />
           </View>
 
-          {/* FECHAS */}
+          {/* PERIODO */}
           <Text style={styles.label}>Periodo</Text>
-          <View style={styles.dateRow}>
-            <Pressable
-              style={styles.dateBox}
-              onPress={() => setShowStartPicker(true)}
-            >
-              <Text>
-                Inicio: {startDate.toLocaleDateString()}
-              </Text>
-            </Pressable>
 
-            <Pressable
-              style={styles.dateBox}
-              onPress={() => setShowEndPicker(true)}
-            >
-              <Text>
-                Fin:{' '}
-                {endDate
-                  ? endDate.toLocaleDateString()
-                  : '—'}
-              </Text>
-            </Pressable>
-          </View>
+          {/* INICIO */}
+          <Pressable
+            style={styles.dateBox}
+            onPress={() => setActivePicker('start')}
+          >
+            <Text>Inicio</Text>
+            <Text>{startDate.toLocaleDateString()}</Text>
+          </Pressable>
 
-          {showStartPicker && (
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              onChange={(_, date) => {
-                setShowStartPicker(false);
-                if (date) {
-                  setStartDate(date);
-                  if (endDate && date > endDate) {
-                    setEndDate(null);
-                  }
-                }
-              }}
+          {/* TOGGLE FIN */}
+          <Pressable
+            style={styles.endToggle}
+            onPress={() => setHasEndDate((v) => !v)}
+          >
+            <Ionicons
+              name={hasEndDate ? 'checkbox' : 'square-outline'}
+              size={20}
             />
+            <Text style={{ marginLeft: 8 }}>
+              ¿Esta actividad tiene fin?
+            </Text>
+          </Pressable>
+
+          {/* FIN */}
+          {hasEndDate && (
+            <Pressable
+              style={styles.dateBox}
+              onPress={() => setActivePicker('end')}
+            >
+              <Text>Fin</Text>
+              <Text>{endDate.toLocaleDateString()}</Text>
+            </Pressable>
           )}
 
-          {showEndPicker && (
-            <DateTimePicker
-              value={endDate || startDate}
-              minimumDate={startDate}
-              mode="date"
-              onChange={(_, date) => {
-                setShowEndPicker(false);
-                if (date) setEndDate(date);
-              }}
-            />
+          {/* PICKER */}
+          {activePicker && (
+            <View style={styles.pickerWrapper}>
+              <DateTimePicker
+                value={activePicker === 'start' ? startDate : endDate}
+                mode="date"
+                minimumDate={
+                  activePicker === 'end' ? startDate : undefined
+                }
+                display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                themeVariant="light"
+                onChange={(_, date) => {
+                  if (!date) {
+                    setActivePicker(null);
+                    return;
+                  }
+
+                  if (activePicker === 'start') {
+                    setStartDate(date);
+                    if (date > endDate) setEndDate(date);
+                  } else {
+                    setEndDate(date);
+                  }
+
+                  if (Platform.OS === 'android') {
+                    setActivePicker(null);
+                  }
+                }}
+              />
+            </View>
           )}
 
           {/* FRECUENCIA */}
@@ -291,10 +339,7 @@ export default function HabitFormModal({
             ].map(([k, l]) => (
               <Pressable
                 key={k}
-                style={[
-                  styles.chip,
-                  frequency === k && styles.chipActive,
-                ]}
+                style={[styles.chip, frequency === k && styles.chipActive]}
                 onPress={() => setFrequency(k)}
               >
                 <Text>{l}</Text>
@@ -320,7 +365,7 @@ export default function HabitFormModal({
             </View>
           )}
 
-          {/* CAMPOS EXTRA DESDE CONFIG */}
+          {/* CAMPOS EXTRA */}
           {config?.fields?.map((field) => (
             <View key={field.key}>
               <Text style={styles.label}>{field.label}</Text>
@@ -368,15 +413,28 @@ const styles = StyleSheet.create({
   iconBox: { alignItems: 'center', marginVertical: 10 },
   icon: { width: 48, height: 48 },
   label: { marginTop: 16, marginBottom: 6, fontWeight: '600' },
-  dateRow: { flexDirection: 'row', gap: 12 },
+
   dateBox: {
-    flex: 1,
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
     backgroundColor: '#fff',
     borderColor: '#fde68a',
+    marginBottom: 8,
   },
+
+  endToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+
+  pickerWrapper: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginTop: 8,
+  },
+
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
@@ -384,6 +442,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
   },
+
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     padding: 10,
@@ -393,6 +452,7 @@ const styles = StyleSheet.create({
     borderColor: '#fde68a',
   },
   chipActive: { backgroundColor: '#fde68a' },
+
   dayChip: {
     width: 40,
     height: 40,
@@ -404,6 +464,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   dayChipActive: { backgroundColor: '#fde68a' },
+
   marketRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   addItem: {
     padding: 12,
@@ -413,11 +474,16 @@ const styles = StyleSheet.create({
     borderColor: '#fde68a',
   },
   addItemText: { textAlign: 'center', color: '#fb7185' },
+
   save: {
     backgroundColor: '#fb7185',
     padding: 16,
     borderRadius: 16,
     marginTop: 12,
   },
-  saveText: { color: '#fff', textAlign: 'center', fontWeight: '600' },
+  saveText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
 });
