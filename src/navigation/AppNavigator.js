@@ -23,7 +23,7 @@ export default function TabNavigator() {
       }}
     >
       <Tab.Screen
-        name="Inicio"
+        name="Calendario"
         component={CalendarScreen}
         options={{
           tabBarIcon: ({ color, size }) => (

@@ -41,7 +41,7 @@ export default function Login({ navigation }) {
       <View style={styles.card}>
         {/* LOGO */}
         <Image
-          source={require('../../assets/Flowday.png')}
+          source={require('../../assets/adaptive-icon.png')}
           style={styles.logo}
           resizeMode="contain"
         />
