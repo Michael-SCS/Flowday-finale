@@ -13,8 +13,11 @@ export default function TabNavigator() {
 
   return (
     <Tab.Navigator
+      initialRouteName="Calendario"
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: '#38BDF8',
+        tabBarInactiveTintColor: '#94A3B8',
         tabBarStyle: {
           height: 60 + insets.bottom,   // 🔥 CLAVE
           paddingBottom: insets.bottom, // 🔥 CLAVE

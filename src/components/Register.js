@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   },
   primary: {
     width: '100%',
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     padding: 16,
     borderRadius: 18,
     marginTop: 8,
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   link: {
     textAlign: 'center',
     marginTop: 16,
-    color: '#fb7185',
+    color: '#38BDF8',
     fontWeight: '600',
   },
   error: {
@@ -357,8 +357,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   genderChipActive: {
-    borderColor: '#fb7185',
-    backgroundColor: '#ffe4e6',
+    borderColor: '#38BDF8',
+    backgroundColor: '#dbeafe',
   },
   genderChipText: {
     fontSize: 13,

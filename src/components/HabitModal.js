@@ -30,6 +30,7 @@ export default function HabitModal({ onSelect, onClose }) {
         category,
         type,
         icon,
+        description,
         config
       `)
       .eq('is_active', true)
@@ -77,13 +78,29 @@ export default function HabitModal({ onSelect, onClose }) {
                   style={styles.item}
                   onPress={() => onSelect(habit)}
                 >
-                  <Image
-                    source={{ uri: habit.icon }}
-                    style={styles.icon}
-                  />
-                  <Text style={styles.itemText}>
-                    {habit.title}
-                  </Text>
+                  {habit.icon ? (
+                    <Image
+                      source={{ uri: habit.icon }}
+                      style={styles.icon}
+                    />
+                  ) : (
+                    <View style={styles.iconPlaceholder}>
+                      <Ionicons name="sparkles" size={20} color="#38BDF8" />
+                    </View>
+                  )}
+                  <View style={styles.itemTextContainer}>
+                    <Text style={styles.itemTitle} numberOfLines={1}>
+                      {habit.title}
+                    </Text>
+                    {habit.description ? (
+                      <Text
+                        style={styles.itemDescription}
+                        numberOfLines={2}
+                      >
+                        {habit.description}
+                      </Text>
+                    ) : null}
+                  </View>
                 </Pressable>
               ))}
             </View>
@@ -129,19 +146,41 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 12,
+    backgroundColor: '#f9fafb',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#fde68a',
     marginBottom: 8,
   },
   icon: {
-    width: 32,
-    height: 32,
-    marginRight: 12,
+    width: 36,
+    height: 36,
+    marginRight: 10,
+    borderRadius: 10,
+    backgroundColor: '#fee2e2',
   },
-  itemText: {
-    fontSize: 15,
+  iconPlaceholder: {
+    width: 36,
+    height: 36,
+    marginRight: 10,
+    borderRadius: 10,
+    backgroundColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemTextContainer: {
+    flex: 1,
+  },
+  itemTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 3,
+  },
+  itemDescription: {
+    fontSize: 12,
+    color: '#6b7280',
   },
 });

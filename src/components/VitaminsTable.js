@@ -26,9 +26,9 @@ export default function VitaminsTable({ items = [], onToggle }) {
               onPress={() => onToggle && onToggle(index)}
             >
               <Ionicons
-                name={item.checked ? 'checkbox' : 'square-outline'}
-                size={18}
-                color={item.checked ? '#22c55e' : '#9ca3af'}
+                name={item.checked ? 'checkmark-circle' : 'ellipse-outline'}
+                size={19}
+                color={item.checked ? '#22c55e' : '#d1d5db'}
               />
             </Pressable>
 
@@ -53,24 +53,33 @@ export default function VitaminsTable({ items = [], onToggle }) {
 const styles = StyleSheet.create({
   table: {
     marginTop: 16,
-    borderRadius: 12,
+    borderRadius: 18,
+    backgroundColor: '#fff',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   header: {
-    backgroundColor: '#bbf7d0',
+    backgroundColor: '#dcfce7',
+    borderBottomWidth: 1,
+    borderBottomColor: '#bbf7d0',
   },
   cell: {
-    padding: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     fontSize: 13,
   },
-  check: { width: 36, textAlign: 'center' },
+  check: { width: 40, textAlign: 'center' },
   name: { flex: 2 },
   qty: { width: 60, textAlign: 'center' },
   checkedText: {

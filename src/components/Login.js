@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   primary: {
     width: '100%',
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     padding: 16,
     borderRadius: 16,
     marginTop: 8,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   link: {
     textAlign: 'center',
     marginTop: 14,
-    color: '#fb7185',
+    color: '#38BDF8',
     fontWeight: '600',
   },
   error: {

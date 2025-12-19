@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabase';
 
@@ -124,7 +125,8 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.headerIconContainer}>
@@ -135,7 +137,7 @@ export default function ProfileScreen() {
 
       {loading ? (
         <View style={styles.centerContent}>
-          <ActivityIndicator color="#fb7185" size="large" />
+          <ActivityIndicator color="#38BDF8" size="large" />
           <Text style={styles.loadingText}>Cargando perfil...</Text>
         </View>
       ) : (
@@ -161,7 +163,7 @@ export default function ProfileScreen() {
               {/* CARD INFORMACIÓN */}
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <Ionicons name="information-circle" size={22} color="#fb7185" />
+                  <Ionicons name="information-circle" size={22} color="#38BDF8" />
                   <Text style={styles.cardTitle}>Información personal</Text>
                 </View>
 
@@ -274,7 +276,7 @@ export default function ProfileScreen() {
                   onPress={() => setShowPolicyModal(true)}
                 >
                   <View style={styles.linkButtonContent}>
-                    <Ionicons name="shield-checkmark-outline" size={20} color="#fb7185" />
+                    <Ionicons name="shield-checkmark-outline" size={20} color="#38BDF8" />
                     <Text style={styles.linkButtonText}>
                       Política de privacidad
                     </Text>
@@ -301,18 +303,16 @@ export default function ProfileScreen() {
         transparent
         onRequestClose={() => setShowPolicyModal(false)}
       >
-        <Pressable 
+        <View 
           style={styles.modalOverlay}
-          onPress={() => setShowPolicyModal(false)}
         >
-          <Pressable 
+          <View 
             style={styles.modalContent}
-            onPress={(e) => e.stopPropagation()}
           >
-            <View style={styles.modalHeader}>
+              <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
-                <Ionicons name="shield-checkmark" size={24} color="#fb7185" />
+                <Ionicons name="shield-checkmark" size={24} color="#38BDF8" />
                 <Text style={styles.modalTitle}>Política de privacidad</Text>
               </View>
               <Pressable 
@@ -325,39 +325,41 @@ export default function ProfileScreen() {
 
             <ScrollView 
               style={styles.modalScroll}
-              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator
             >
               <View style={styles.policySection}>
                 <Text style={styles.modalText}>
-                  Esta aplicación recopila y almacena únicamente la información necesaria
-                  para ofrecerte una experiencia personalizada, como tu nombre, correo
-                  electrónico y algunos datos opcionales de perfil.
+                  Esta aplicación recopila y almacena únicamente la información mínima
+                  necesaria para ofrecerte una experiencia personalizada, como tu nombre,
+                  correo electrónico y algunos datos opcionales de perfil. No solicitamos
+                  información bancaria ni datos especialmente sensibles.
                 </Text>
               </View>
 
               <View style={styles.policySection}>
                 <Text style={styles.policySubtitle}>Uso de datos</Text>
                 <Text style={styles.modalText}>
-                  Tus datos se guardan de forma segura en nuestros servidores mediante
-                  Supabase y solo se utilizan para:
+                  Tus datos se guardan en servicios de terceros especializados y solo se
+                  utilizan para:
                 </Text>
                 <View style={styles.bulletList}>
                   <View style={styles.bulletItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#fb7185" />
+                    <Ionicons name="checkmark-circle" size={18} color="#38BDF8" />
                     <Text style={styles.bulletText}>
                       Gestionar tu cuenta y tu autenticación
                     </Text>
                   </View>
                   <View style={styles.bulletItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#fb7185" />
+                    <Ionicons name="checkmark-circle" size={18} color="#38BDF8" />
                     <Text style={styles.bulletText}>
                       Mostrar y personalizar tu información de perfil
                     </Text>
                   </View>
                   <View style={styles.bulletItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#fb7185" />
+                    <Ionicons name="checkmark-circle" size={18} color="#38BDF8" />
                     <Text style={styles.bulletText}>
-                      Mejorar las funcionalidades de la aplicación
+                      Mejorar y mantener las funcionalidades de la aplicación
                     </Text>
                   </View>
                 </View>
@@ -368,7 +370,30 @@ export default function ProfileScreen() {
                 <Text style={styles.modalText}>
                   No compartimos tu información personal con terceros con fines
                   comerciales. Solo podríamos compartir datos en caso de obligación
-                  legal o para garantizar la seguridad del servicio.
+                  legal, requerimiento de una autoridad competente o para proteger
+                  la seguridad e integridad del servicio y de otros usuarios.
+                </Text>
+              </View>
+
+              <View style={styles.policySection}>
+                <Text style={styles.policySubtitle}>Limitación de responsabilidad</Text>
+                <Text style={styles.modalText}>
+                  Esta aplicación se ofrece "tal cual" y "según disponibilidad". Aunque
+                  trabajamos para mantener el servicio estable y seguro, no podemos
+                  garantizar que esté libre de errores, interrupciones o pérdidas de
+                  información. El uso de la aplicación es responsabilidad exclusiva del
+                  usuario.
+                </Text>
+              </View>
+
+              <View style={styles.policySection}>
+                <Text style={styles.policySubtitle}>No es asesoramiento profesional</Text>
+                <Text style={styles.modalText}>
+                  La información mostrada en la aplicación tiene un carácter meramente
+                  informativo y de organización personal. No constituye asesoramiento
+                  médico, psicológico, nutricional, financiero, jurídico ni de ningún
+                  otro tipo profesional. Ante cualquier duda relevante para tu salud o
+                  situación personal, consulta siempre con un profesional cualificado.
                 </Text>
               </View>
 
@@ -378,14 +403,36 @@ export default function ProfileScreen() {
                   En cualquier momento puedes solicitar la actualización o eliminación
                   de tus datos de perfil. Al cerrar sesión, tu cuenta permanece
                   registrada, pero puedes contactar al soporte de la aplicación si
-                  deseas que eliminemos definitivamente tu información.
+                  deseas que eliminemos definitivamente tu información, salvo que la
+                  ley nos obligue a conservarla durante más tiempo.
+                </Text>
+              </View>
+
+              <View style={styles.policySection}>
+                <Text style={styles.policySubtitle}>Menores de edad</Text>
+                <Text style={styles.modalText}>
+                  Si eres menor de edad, debes utilizar la aplicación con el
+                  consentimiento y supervisión de tu madre, padre o tutor legal. No
+                  recopilamos intencionadamente información personal de menores sin
+                  dicho consentimiento.
+                </Text>
+              </View>
+
+              <View style={styles.policySection}>
+                <Text style={styles.policySubtitle}>Cambios en la política</Text>
+                <Text style={styles.modalText}>
+                  Podemos actualizar esta política de privacidad cuando sea necesario
+                  para reflejar cambios en la ley, en la aplicación o en la forma en
+                  que tratamos tus datos. Cuando haya cambios relevantes, procuraremos
+                  avisarte dentro de la propia aplicación.
                 </Text>
               </View>
 
               <View style={[styles.policySection, styles.acceptanceSection]}>
                 <Text style={styles.modalText}>
-                  Al continuar usando la aplicación aceptas esta política de uso y el
-                  tratamiento de tus datos conforme a lo descrito anteriormente.
+                  Al continuar usando la aplicación declaras haber leído y comprendido
+                  esta política de privacidad y aceptas el tratamiento de tus datos y
+                  las limitaciones de responsabilidad aquí descritas.
                 </Text>
               </View>
             </ScrollView>
@@ -397,8 +444,8 @@ export default function ProfileScreen() {
               <Ionicons name="checkmark-circle" size={22} color="#fff" />
               <Text style={styles.modalCloseButtonText}>Entendido</Text>
             </Pressable>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* MODAL GÉNERO */}
@@ -436,16 +483,21 @@ export default function ProfileScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fafafa',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 24,
     paddingBottom: 16,
   },
 
@@ -460,10 +512,10 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#fb7185',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -523,8 +575,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
-    backgroundColor: '#fb7185',
-    shadowColor: '#fb7185',
+    backgroundColor: '#38BDF8',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -631,8 +683,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   genderChipActive: {
-    borderColor: '#fb7185',
-    backgroundColor: '#ffe4e6',
+    borderColor: '#38BDF8',
+    backgroundColor: '#dbeafe',
   },
   genderChipText: {
     fontSize: 13,
@@ -759,8 +811,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingVertical: 16,
     borderRadius: 16,
-    backgroundColor: '#fb7185',
-    shadowColor: '#fb7185',
+    backgroundColor: '#38BDF8',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -802,7 +854,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   linkButtonText: {
-    color: '#fb7185',
+    color: '#38BDF8',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -833,6 +885,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
+    paddingBottom: Platform.OS === 'android' ? 24 : 0,
   },
   modalContent: {
     backgroundColor: '#fff',
@@ -877,6 +930,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
   },
+  modalScrollContent: {
+    paddingBottom: 28,
+  },
   policySection: {
     marginBottom: 20,
   },
@@ -909,7 +965,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   acceptanceSection: {
-    backgroundColor: '#ffe4e6',
+    backgroundColor: '#dbeafe',
     padding: 16,
     borderRadius: 14,
     borderWidth: 1.5,
@@ -922,10 +978,10 @@ const styles = StyleSheet.create({
     gap: 10,
     marginHorizontal: 20,
     marginTop: 16,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     paddingVertical: 16,
     borderRadius: 16,
-    shadowColor: '#fb7185',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

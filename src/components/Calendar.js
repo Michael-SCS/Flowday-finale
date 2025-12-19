@@ -1,5 +1,5 @@
 import 'react-native-get-random-values';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,21 @@ import {
   Image,
   Alert,
   Modal,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   CalendarProvider,
   ExpandableCalendar,
+  LocaleConfig,
 } from 'react-native-calendars';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
-import { supabase } from '../utils/supabase';
+import { ActivityIndicator } from 'react-native';
+import { loadHabitTemplates } from '../utils/habitCache';
 import HabitFormModal from './HabitFormModal';
 import ChecklistTable from './ChecklistTable';
 import MarketTable from './MarketTable';
@@ -108,6 +113,28 @@ function formatDate(dateString) {
 }
 
 /* =========================
+   CONFIGURACIÓN CALENDARIO (ES)
+========================= */
+
+LocaleConfig.locales.es = {
+  monthNames: [
+    'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+    'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
+  ],
+  monthNamesShort: [
+    'Ene','Feb','Mar','Abr','May','Jun',
+    'Jul','Ago','Sep','Oct','Nov','Dic',
+  ],
+  dayNames: [
+    'Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado',
+  ],
+  dayNamesShort: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+  today: 'Hoy',
+};
+
+LocaleConfig.defaultLocale = 'es';
+
+/* =========================
    COMPONENTE
 ========================= */
 
@@ -115,6 +142,7 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [activities, setActivities] = useState({});
   const [habits, setHabits] = useState([]);
+  const [habitsLoading, setHabitsLoading] = useState(true);
 
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -127,6 +155,9 @@ export default function Calendar() {
   const [vitaminsModalData, setVitaminsModalData] = useState(null);
   const [checklistModalVisible, setChecklistModalVisible] = useState(false);
   const [checklistModalData, setChecklistModalData] = useState(null);
+  const [congratsVisible, setCongratsVisible] = useState(false);
+  const [congratsDate, setCongratsDate] = useState(null);
+  const [editingSchedule, setEditingSchedule] = useState(null);
   const swipeableRefs = React.useRef({});
 
   /* =========================
@@ -136,6 +167,12 @@ export default function Calendar() {
   useEffect(() => {
     loadActivities();
     loadHabits();
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
   }, []);
 
   async function loadActivities() {
@@ -163,16 +200,15 @@ export default function Calendar() {
 
   async function loadHabits() {
     try {
-      const { data, error } = await supabase
-        .from('habit_templates')
-        .select('*')
-        .eq('is_active', true)
-        .order('order_index');
-
-      if (error) throw error;
-      if (data) setHabits(data);
+      setHabitsLoading(true);
+      const data = await loadHabitTemplates();
+      if (data && Array.isArray(data)) {
+        setHabits(data);
+      }
     } catch (error) {
       console.error('Error loading habits:', error);
+    } finally {
+      setHabitsLoading(false);
     }
   }
 
@@ -184,25 +220,116 @@ export default function Calendar() {
     // Si venimos desde una edición, actualizamos SOLO esa actividad
     if (editingActivity && payload.editingActivityId === editingActivity.id) {
       const updated = { ...activities };
-      const { habit, description, data } = payload;
-      const dateKey = editingActivity.date;
+      const { habit, description, data, schedule } = payload;
 
-      if (updated[dateKey]) {
-        updated[dateKey] = updated[dateKey].map((act) => {
-          if (act.id !== editingActivity.id) return act;
-          return {
-            ...act,
-            habit_id: habit.id,
-            title: habit.title,
-            icon: habit.icon,
-            description: description || null,
-            data: data || {},
-          };
-        });
+      // Si es una actividad única, solo editamos esta instancia
+      if (!schedule || schedule.frequency === 'once') {
+        const dateKey = editingActivity.date;
 
-        saveActivities(updated);
+        if (updated[dateKey]) {
+          updated[dateKey] = updated[dateKey].map((act) => {
+            if (act.id !== editingActivity.id) return act;
+            return {
+              ...act,
+              habit_id: habit.id,
+              title: habit.title,
+              icon: habit.icon,
+              description: description || null,
+              data: data || {},
+            };
+          });
+
+          saveActivities(updated);
+        }
+
+        setEditingActivity(null);
+        setShowFormModal(false);
+        return;
       }
 
+      // Si tiene una frecuencia (diaria, semanal, etc.),
+      // actualizamos TODA la serie de ese hábito
+      const oldHabitId = editingActivity.habit_id;
+
+      Object.keys(updated).forEach((dateKey) => {
+        const dayActs = updated[dateKey] || [];
+        const filtered = dayActs.filter((act) => act.habit_id !== oldHabitId);
+        if (filtered.length > 0) {
+          updated[dateKey] = filtered;
+        } else {
+          delete updated[dateKey];
+        }
+      });
+
+      // Re-generamos la serie con el nuevo horario
+      let datesToCreate = [];
+
+      if (schedule.frequency === 'once') {
+        datesToCreate = [schedule.startDate];
+      }
+
+      if (schedule.frequency === 'daily') {
+        const start = parseLocalDate(schedule.startDate);
+        const end = schedule.endDate
+          ? parseLocalDate(schedule.endDate)
+          : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          datesToCreate.push(formatLocalDate(d));
+        }
+      }
+
+      if (schedule.frequency === 'weekly') {
+        datesToCreate = generateWeeklyDates(schedule);
+      }
+
+      if (schedule.frequency === 'monthly') {
+        const start = parseLocalDate(schedule.startDate);
+        const end = schedule.endDate
+          ? parseLocalDate(schedule.endDate)
+          : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
+
+        let d = new Date(start);
+        while (d <= end) {
+          datesToCreate.push(formatLocalDate(d));
+          d.setMonth(d.getMonth() + 1);
+        }
+      }
+
+      if (schedule.frequency === 'yearly') {
+        const start = parseLocalDate(schedule.startDate);
+        const end = schedule.endDate
+          ? parseLocalDate(schedule.endDate)
+          : new Date(start.getFullYear() + 5, start.getMonth(), start.getDate());
+
+        let d = new Date(start);
+        while (d <= end) {
+          datesToCreate.push(formatLocalDate(d));
+          d.setFullYear(d.getFullYear() + 1);
+        }
+      }
+
+      // Seguridad extra: nunca pasar de la fecha de fin
+      if (schedule.endDate) {
+        datesToCreate = datesToCreate.filter((d) => d <= schedule.endDate);
+      }
+
+      datesToCreate.forEach((date) => {
+        if (!updated[date]) updated[date] = [];
+
+        updated[date].push({
+          id: uuidv4(),
+          habit_id: habit.id,
+          title: habit.title,
+          icon: habit.icon,
+          description: description || null,
+          data: data || {},
+          date,
+          completed: false,
+        });
+      });
+
+      saveActivities(updated);
       setEditingActivity(null);
       setShowFormModal(false);
       return;
@@ -220,7 +347,7 @@ export default function Calendar() {
     if (schedule.frequency === 'daily') {
       const start = parseLocalDate(schedule.startDate);
       const end = schedule.endDate
-        ? new Date(schedule.endDate)
+        ? parseLocalDate(schedule.endDate)
         : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
 
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -235,7 +362,7 @@ export default function Calendar() {
     if (schedule.frequency === 'monthly') {
       const start = parseLocalDate(schedule.startDate);
       const end = schedule.endDate
-        ? new Date(schedule.endDate)
+        ? parseLocalDate(schedule.endDate)
         : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
 
       let d = new Date(start);
@@ -246,9 +373,9 @@ export default function Calendar() {
     }
 
     if (schedule.frequency === 'yearly') {
-      const start = parseLocalDate(schedule.startDate);;
+      const start = parseLocalDate(schedule.startDate);
       const end = schedule.endDate
-        ? new Date(schedule.endDate)
+        ? parseLocalDate(schedule.endDate)
         : new Date(start.getFullYear() + 5, start.getMonth(), start.getDate());
 
       let d = new Date(start);
@@ -256,6 +383,11 @@ export default function Calendar() {
         datesToCreate.push(formatLocalDate(d));
         d.setFullYear(d.getFullYear() + 1);
       }
+    }
+
+    // Seguridad extra: nunca pasar de la fecha de fin
+    if (schedule.endDate) {
+      datesToCreate = datesToCreate.filter((d) => d <= schedule.endDate);
     }
 
     datesToCreate.forEach((date) => {
@@ -319,17 +451,36 @@ export default function Calendar() {
   }
 
   function toggleCompleted(activity) {
+    const dateKey = activity.date;
+    const dayActivitiesBefore = activities[dateKey] || [];
+    const totalBefore = dayActivitiesBefore.length;
+    const completedBefore = dayActivitiesBefore.filter((a) => a.completed).length;
+
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
     const updated = { ...activities };
 
-    if (!updated[activity.date]) return;
+    if (!updated[dateKey]) return;
 
-    updated[activity.date] = updated[activity.date].map((act) => {
+    updated[dateKey] = updated[dateKey].map((act) => {
       if (act.id !== activity.id) return act;
       return {
         ...act,
         completed: !act.completed,
       };
     });
+
+    const dayActivitiesAfter = updated[dateKey] || [];
+    const completedAfter = dayActivitiesAfter.filter((a) => a.completed).length;
+
+    if (
+      totalBefore > 0 &&
+      completedAfter === dayActivitiesAfter.length &&
+      completedBefore < totalBefore
+    ) {
+      setCongratsDate(dateKey);
+      setCongratsVisible(true);
+    }
 
     saveActivities(updated);
   }
@@ -457,8 +608,66 @@ export default function Calendar() {
 
   function editActivity(activity) {
     // Buscamos el template original del hábito
-    const habitTemplate = habits.find(h => h.id === activity.habit_id);
+    const habitTemplate = habits.find((h) => h.id === activity.habit_id);
 
+    // Inferimos un horario aproximado a partir de todas las ocurrencias de este hábito
+    const allDates = [];
+    Object.keys(activities).forEach((dateStr) => {
+      (activities[dateStr] || []).forEach((act) => {
+        if (act.habit_id === activity.habit_id) {
+          allDates.push(parseLocalDate(dateStr));
+        }
+      });
+    });
+
+    let inferredSchedule = null;
+    if (allDates.length > 0) {
+      allDates.sort((a, b) => a - b);
+      const earliest = allDates[0];
+      const latest = allDates[allDates.length - 1];
+
+      const diffs = [];
+      for (let i = 0; i < allDates.length - 1; i++) {
+        const msDiff = allDates[i + 1] - allDates[i];
+        const daysDiff = Math.round(msDiff / (1000 * 60 * 60 * 24));
+        diffs.push(daysDiff);
+      }
+
+      let frequency = 'once';
+      let daysOfWeek = [];
+
+      if (diffs.length > 0 && diffs.every((d) => d === 1)) {
+        frequency = 'daily';
+      } else if (diffs.length > 0 && diffs.every((d) => d % 7 === 0)) {
+        frequency = 'weekly';
+        const daySet = new Set(
+          allDates.map((d) => {
+            const weekday = d.getDay(); // 0-6 (Domingo-Sábado)
+            return Object.keys(DAY_MAP).find((key) => DAY_MAP[key] === weekday);
+          })
+        );
+        daysOfWeek = Array.from(daySet);
+      } else if (
+        diffs.length > 0 &&
+        diffs.every((d) => d >= 28 && d <= 31)
+      ) {
+        frequency = 'monthly';
+      } else if (
+        diffs.length > 0 &&
+        diffs.every((d) => d >= 365 && d <= 366)
+      ) {
+        frequency = 'yearly';
+      }
+
+      inferredSchedule = {
+        startDate: earliest,
+        endDate: allDates.length > 1 ? latest : null,
+        frequency,
+        daysOfWeek,
+      };
+    }
+
+    setEditingSchedule(inferredSchedule);
     setEditingActivity(activity);
     setSelectedHabit(habitTemplate || activity);
     setShowFormModal(true);
@@ -546,26 +755,83 @@ export default function Calendar() {
      UI
   ========================= */
 
+  const markedDates = Object.keys(activities).reduce((acc, d) => {
+    const dayActs = activities[d] || [];
+    const total = dayActs.length;
+    const completed = dayActs.filter((a) => a.completed).length;
+    const allCompleted = total > 0 && completed === total;
+
+    if (total > 0) {
+      if (allCompleted) {
+        acc[d] = {
+          marked: true,
+          dotColor: '#22c55e',
+          customStyles: {
+            container: {
+              backgroundColor: '#dcfce7',
+              borderRadius: 16,
+            },
+            text: {
+              color: '#166534',
+              fontWeight: '700',
+            },
+          },
+        };
+      } else {
+        acc[d] = {
+          marked: true,
+          dotColor: '#38BDF8',
+        };
+      }
+    }
+
+    return acc;
+  }, {});
+
+  const selectedDayActs = activities[selectedDate] || [];
+  const selectedTotal = selectedDayActs.length;
+  const selectedCompleted = selectedDayActs.filter((a) => a.completed).length;
+  const selectedAllCompleted = selectedTotal > 0 && selectedCompleted === selectedTotal;
+
+  markedDates[selectedDate] = {
+    ...(markedDates[selectedDate] || {}),
+    customStyles: selectedAllCompleted
+      ? {
+          container: {
+            backgroundColor: '#22c55e',
+            borderRadius: 16,
+            borderWidth: 2,
+            borderColor: '#16a34a',
+          },
+          text: {
+            color: '#f0fdf4',
+            fontWeight: '800',
+          },
+        }
+      : {
+          container: {
+            backgroundColor: '#38BDF8',
+            borderRadius: 16,
+          },
+          text: {
+            color: '#ffffff',
+            fontWeight: '800',
+          },
+        },
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <CalendarProvider
         date={selectedDate}
         onDateChanged={setSelectedDate}
         showTodayButton
+        todayButtonText="Hoy"
       >
         <ExpandableCalendar
           firstDay={1}
-          markedDates={{
-            ...Object.keys(activities).reduce((acc, d) => {
-              acc[d] = { marked: true, dotColor: '#fb7185' };
-              return acc;
-            }, {}),
-            [selectedDate]: {
-              selected: true,
-              selectedColor: '#fb7185',
-              marked: activities[selectedDate]?.length > 0,
-            },
-          }}
+          markedDates={markedDates}
+          markingType="custom"
           theme={calendarTheme}
         />
 
@@ -726,7 +992,7 @@ export default function Calendar() {
                             />
                           ) : (
                             <View style={styles.cardIconPlaceholder}>
-                              <Ionicons name="sparkles" size={20} color="#fb7185" />
+                              <Ionicons name="sparkles" size={20} color="#38BDF8" />
                             </View>
                           )}
                         </View>
@@ -768,7 +1034,7 @@ export default function Calendar() {
                             </Pressable>
                           {hasMarket && (
                             <View style={styles.cardBadge}>
-                              <Ionicons name="list" size={12} color="#fb7185" />
+                              <Ionicons name="list" size={12} color="#38BDF8" />
                               <Text style={styles.cardBadgeText}>Lista</Text>
                             </View>
                           )}
@@ -811,10 +1077,11 @@ export default function Calendar() {
         animationType="slide"
         onRequestClose={() => setMarketModalVisible(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setMarketModalVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setMarketModalVisible(false)}
+          />
           <Pressable
             style={styles.modal}
             onPress={(e) => e.stopPropagation()}
@@ -824,7 +1091,7 @@ export default function Calendar() {
                 <View style={styles.modalHeader}>
                   <View style={styles.modalHandle} />
                   <View style={styles.modalTitleContainer}>
-                    <Ionicons name="cart" size={24} color="#fb7185" />
+                    <Ionicons name="cart" size={24} color="#38BDF8" />
                     <Text style={styles.modalTitle}>
                       {marketModalData.marketLabel || 'Lista de mercado'}
                     </Text>
@@ -840,6 +1107,8 @@ export default function Calendar() {
                 <ScrollView
                   showsVerticalScrollIndicator={false}
                   style={{ maxHeight: '80%' }}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
                 >
                   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
@@ -852,7 +1121,7 @@ export default function Calendar() {
                     <View style={styles.checklistSection}>
                       <View style={styles.checklistHeader}>
                         <View style={styles.checklistIconBg}>
-                          <Ionicons name="cart" size={16} color="#fb7185" />
+                          <Ionicons name="cart" size={16} color="#38BDF8" />
                         </View>
                         <Text style={styles.checklistTitle}>
                           {marketModalData.marketLabel || 'Lista de compras'}
@@ -900,7 +1169,7 @@ export default function Calendar() {
               </>
             )}
           </Pressable>
-        </Pressable>
+        </View>
       </Modal>
 
       {/* VITAMINS LIST MODAL */}
@@ -910,10 +1179,11 @@ export default function Calendar() {
         animationType="slide"
         onRequestClose={() => setVitaminsModalVisible(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setVitaminsModalVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setVitaminsModalVisible(false)}
+          />
           <Pressable
             style={styles.modal}
             onPress={(e) => e.stopPropagation()}
@@ -939,6 +1209,8 @@ export default function Calendar() {
                 <ScrollView
                   showsVerticalScrollIndicator={false}
                   style={{ maxHeight: '80%' }}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
                 >
                   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
@@ -999,7 +1271,7 @@ export default function Calendar() {
               </>
             )}
           </Pressable>
-        </Pressable>
+        </View>
       </Modal>
 
       {/* CHECKLIST (ESPACIOS) MODAL */}
@@ -1009,10 +1281,11 @@ export default function Calendar() {
         animationType="slide"
         onRequestClose={() => setChecklistModalVisible(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setChecklistModalVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setChecklistModalVisible(false)}
+          />
           <Pressable
             style={styles.modal}
             onPress={(e) => e.stopPropagation()}
@@ -1022,7 +1295,7 @@ export default function Calendar() {
                 <View style={styles.modalHeader}>
                   <View style={styles.modalHandle} />
                   <View style={styles.modalTitleContainer}>
-                    <Ionicons name="checkbox" size={24} color="#fb7185" />
+                    <Ionicons name="checkbox" size={24} color="#38BDF8" />
                     <Text style={styles.modalTitle}>
                       {checklistModalData.checklistLabel || 'Checklist'}
                     </Text>
@@ -1038,6 +1311,8 @@ export default function Calendar() {
                 <ScrollView
                   showsVerticalScrollIndicator={false}
                   style={{ maxHeight: '80%' }}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
                 >
                   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
@@ -1050,7 +1325,7 @@ export default function Calendar() {
                     <View style={styles.checklistSection}>
                       <View style={styles.checklistHeader}>
                         <View style={styles.checklistIconBg}>
-                          <Ionicons name="home" size={16} color="#fb7185" />
+                          <Ionicons name="home" size={16} color="#38BDF8" />
                         </View>
                         <Text style={styles.checklistTitle}>
                           {checklistModalData.checklistLabel || 'Espacios a organizar'}
@@ -1114,7 +1389,7 @@ export default function Calendar() {
               </>
             )}
           </Pressable>
-        </Pressable>
+        </View>
       </Modal>
 
       {/* FAB */}
@@ -1124,83 +1399,119 @@ export default function Calendar() {
 
       {/* HABIT LIST MODAL */}
       <Modal transparent visible={showHabitModal} animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => setShowHabitModal(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowHabitModal(false)}
+          />
           <Pressable style={styles.modal} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeader}>
+              <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
-                <Ionicons name="grid" size={24} color="#fb7185" />
+                <Ionicons name="sparkles" size={24} color="#38BDF8" />
                 <Text style={styles.modalTitle}>Selecciona un hábito</Text>
               </View>
               <Pressable onPress={() => setShowHabitModal(false)} style={styles.modalClose}>
                 <Ionicons name="close-circle" size={28} color="#6b7280" />
               </Pressable>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Agrupar hábitos por categoría */}
-              {Object.entries(
-                habits.reduce((acc, habit) => {
-                  const category = habit.category || 'Sin categoría';
-                  if (!acc[category]) acc[category] = [];
-                  acc[category].push(habit);
-                  return acc;
-                }, {})
-              ).map(([category, categoryHabits]) => (
-                <View key={category} style={styles.categorySection}>
-                  <View style={styles.categoryHeader}>
-                    <View style={styles.categoryIconContainer}>
-                      <Ionicons
-                        name={
-                          category === 'Hogar' ? 'home' :
-                            category === 'Vida económica' ? 'wallet' :
-                              category === 'Salud' ? 'fitness' :
-                                category === 'Social' ? 'people' :
-                                  category === 'Productividad' ? 'briefcase' :
-                                    'apps'
-                        }
-                        size={20}
-                        color="#fb7185"
-                      />
+            {habitsLoading ? (
+              <View style={styles.habitsLoadingContainer}>
+                <ActivityIndicator size="large" color="#38BDF8" />
+                <Text style={styles.habitsLoadingText}>Cargando hábitos...</Text>
+              </View>
+            ) : (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Agrupar hábitos por categoría */}
+                {Object.entries(
+                  habits.reduce((acc, habit) => {
+                    const category = habit.category || 'Sin categoría';
+                    if (!acc[category]) acc[category] = [];
+                    acc[category].push(habit);
+                    return acc;
+                  }, {})
+                ).map(([category, categoryHabits]) => (
+                  <View key={category} style={styles.categorySection}>
+                    <View style={styles.categoryHeader}>
+                      <View style={styles.categoryIconContainer}>
+                        <Ionicons
+                          name={
+                            category === 'Cuida de ti' ? 'heart' :
+                              category === 'Actividad física' ? 'fitness' :
+                                category === 'Vive más sano' ? 'leaf' :
+                                  category === 'Aprende' ? 'school' :
+                                    category === 'Vida social' ? 'people' :
+                                      // Categorías anteriores (compatibilidad)
+                                      category === 'Hogar' ? 'home' :
+                                        category === 'Vida económica' ? 'wallet' :
+                                          category === 'Salud' ? 'fitness' :
+                                            category === 'Social' ? 'people' :
+                                              category === 'Productividad' ? 'briefcase' :
+                                                'sparkles'
+                          }
+                          size={20}
+                          color="#38BDF8"
+                        />
+                      </View>
+                      <Text style={styles.categoryTitle}>{category}</Text>
+                      <View style={styles.categoryCount}>
+                        <Text style={styles.categoryCountText}>{categoryHabits.length}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.categoryTitle}>{category}</Text>
-                    <View style={styles.categoryCount}>
-                      <Text style={styles.categoryCountText}>{categoryHabits.length}</Text>
-                    </View>
-                  </View>
 
-                  <View style={styles.habitsGrid}>
-                    {categoryHabits.map((habit) => (
-                      <Pressable
-                        key={habit.id}
-                        style={styles.habitItem}
-                        onPress={() => {
-                          setSelectedHabit(habit);
-                          setEditingActivity(null);
-                          setShowHabitModal(false);
-                          setTimeout(() => setShowFormModal(true), 150);
-                        }}
-                      >
-                        <View style={styles.habitIconWrapper}>
-                          {habit.icon ? (
-                            <Image source={{ uri: habit.icon }} style={styles.habitIcon} />
-                          ) : (
-                            <View style={styles.habitIconPlaceholder}>
-                              <Ionicons name="sparkles" size={24} color="#fb7185" />
+                    <View style={styles.habitsGrid}>
+                      {categoryHabits.map((habit) => (
+                        <Pressable
+                          key={habit.id}
+                          style={styles.habitItem}
+                          onPress={() => {
+                            setSelectedHabit(habit);
+                            setEditingActivity(null);
+                            setShowHabitModal(false);
+                            setTimeout(() => setShowFormModal(true), 150);
+                          }}
+                        >
+                          <View style={styles.habitCardContent}>
+                            {habit.icon ? (
+                              <Image
+                                source={{ uri: habit.icon }}
+                                style={styles.habitCardImage}
+                                progressiveRenderingEnabled
+                                fadeDuration={150}
+                              />
+                            ) : (
+                              <View style={styles.habitImagePlaceholder}>
+                                <Ionicons name="sparkles" size={24} color="#38BDF8" />
+                              </View>
+                            )}
+                            <View style={styles.habitTextContainer}>
+                              <Text style={styles.habitTitle} numberOfLines={2}>
+                                {habit.title}
+                              </Text>
+                              {habit.description ? (
+                                <Text
+                                  style={styles.habitDescription}
+                                  numberOfLines={3}
+                                >
+                                  {habit.description}
+                                </Text>
+                              ) : null}
                             </View>
-                          )}
-                        </View>
-                        <Text style={styles.habitText} numberOfLines={2}>
-                          {habit.title}
-                        </Text>
-                      </Pressable>
-                    ))}
+                          </View>
+                        </Pressable>
+                      ))}
+                    </View>
                   </View>
-                </View>
-              ))}
-              <View style={{ height: 20 }} />
-            </ScrollView>
+                ))}
+                <View style={{ height: 20 }} />
+              </ScrollView>
+            )}
           </Pressable>
-        </Pressable>
+        </View>
       </Modal>
 
       {/* FORM MODAL */}
@@ -1209,12 +1520,42 @@ export default function Calendar() {
           habit={selectedHabit}
           selectedDate={selectedDate}
           editingActivity={editingActivity}
+          initialSchedule={editingSchedule}
           onSave={handleSaveHabit}
           onClose={() => {
             setShowFormModal(false);
             setEditingActivity(null);
+            setEditingSchedule(null);
           }}
         />
+      </Modal>
+
+      {/* CONGRATS MODAL */}
+      <Modal
+        transparent
+        visible={congratsVisible}
+        animationType="fade"
+        onRequestClose={() => setCongratsVisible(false)}
+      >
+        <View style={styles.congratsOverlay}>
+          <View style={styles.congratsCard}>
+            <View style={styles.congratsIconCircle}>
+              <Ionicons name="trophy" size={40} color="#38BDF8" />
+            </View>
+            <Text style={styles.congratsTitle}>¡Día completado!</Text>
+            <Text style={styles.congratsSubtitle}>
+              {congratsDate === getTodayLocal()
+                ? 'Completaste todas tus actividades de hoy. Sigue así, cada pequeño paso suma.'
+                : 'Completaste todas las actividades de este día. Gran trabajo, estás construyendo hábitos poderosos.'}
+            </Text>
+            <Pressable
+              style={styles.congratsButton}
+              onPress={() => setCongratsVisible(false)}
+            >
+              <Text style={styles.congratsButtonText}>Seguir organizando mi día</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1226,17 +1567,17 @@ export default function Calendar() {
 
 const calendarTheme = {
   calendarBackground: '#ffffff',
-  selectedDayBackgroundColor: '#fb7185',
+  selectedDayBackgroundColor: '#38BDF8',
   selectedDayTextColor: '#ffffff',
-  todayTextColor: '#fb7185',
-  todayBackgroundColor: '#ffe4e6',
+  todayTextColor: '#38BDF8',
+  todayBackgroundColor: '#dbeafe',
   dayTextColor: '#1f2937',
   textDisabledColor: '#d1d5db',
-  dotColor: '#fb7185',
+  dotColor: '#38BDF8',
   selectedDotColor: '#ffffff',
   arrowColor: '#1f2937',
   monthTextColor: '#111827',
-  indicatorColor: '#fb7185',
+  indicatorColor: '#38BDF8',
   textDayFontWeight: '500',
   textMonthFontWeight: '700',
   textDayHeaderFontWeight: '600',
@@ -1279,15 +1620,15 @@ const calendarTheme = {
       color: '#1f2937',
     },
     today: {
-      backgroundColor: '#ffe4e6',
+      backgroundColor: '#dbeafe',
       borderRadius: 16,
     },
     todayText: {
-      color: '#fb7185',
+      color: '#38BDF8',
       fontWeight: '700',
     },
     selected: {
-      backgroundColor: '#fb7185',
+      backgroundColor: '#38BDF8',
       borderRadius: 16,
     },
     selectedText: {
@@ -1324,11 +1665,11 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
-    shadowColor: '#fb7185',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1394,7 +1735,8 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   cardCompleted: {
-    opacity: 0.6,
+    backgroundColor: '#dcfce7',
+    borderColor: '#bbf7d0',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -1436,7 +1778,7 @@ const styles = StyleSheet.create({
   },
   cardTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: '#6b7280',
+    color: '#166534',
   },
   cardSubtitle: {
     marginTop: 2,
@@ -1444,7 +1786,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   cardSubtitleCompleted: {
-    color: '#9ca3af',
+    color: '#16a34a',
   },
   cardRightActions: {
     flexDirection: 'row',
@@ -1469,7 +1811,7 @@ const styles = StyleSheet.create({
   cardBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#fb7185',
+    color: '#38BDF8',
     letterSpacing: 0.3,
   },
 
@@ -1497,7 +1839,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     borderTopWidth: 1.5,
     borderTopColor: '#e5e7eb',
-    backgroundColor: '#fef2f2',
+    backgroundColor: '#e0f2fe',
     marginHorizontal: -20,
     marginBottom: -20,
     paddingHorizontal: 20,
@@ -1515,11 +1857,11 @@ const styles = StyleSheet.create({
   expandText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#fb7185',
+    color: '#38BDF8',
     letterSpacing: 0.2,
   },
   expandCount: {
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
@@ -1542,24 +1884,23 @@ const styles = StyleSheet.create({
   },
   checklistSection: {
     gap: 12,
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#fecdd3',
-    shadowColor: '#fb7185',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: '#fffdf7',
+    padding: 16,
+    borderRadius: 22,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   checklistHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingBottom: 10,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#fecdd3',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   checklistIconBg: {
     width: 32,
@@ -1577,7 +1918,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   checklistBadge: {
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1628,13 +1969,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 24,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     width: 60,
     height: 60,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#fb7185',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1714,7 +2055,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   categoryCount: {
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1735,47 +2076,105 @@ const styles = StyleSheet.create({
   },
   habitItem: {
     width: '47%',
-    backgroundColor: '#fafafa',
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    alignItems: 'center',
-    gap: 10,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#f9fafb',
   },
-  habitIconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: '#fff',
+  habitCardContent: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  habitCardImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    resizeMode: 'cover',
+    backgroundColor: '#fee2e2',
+  },
+  habitImagePlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#e5e7eb',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  habitTextContainer: {
+    flex: 1,
+  },
+  habitTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  habitDescription: {
+    fontSize: 11,
+    color: '#6b7280',
+    lineHeight: 14,
+  },
+
+  // Congrats Modal
+  congratsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  congratsCard: {
+    width: '82%',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  habitIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-  },
-  habitIconPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: '#ffe4e6',
+  congratsIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#dbeafe',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 16,
   },
-  habitText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1f2937',
+  congratsTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  congratsSubtitle: {
+    fontSize: 14,
+    color: '#4b5563',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 22,
+    marginBottom: 18,
+  },
+  congratsButton: {
+    marginTop: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: '#38BDF8',
+    shadowColor: '#38BDF8',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  congratsButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, TextInput, Modal, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  Modal,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -265,17 +276,21 @@ export default function PomodoroScreen() {
      UI
   ========================= */
 
-  return (
-    <View style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <View style={styles.headerIconContainer}>
-          <Ionicons name="timer" size={28} color="#fff" />
-        </View>
-        <Text style={styles.title}>Pomodoro</Text>
-      </View>
 
-      {fullScreenMode ? (
+  return (
+  <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
+    {/* HEADER */}
+    {!fullScreenMode && (
+      <View style={styles.header}>
+      <View style={styles.headerIconContainer}>
+        <Ionicons name="timer" size={28} color="#fff" />
+      </View>
+      <Text style={styles.title}>Pomodoro</Text>
+      </View>
+    )}
+
+    {fullScreenMode ? (
         <View style={styles.fullScreenContent}>
           <View style={styles.timerCard}>
             <View style={styles.timerCircle}>
@@ -294,7 +309,7 @@ export default function PomodoroScreen() {
                       <Ionicons 
                         name={phase === 'work' ? 'briefcase' : 'cafe'} 
                         size={20} 
-                        color="#fb7185" 
+                        color="#38BDF8" 
                       />
                       <Text style={styles.phaseText}>
                         {phase === 'work' ? 'Trabajo' : 'Descanso'}
@@ -329,7 +344,7 @@ export default function PomodoroScreen() {
           </Pressable>
         </View>
       ) : (
-        <View style={styles.mainContent}>
+      <View style={styles.mainContent}>
           <View style={styles.timerCard}>
             <View style={styles.timerCircle}>
               <View style={styles.timerInner}>
@@ -340,7 +355,7 @@ export default function PomodoroScreen() {
                   <Ionicons 
                     name={phase === 'work' ? 'briefcase' : 'cafe'} 
                     size={20} 
-                    color="#fb7185" 
+                    color="#38BDF8" 
                   />
                   <Text style={styles.phaseText}>
                     {phase === 'work' ? 'Trabajo' : 'Descanso'}
@@ -389,7 +404,7 @@ export default function PomodoroScreen() {
               style={styles.secondaryButton}
               onPress={() => setShowSettingsModal(true)}
             >
-              <Ionicons name="settings-outline" size={22} color="#fb7185" />
+              <Ionicons name="settings-outline" size={22} color="#38BDF8" />
             </Pressable>
           </View>
         </View>
@@ -402,19 +417,23 @@ export default function PomodoroScreen() {
         visible={showSettingsModal}
         onRequestClose={() => setShowSettingsModal(false)}
       >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setShowSettingsModal(false)}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <Pressable 
-            style={styles.modalContent}
-            onPress={(e) => e.stopPropagation()}
+            style={styles.modalOverlay}
+            onPress={() => setShowSettingsModal(false)}
           >
+            <Pressable 
+              style={styles.modalContent}
+              onPress={(e) => e.stopPropagation()}
+            >
             {/* HEADER MODAL */}
             <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
-                <Ionicons name="settings" size={24} color="#fb7185" />
+                <Ionicons name="settings" size={24} color="#38BDF8" />
                 <Text style={styles.modalTitle}>Configuración</Text>
               </View>
               <Pressable 
@@ -432,7 +451,7 @@ export default function PomodoroScreen() {
               {/* PRESETS */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="flash" size={20} color="#fb7185" />
+                  <Ionicons name="flash" size={20} color="#38BDF8" />
                   <Text style={styles.sectionTitle}>Ajustes rápidos</Text>
                 </View>
 
@@ -470,7 +489,7 @@ export default function PomodoroScreen() {
                   <Ionicons 
                     name="create" 
                     size={16} 
-                    color={useCustom ? '#fff' : '#fb7185'} 
+                    color={useCustom ? '#fff' : '#38BDF8'} 
                   />
                   <Text
                     style={[
@@ -514,7 +533,7 @@ export default function PomodoroScreen() {
               {/* SESIONES */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="repeat" size={20} color="#fb7185" />
+                  <Ionicons name="repeat" size={20} color="#38BDF8" />
                   <Text style={styles.sectionTitle}>Sesiones</Text>
                 </View>
 
@@ -527,7 +546,7 @@ export default function PomodoroScreen() {
                       {workMinutes} min trabajo • {restMinutes} min descanso
                     </Text>
                     <View style={styles.totalBadge}>
-                      <Ionicons name="time" size={14} color="#fb7185" />
+                      <Ionicons name="time" size={14} color="#38BDF8" />
                       <Text style={styles.totalText}>
                         Total: {totalPlanMinutes} min
                       </Text>
@@ -539,7 +558,7 @@ export default function PomodoroScreen() {
                       style={styles.sessionsButton}
                       onPress={() => handleChangeSessions(-1)}
                     >
-                      <Ionicons name="remove" size={20} color="#fb7185" />
+                      <Ionicons name="remove" size={20} color="#38BDF8" />
                     </Pressable>
                     <View style={styles.sessionsCountContainer}>
                       <Text style={styles.sessionsCount}>{totalSessions}</Text>
@@ -548,7 +567,7 @@ export default function PomodoroScreen() {
                       style={styles.sessionsButton}
                       onPress={() => handleChangeSessions(1)}
                     >
-                      <Ionicons name="add" size={20} color="#fb7185" />
+                      <Ionicons name="add" size={20} color="#38BDF8" />
                     </Pressable>
                   </View>
                 </View>
@@ -564,9 +583,11 @@ export default function PomodoroScreen() {
               </Pressable>
             </ScrollView>
           </Pressable>
-        </Pressable>
-      </Modal>
-    </View>
+          </Pressable>
+        </KeyboardAvoidingView>
+        </Modal>
+        </View>
+      </SafeAreaView>
   );
 }
 
@@ -575,17 +596,20 @@ export default function PomodoroScreen() {
 ========================= */
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+  },
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 32,
+    paddingTop: 16,
     paddingBottom: 24,
-    backgroundColor: '#fafafa',
   },
 
   mainContent: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
 
   // Header
@@ -599,10 +623,10 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#fb7185',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -631,35 +655,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timerCircle: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: 230,
+    height: 230,
+    borderRadius: 115,
     borderWidth: 8,
-    borderColor: '#ffe4e6',
+    borderColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
     backgroundColor: '#fffbfc',
-    shadowColor: '#fb7185',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 2,
   },
   timerInner: {
-    width: 190,
-    height: 190,
-    borderRadius: 95,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   timerText: {
-    fontSize: 46,
+    fontSize: 50,
     fontWeight: '800',
     color: '#111827',
-    letterSpacing: -2,
+    letterSpacing: -1,
+    textAlign: 'center',
   },
   phaseContainer: {
     flexDirection: 'row',
@@ -670,10 +695,10 @@ const styles = StyleSheet.create({
   phaseText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fb7185',
+    color: '#38BDF8',
   },
   sessionBadge: {
-    backgroundColor: '#ffe4e6',
+    backgroundColor: '#dbeafe',
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
@@ -681,7 +706,7 @@ const styles = StyleSheet.create({
   },
   sessionText: {
     fontSize: 14,
-    color: '#fb7185',
+    color: '#38BDF8',
     fontWeight: '700',
   },
   progressBarBackground: {
@@ -694,7 +719,7 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
   },
   errorContainer: {
     flexDirection: 'row',
@@ -726,10 +751,10 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 18,
     borderRadius: 16,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#fb7185',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -749,7 +774,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#fecdd3',
+    borderColor: '#bfdbfe',
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -772,32 +797,34 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingVertical: 18,
     paddingHorizontal: 40,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     borderRadius: 999,
-    shadowColor: '#fb7185',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
   countdownText: {
-    fontSize: 96,
+    fontSize: 80,
     fontWeight: '900',
-    color: '#fb7185',
+    color: '#38BDF8',
   },
 
   // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: '90%',
+    borderRadius: 24,
+    width: '92%',
+    maxHeight: '80%',
     paddingBottom: 8,
+    overflow: 'hidden',
   },
   modalScrollContent: {
     paddingBottom: 24,
@@ -867,17 +894,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#fecdd3',
+    borderColor: '#bfdbfe',
     backgroundColor: '#fff',
   },
   presetButtonActive: {
-    backgroundColor: '#fb7185',
-    borderColor: '#fb7185',
+    backgroundColor: '#38BDF8',
+    borderColor: '#38BDF8',
   },
   presetButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#fb7185',
+    color: '#38BDF8',
   },
   presetButtonTextActive: {
     color: '#fff',
@@ -943,7 +970,7 @@ const styles = StyleSheet.create({
   },
   totalText: {
     fontSize: 12,
-    color: '#fb7185',
+    color: '#38BDF8',
     fontWeight: '700',
   },
   sessionsControls: {
@@ -959,7 +986,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#fecdd3',
+    borderColor: '#bfdbfe',
   },
   sessionsCountContainer: {
     minWidth: 32,
@@ -979,10 +1006,10 @@ const styles = StyleSheet.create({
     gap: 10,
     marginHorizontal: 20,
     marginTop: 24,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     padding: 18,
     borderRadius: 16,
-    shadowColor: '#fb7185',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

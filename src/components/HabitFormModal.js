@@ -44,6 +44,7 @@ export default function HabitFormModal({
   habit,
   selectedDate,
   editingActivity,
+  initialSchedule,
   onSave,
   onClose,
 }) {
@@ -65,15 +66,27 @@ export default function HabitFormModal({
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
-    setStartDate(baseDate);
-    setEndDate(baseDate);
-    setHasEndDate(false);
-    setFrequency('once');
-    setDaysOfWeek([]);
+    if (editingActivity && initialSchedule) {
+      setStartDate(initialSchedule.startDate || baseDate);
+      setEndDate(initialSchedule.endDate || initialSchedule.startDate || baseDate);
+      setHasEndDate(!!initialSchedule.endDate);
+      setFrequency(initialSchedule.frequency || 'once');
+      setDaysOfWeek(
+        initialSchedule.frequency === 'weekly'
+          ? initialSchedule.daysOfWeek || []
+          : []
+      );
+    } else {
+      setStartDate(baseDate);
+      setEndDate(baseDate);
+      setHasEndDate(false);
+      setFrequency('once');
+      setDaysOfWeek([]);
+    }
     setDescription(editingActivity?.description || '');
     setFormData(editingActivity?.data || {});
     setActivePicker(null);
-  }, [habit, baseDate, editingActivity]);
+  }, [habit, baseDate, editingActivity, initialSchedule]);
 
   const config = useMemo(() => {
     if (!habit?.config) return null;
@@ -131,7 +144,7 @@ export default function HabitFormModal({
                   <Ionicons
                     name={selected ? 'checkmark-circle' : 'ellipse-outline'}
                     size={18}
-                    color={selected ? '#fff' : '#fb7185'}
+                    color={selected ? '#fff' : '#38BDF8'}
                   />
                   <Text style={[styles.optionTxt, selected && styles.optionTxtActive]}>
                     {opt}
@@ -206,7 +219,7 @@ export default function HabitFormModal({
                 ])
               }
             >
-              <Ionicons name="add-circle" size={20} color="#fb7185" />
+              <Ionicons name="add-circle" size={20} color="#38BDF8" />
               <Text style={styles.addTxt}>Agregar producto</Text>
             </Pressable>
           </>
@@ -352,7 +365,7 @@ export default function HabitFormModal({
               <Ionicons
                 name={hasEndDate ? 'checkbox' : 'square-outline'}
                 size={22}
-                color="#fb7185"
+                color="#38BDF8"
               />
               <Text style={styles.checkTxt}>¿Tiene fecha de fin?</Text>
             </Pressable>
@@ -383,16 +396,35 @@ export default function HabitFormModal({
                   mode="date"
                   minimumDate={activePicker === 'end' ? startDate : undefined}
                   display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                  locale={Platform.OS === 'ios' ? 'es-ES' : undefined}
+                  themeVariant="light"
+                  textColor={Platform.OS === 'ios' ? '#111827' : undefined}
                   onChange={(_, date) => {
                     if (!date) {
                       setActivePicker(null);
                       return;
                     }
+                    const prev = activePicker === 'start' ? startDate : endDate;
+                    let next = date;
+
+                    if (prev) {
+                      const prevMonth = prev.getMonth();
+                      const prevYear = prev.getFullYear();
+                      const newMonth = date.getMonth();
+                      const newYear = date.getFullYear();
+
+                      // Si el usuario baja el mes (por ejemplo de diciembre a febrero)
+                      // y el año no ha cambiado, asumimos que quiere el siguiente año
+                      if (newYear === prevYear && newMonth < prevMonth) {
+                        next = new Date(prevYear + 1, newMonth, date.getDate());
+                      }
+                    }
+
                     if (activePicker === 'start') {
-                      setStartDate(date);
-                      if (date > endDate) setEndDate(date);
+                      setStartDate(next);
+                      if (next > endDate) setEndDate(next);
                     } else {
-                      setEndDate(date);
+                      setEndDate(next);
                     }
                     if (Platform.OS === 'android') setActivePicker(null);
                   }}
@@ -415,7 +447,7 @@ export default function HabitFormModal({
                   <Ionicons
                     name={f.icon}
                     size={20}
-                    color={frequency === f.key ? '#fff' : '#fb7185'}
+                    color={frequency === f.key ? '#fff' : '#38BDF8'}
                   />
                   <Text style={[styles.freqTxt, frequency === f.key && styles.freqTxtActive]}>
                     {f.label}
@@ -625,18 +657,18 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#fecdd3',
+    borderColor: '#bfdbfe',
     backgroundColor: '#fff',
     minWidth: '30%',
   },
   freqBtnActive: {
-    backgroundColor: '#fb7185',
-    borderColor: '#fb7185',
+    backgroundColor: '#38BDF8',
+    borderColor: '#38BDF8',
   },
   freqTxt: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fb7185',
+    color: '#38BDF8',
   },
   freqTxtActive: {
     color: '#fff',
@@ -658,8 +690,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayBtnActive: {
-    backgroundColor: '#fb7185',
-    borderColor: '#fb7185',
+    backgroundColor: '#38BDF8',
+    borderColor: '#38BDF8',
   },
   dayTxt: {
     fontSize: 15,
@@ -699,17 +731,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#fecdd3',
+    borderColor: '#bfdbfe',
     backgroundColor: '#fff',
   },
   optionBtnActive: {
-    backgroundColor: '#fb7185',
-    borderColor: '#fb7185',
+    backgroundColor: '#38BDF8',
+    borderColor: '#38BDF8',
   },
   optionTxt: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fb7185',
+    color: '#38BDF8',
   },
   optionTxtActive: {
     color: '#fff',
@@ -726,7 +758,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -744,13 +776,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#fecdd3',
+    borderColor: '#bfdbfe',
     backgroundColor: '#fffbfb',
   },
   addTxt: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#fb7185',
+    color: '#38BDF8',
   },
 
   // Footer
@@ -764,7 +796,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: '#fb7185',
+    backgroundColor: '#38BDF8',
     padding: 18,
     borderRadius: 14,
   },

@@ -31,9 +31,9 @@ export default function MarketTable({ items = [], onToggle }) {
               onPress={() => onToggle && onToggle(index)}
             >
               <Ionicons
-                name={item.checked ? 'checkbox' : 'square-outline'}
-                size={18}
-                color={item.checked ? '#f97316' : '#9ca3af'}
+                name={item.checked ? 'checkmark-circle' : 'ellipse-outline'}
+                size={19}
+                color={item.checked ? '#f97316' : '#d1d5db'}
               />
             </Pressable>
 
@@ -59,24 +59,33 @@ export default function MarketTable({ items = [], onToggle }) {
 const styles = StyleSheet.create({
   table: {
     marginTop: 16,
-    borderRadius: 12,
+    borderRadius: 18,
+    backgroundColor: '#fff',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#fde68a',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   header: {
-    backgroundColor: '#fde68a',
+    backgroundColor: '#fee2e2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fecaca',
   },
   cell: {
-    padding: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     fontSize: 13,
   },
-  check: { width: 36, textAlign: 'center' },
+  check: { width: 40, textAlign: 'center' },
   product: { flex: 2 },
   qty: { width: 50, textAlign: 'center' },
   price: { width: 70, textAlign: 'center' },
