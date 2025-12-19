@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import { useSettings, getAccentColor } from '../utils/settingsContext';
+import { useI18n } from '../utils/i18n';
 
 /* =========================
    CONSTANTES
@@ -28,6 +30,9 @@ const PRESETS = [
 const INITIAL_PRESET = PRESETS[2]; // 25 / 5
 
 export default function PomodoroScreen() {
+  const { t } = useI18n();
+  const { themeColor } = useSettings();
+  const accent = getAccentColor(themeColor);
   // Configuración
   const [selectedPresetId, setSelectedPresetId] = useState(INITIAL_PRESET.id);
   const [useCustom, setUseCustom] = useState(false);
@@ -283,22 +288,27 @@ export default function PomodoroScreen() {
     {/* HEADER */}
     {!fullScreenMode && (
       <View style={styles.header}>
-      <View style={styles.headerIconContainer}>
+      <View
+        style={[
+          styles.headerIconContainer,
+          { backgroundColor: accent, shadowColor: accent },
+        ]}
+      >
         <Ionicons name="timer" size={28} color="#fff" />
       </View>
-      <Text style={styles.title}>Pomodoro</Text>
+      <Text style={styles.title}>{t('pomodoro.title')}</Text>
       </View>
     )}
 
     {fullScreenMode ? (
         <View style={styles.fullScreenContent}>
-          <View style={styles.timerCard}>
-            <View style={styles.timerCircle}>
+            <View style={styles.timerCard}>
+            <View style={[styles.timerCircle, { shadowColor: accent }]}>
               <View style={styles.timerInner}>
                 {countdownActive ? (
                   <>
-                    <Text style={styles.countdownText}>{countdownValue}</Text>
-                    <Text style={styles.phaseText}>Prepárate...</Text>
+                    <Text style={[styles.countdownText, { color: accent }]}>{countdownValue}</Text>
+                    <Text style={[styles.phaseText, { color: accent }]}>{t('pomodoro.preparing')}</Text>
                   </>
                 ) : (
                   <>
@@ -309,15 +319,17 @@ export default function PomodoroScreen() {
                       <Ionicons 
                         name={phase === 'work' ? 'briefcase' : 'cafe'} 
                         size={20} 
-                        color="#38BDF8" 
+                        color={accent} 
                       />
-                      <Text style={styles.phaseText}>
-                        {phase === 'work' ? 'Trabajo' : 'Descanso'}
+                      <Text style={[styles.phaseText, { color: accent }]}>
+                        {phase === 'work'
+                          ? t('pomodoro.workLabel')
+                          : t('pomodoro.breakLabel')}
                       </Text>
                     </View>
                     <View style={styles.sessionBadge}>
-                      <Text style={styles.sessionText}>
-                        Sesión {currentSession} / {totalSessions}
+                      <Text style={[styles.sessionText, { color: accent }]}>
+                        {t('pomodoro.sessions')} {currentSession} / {totalSessions}
                       </Text>
                     </View>
                   </>
@@ -329,24 +341,27 @@ export default function PomodoroScreen() {
               <View
                 style={[
                   styles.progressBarFill,
-                  { width: `${progress * 100}%` },
+                  { width: `${progress * 100}%`, backgroundColor: accent },
                 ]}
               />
             </View>
           </View>
 
           <Pressable
-            style={styles.fullScreenStopButton}
+            style={[
+              styles.fullScreenStopButton,
+              { backgroundColor: accent, shadowColor: accent },
+            ]}
             onPress={handleStop}
           >
             <Ionicons name="stop-circle" size={24} color="#fff" />
-            <Text style={styles.mainButtonText}>Detener</Text>
+            <Text style={styles.mainButtonText}>{t('pomodoro.stop')}</Text>
           </Pressable>
         </View>
       ) : (
       <View style={styles.mainContent}>
-          <View style={styles.timerCard}>
-            <View style={styles.timerCircle}>
+            <View style={styles.timerCard}>
+            <View style={[styles.timerCircle, { shadowColor: accent }]}>
               <View style={styles.timerInner}>
                 <Text style={styles.timerText}>
                   {minutes}:{secs.toString().padStart(2, '0')}
@@ -355,15 +370,17 @@ export default function PomodoroScreen() {
                   <Ionicons 
                     name={phase === 'work' ? 'briefcase' : 'cafe'} 
                     size={20} 
-                    color="#38BDF8" 
+                    color={accent} 
                   />
-                  <Text style={styles.phaseText}>
-                    {phase === 'work' ? 'Trabajo' : 'Descanso'}
+                  <Text style={[styles.phaseText, { color: accent }]}>
+                    {phase === 'work'
+                      ? t('pomodoro.workLabel')
+                      : t('pomodoro.breakLabel')}
                   </Text>
                 </View>
                 <View style={styles.sessionBadge}>
-                  <Text style={styles.sessionText}>
-                    Sesión {currentSession} / {totalSessions}
+                  <Text style={[styles.sessionText, { color: accent }]}>
+                    {t('pomodoro.sessions')} {currentSession} / {totalSessions}
                   </Text>
                 </View>
               </View>
@@ -373,7 +390,7 @@ export default function PomodoroScreen() {
               <View
                 style={[
                   styles.progressBarFill,
-                  { width: `${progress * 100}%` },
+                  { width: `${progress * 100}%`, backgroundColor: accent },
                 ]}
               />
             </View>
@@ -382,7 +399,7 @@ export default function PomodoroScreen() {
               <View style={styles.errorContainer}>
                 <Ionicons name="alert-circle" size={18} color="#ef4444" />
                 <Text style={styles.errorText}>
-                  Revisa los minutos personalizados
+                  {t('pomodoro.invalidCustom')}
                 </Text>
               </View>
             )}
@@ -392,19 +409,20 @@ export default function PomodoroScreen() {
             <Pressable
               style={[
                 styles.mainButton,
+                { backgroundColor: accent, shadowColor: accent },
                 !canStart && styles.mainButtonDisabled,
               ]}
               onPress={handleStart}
               disabled={!canStart}
             >
               <Ionicons name="play-circle" size={24} color="#fff" />
-              <Text style={styles.mainButtonText}>Iniciar</Text>
+              <Text style={styles.mainButtonText}>{t('pomodoro.start')}</Text>
             </Pressable>
             <Pressable
               style={styles.secondaryButton}
               onPress={() => setShowSettingsModal(true)}
             >
-              <Ionicons name="settings-outline" size={22} color="#38BDF8" />
+              <Ionicons name="settings-outline" size={22} color={accent} />
             </Pressable>
           </View>
         </View>
@@ -433,8 +451,8 @@ export default function PomodoroScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
-                <Ionicons name="settings" size={24} color="#38BDF8" />
-                <Text style={styles.modalTitle}>Configuración</Text>
+                <Ionicons name="settings" size={24} color={accent} />
+                <Text style={styles.modalTitle}>{t('pomodoro.settingsTitle') || 'Configuración'}</Text>
               </View>
               <Pressable 
                 onPress={() => setShowSettingsModal(false)}
@@ -451,8 +469,8 @@ export default function PomodoroScreen() {
               {/* PRESETS */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="flash" size={20} color="#38BDF8" />
-                  <Text style={styles.sectionTitle}>Ajustes rápidos</Text>
+                  <Ionicons name="flash" size={20} color={accent} />
+                  <Text style={styles.sectionTitle}>{t('pomodoro.quickSettings')}</Text>
                 </View>
 
                 <View style={styles.presetsGrid}>
@@ -464,6 +482,7 @@ export default function PomodoroScreen() {
                       style={[
                         styles.presetButton,
                         isActive && styles.presetButtonActive,
+                        isActive && { backgroundColor: accent, borderColor: accent },
                       ]}
                       onPress={() => handleSelectPreset(preset)}
                     >
@@ -471,6 +490,7 @@ export default function PomodoroScreen() {
                         style={[
                           styles.presetButtonText,
                           isActive && styles.presetButtonTextActive,
+                          !isActive && { color: accent },
                         ]}
                       >
                         {preset.label}
@@ -483,21 +503,23 @@ export default function PomodoroScreen() {
                   style={[
                     styles.presetButton,
                     useCustom && styles.presetButtonActive,
+                    useCustom && { backgroundColor: accent, borderColor: accent },
                   ]}
                   onPress={handleToggleCustom}
                 >
                   <Ionicons 
                     name="create" 
                     size={16} 
-                    color={useCustom ? '#fff' : '#38BDF8'} 
+                    color={useCustom ? '#fff' : accent} 
                   />
                   <Text
                     style={[
                       styles.presetButtonText,
                       useCustom && styles.presetButtonTextActive,
+                      !useCustom && { color: accent },
                     ]}
                   >
-                    Personalizado
+                    {t('pomodoro.presetCustom')}
                   </Text>
                 </Pressable>
               </View>
@@ -505,7 +527,7 @@ export default function PomodoroScreen() {
                 {useCustom && (
                   <View style={styles.customRow}>
                     <View style={styles.customField}>
-                      <Text style={styles.label}>Trabajo (min)</Text>
+                      <Text style={styles.label}>{t('pomodoro.workMinutesLabel') || 'Trabajo (min)'}</Text>
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
@@ -516,7 +538,7 @@ export default function PomodoroScreen() {
                       />
                     </View>
                     <View style={styles.customField}>
-                      <Text style={styles.label}>Descanso (min)</Text>
+                      <Text style={styles.label}>{t('pomodoro.restMinutesLabel') || 'Descanso (min)'}</Text>
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
@@ -533,22 +555,22 @@ export default function PomodoroScreen() {
               {/* SESIONES */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="repeat" size={20} color="#38BDF8" />
-                  <Text style={styles.sectionTitle}>Sesiones</Text>
+                  <Ionicons name="repeat" size={20} color={accent} />
+                  <Text style={styles.sectionTitle}>{t('pomodoro.sessions')}</Text>
                 </View>
 
                 <View style={styles.sessionsCard}>
                   <View style={styles.sessionsInfo}>
                     <Text style={styles.sessionsMainText}>
-                      {totalSessions} sesiones
+                      {totalSessions} {t('pomodoro.sessions')}
                     </Text>
                     <Text style={styles.sessionsSubText}>
-                      {workMinutes} min trabajo • {restMinutes} min descanso
+                      {workMinutes} {t('pomodoro.workMinutes')} • {restMinutes} {t('pomodoro.restMinutes')}
                     </Text>
                     <View style={styles.totalBadge}>
-                      <Ionicons name="time" size={14} color="#38BDF8" />
-                      <Text style={styles.totalText}>
-                        Total: {totalPlanMinutes} min
+                      <Ionicons name="time" size={14} color={accent} />
+                      <Text style={[styles.totalText, { color: accent }]}>
+                        {t('pomodoro.total')} {totalPlanMinutes} min
                       </Text>
                     </View>
                   </View>
@@ -558,7 +580,7 @@ export default function PomodoroScreen() {
                       style={styles.sessionsButton}
                       onPress={() => handleChangeSessions(-1)}
                     >
-                      <Ionicons name="remove" size={20} color="#38BDF8" />
+                      <Ionicons name="remove" size={20} color={accent} />
                     </Pressable>
                     <View style={styles.sessionsCountContainer}>
                       <Text style={styles.sessionsCount}>{totalSessions}</Text>
@@ -567,7 +589,7 @@ export default function PomodoroScreen() {
                       style={styles.sessionsButton}
                       onPress={() => handleChangeSessions(1)}
                     >
-                      <Ionicons name="add" size={20} color="#38BDF8" />
+                      <Ionicons name="add" size={20} color={accent} />
                     </Pressable>
                   </View>
                 </View>
@@ -575,11 +597,14 @@ export default function PomodoroScreen() {
 
               {/* BOTÓN GUARDAR */}
               <Pressable
-                style={styles.modalSaveButton}
+                style={[
+                  styles.modalSaveButton,
+                  { backgroundColor: accent, shadowColor: accent },
+                ]}
                 onPress={handleSaveSettings}
               >
                 <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                <Text style={styles.modalSaveButtonText}>Guardar configuración</Text>
+                <Text style={styles.modalSaveButtonText}>{t('pomodoro.saveConfig')}</Text>
               </Pressable>
             </ScrollView>
           </Pressable>
@@ -659,11 +684,11 @@ const styles = StyleSheet.create({
     height: 230,
     borderRadius: 115,
     borderWidth: 8,
-    borderColor: '#dbeafe',
+    borderColor: '#e5e7eb',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-    backgroundColor: '#fffbfc',
+    backgroundColor: '#f9fafb',
     shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -698,7 +723,7 @@ const styles = StyleSheet.create({
     color: '#38BDF8',
   },
   sessionBadge: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: '#f3f4f6',
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
@@ -774,7 +799,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#bfdbfe',
+    borderColor: '#e5e7eb',
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -808,7 +833,7 @@ const styles = StyleSheet.create({
   countdownText: {
     fontSize: 80,
     fontWeight: '900',
-    color: '#38BDF8',
+    color: '#111827',
   },
 
   // Modal
@@ -894,7 +919,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#bfdbfe',
+    borderColor: '#e5e7eb',
     backgroundColor: '#fff',
   },
   presetButtonActive: {
@@ -970,7 +995,7 @@ const styles = StyleSheet.create({
   },
   totalText: {
     fontSize: 12,
-    color: '#38BDF8',
+    color: '#111827',
     fontWeight: '700',
   },
   sessionsControls: {
@@ -986,7 +1011,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#bfdbfe',
+    borderColor: '#e5e7eb',
   },
   sessionsCountContainer: {
     minWidth: 32,

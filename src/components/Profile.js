@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabase';
+import { useSettings, getAccentColor } from '../utils/settingsContext';
+import { useI18n, translate } from '../utils/i18n';
 
 export default function ProfileScreen() {
+  const { themeColor, language, setThemeColor, setLanguage } = useSettings();
+  const { t } = useI18n();
+  const accent = getAccentColor(themeColor);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
@@ -12,11 +17,13 @@ export default function ProfileScreen() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [edad, setEdad] = useState('');
   const [genero, setGenero] = useState('');
+  const [languageValue, setLanguageValue] = useState(language || 'es');
   const genderOptions = [
     'Masculino',
     'Femenino',
@@ -37,25 +44,25 @@ export default function ProfileScreen() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setError('No se pudo obtener el usuario actual.');
+        setError(t('profile.loadUserError'));
         setProfile(null);
         return;
       }
 
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .select('id, nombre, apellido, edad, genero, email')
+        .select('id, nombre, apellido, edad, genero, email, language')
         .eq('id', user.id)
         .maybeSingle();
 
       if (profileError) {
-        setError('No se pudo cargar el perfil.');
+        setError(t('profile.loadProfileError'));
         setProfile(null);
         return;
       }
 
       if (!data) {
-        setError('Aún no tienes un perfil configurado.');
+        setError(t('profile.noProfileConfigured'));
         setProfile(null);
         return;
       }
@@ -67,8 +74,12 @@ export default function ProfileScreen() {
         data.edad !== null && data.edad !== undefined ? String(data.edad) : ''
       );
       setGenero(data.genero || '');
+      if (data.language) {
+        setLanguageValue(data.language);
+        setLanguage(data.language);
+      }
     } catch {
-      setError('Ocurrió un error inesperado al cargar el perfil.');
+      setError(t('profile.unexpectedLoadError'));
       setProfile(null);
     } finally {
       setLoading(false);
@@ -95,22 +106,28 @@ export default function ProfileScreen() {
           apellido: apellido || null,
           edad: Number.isNaN(edadNumber) ? null : edadNumber,
           genero: genero || null,
+          language: languageValue || 'es',
         })
         .eq('id', profile.id)
-        .select('id, nombre, apellido, edad, genero, email')
+        .select('id, nombre, apellido, edad, genero, email, language')
         .maybeSingle();
 
       if (updateError) {
-        setError('No se pudo actualizar el perfil.');
+        setError(t('profile.updateError'));
         return;
       }
 
       if (data) {
         setProfile(data);
-        setSuccessMessage('Perfil actualizado correctamente.');
+        const nextLanguage = data.language || languageValue || language || 'es';
+        // Mostrar el mensaje en el idioma destino que acaba de guardar
+        setSuccessMessage(translate('profile.updated', nextLanguage));
+        if (data.language) {
+          setLanguage(data.language);
+        }
       }
     } catch {
-      setError('Ocurrió un error al actualizar el perfil.');
+      setError(t('profile.unexpectedUpdateError'));
     } finally {
       setSaving(false);
     }
@@ -127,18 +144,41 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <View style={styles.headerIconContainer}>
-          <Ionicons name="person" size={28} color="#fff" />
+      {/* PORTADA / BANNER */}
+      <View style={styles.coverContainer}>
+        <Image
+          source={require('../../assets/Banner.png')}
+          style={styles.coverImage}
+          resizeMode="cover"
+        />
+        <Pressable
+          style={styles.coverSettingsButton}
+          onPress={() => setShowSettingsModal(true)}
+        >
+          <Ionicons name="settings-outline" size={22} color={accent} />
+        </Pressable>
+      </View>
+
+      {/* AVATAR PRINCIPAL */}
+      <View style={styles.profileAvatarWrapper}>
+        <View
+          style={[
+            styles.profileAvatarLarge,
+            { backgroundColor: accent, shadowColor: accent },
+          ]}
+        >
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.profileAvatarImage}
+            resizeMode="contain"
+          />
         </View>
-        <Text style={styles.title}>Mi perfil</Text>
       </View>
 
       {loading ? (
         <View style={styles.centerContent}>
-          <ActivityIndicator color="#38BDF8" size="large" />
-          <Text style={styles.loadingText}>Cargando perfil...</Text>
+          <ActivityIndicator color={accent} size="large" />
+          <Text style={styles.loadingText}>{t('profile.loading')}</Text>
         </View>
       ) : (
         <ScrollView 
@@ -151,147 +191,54 @@ export default function ProfileScreen() {
                 <Ionicons name="alert-circle" size={24} color="#ef4444" />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
-              <Pressable style={styles.reloadButton} onPress={loadProfile}>
+              <Pressable
+                style={[
+                  styles.reloadButton,
+                  { backgroundColor: accent, shadowColor: accent },
+                ]}
+                onPress={loadProfile}
+              >
                 <Ionicons name="refresh" size={18} color="#fff" />
-                <Text style={styles.reloadButtonText}>Reintentar</Text>
+                <Text style={styles.reloadButtonText}>{t('profile.retry')}</Text>
               </Pressable>
             </View>
           )}
 
           {profile && !error && (
-            <>
-              {/* CARD INFORMACIÓN */}
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Ionicons name="information-circle" size={22} color="#38BDF8" />
-                  <Text style={styles.cardTitle}>Información personal</Text>
+            <View style={styles.profileSummaryCard}>
+              <View style={styles.profileSummaryTextContainer}>
+                <Text style={styles.profileName}>
+                  {(profile.nombre || 'Tu nombre') + (profile.apellido ? ` ${profile.apellido}` : '')}
+                </Text>
+                <Text style={styles.profileEmail}>{profile.email}</Text>
+                <View style={styles.profileMetaRow}>
+                  {edad ? (
+                    <Text style={styles.profileMetaText}>{edad} años</Text>
+                  ) : null}
+                  {genero ? (
+                    <Text style={styles.profileMetaTextSeparator}>•</Text>
+                  ) : null}
+                  {genero ? (
+                    <Text style={styles.profileMetaText}>{genero}</Text>
+                  ) : null}
                 </View>
-
-                <View style={styles.fieldGroup}>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Nombre</Text>
-                    <View style={styles.inputWrapper}>
-                      <Ionicons name="person-outline" size={18} color="#9ca3af" />
-                      <TextInput
-                        style={styles.input}
-                        value={nombre}
-                        onChangeText={setNombre}
-                        placeholder="Tu nombre"
-                        placeholderTextColor="#9ca3af"
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Apellido</Text>
-                    <View style={styles.inputWrapper}>
-                      <Ionicons name="person-outline" size={18} color="#9ca3af" />
-                      <TextInput
-                        style={styles.input}
-                        value={apellido}
-                        onChangeText={setApellido}
-                        placeholder="Tu apellido"
-                        placeholderTextColor="#9ca3af"
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Email</Text>
-                    <View style={styles.valueWrapper}>
-                      <Ionicons name="mail-outline" size={18} color="#6b7280" />
-                      <Text style={styles.value}>{profile.email}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Edad</Text>
-                    <View style={styles.inputWrapper}>
-                      <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
-                      <TextInput
-                        style={styles.input}
-                        value={edad}
-                        onChangeText={setEdad}
-                        placeholder="Edad"
-                        placeholderTextColor="#9ca3af"
-                        keyboardType="numeric"
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Género</Text>
-                    <Pressable
-                      style={styles.genderSelect}
-                      onPress={() => setShowGenderModal(true)}
-                    >
-                      <Text
-                        style={
-                          genero
-                            ? styles.genderValue
-                            : styles.genderPlaceholder
-                        }
-                      >
-                        {genero || 'Selecciona género'}
-                      </Text>
-                      <Ionicons
-                        name="chevron-down"
-                        size={18}
-                        color="#6b7280"
-                      />
-                    </Pressable>
-                  </View>
-                </View>
-
-                {successMessage && (
-                  <View style={styles.successContainer}>
-                    <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-                    <Text style={styles.successText}>{successMessage}</Text>
-                  </View>
-                )}
-
-                <Pressable
-                  style={[
-                    styles.primaryButton,
-                    saving && styles.primaryButtonDisabled,
-                  ]}
-                  onPress={handleSave}
-                  disabled={saving}
-                >
-                  <Ionicons 
-                    name={saving ? 'hourglass' : 'save'} 
-                    size={20} 
-                    color="#fff" 
-                  />
-                  <Text style={styles.primaryButtonText}>
-                    {saving ? 'Guardando...' : 'Guardar cambios'}
-                  </Text>
-                </Pressable>
-              </View>
-
-              {/* CARD ACCIONES */}
-              <View style={styles.actionsCard}>
-                <Pressable
-                  style={styles.linkButton}
-                  onPress={() => setShowPolicyModal(true)}
-                >
-                  <View style={styles.linkButtonContent}>
-                    <Ionicons name="shield-checkmark-outline" size={20} color="#38BDF8" />
-                    <Text style={styles.linkButtonText}>
-                      Política de privacidad
+                <View style={styles.profileChipsRow}>
+                  <View style={styles.profileChip}>
+                    <Ionicons name="color-palette" size={14} color={accent} />
+                    <Text style={styles.profileChipText}>
+                      {t('profile.themeChipLabel')}: {themeColor}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-                </Pressable>
-
-                <View style={styles.divider} />
-
-                <Pressable style={styles.logoutButton} onPress={handleLogout}>
-                  <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-                  <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
-                </Pressable>
+                  <View style={styles.profileChip}>
+                    <Ionicons name="globe-outline" size={14} color={accent} />
+                    <Text style={styles.profileChipText}>
+                      {t('profile.languageChipLabel')}: {languageValue.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
               </View>
-            </>
+              <Text style={styles.profileHintText}>{t('profile.profileHint')}</Text>
+            </View>
           )}
         </ScrollView>
       )}
@@ -309,11 +256,11 @@ export default function ProfileScreen() {
           <View 
             style={styles.modalContent}
           >
-              <View style={styles.modalHeader}>
+            <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
-                <Ionicons name="shield-checkmark" size={24} color="#38BDF8" />
-                <Text style={styles.modalTitle}>Política de privacidad</Text>
+                  <Ionicons name="shield-checkmark" size={24} color={accent} />
+                <Text style={styles.modalTitle}>{t('profile.privacyPolicy')}</Text>
               </View>
               <Pressable 
                 onPress={() => setShowPolicyModal(false)}
@@ -330,120 +277,431 @@ export default function ProfileScreen() {
             >
               <View style={styles.policySection}>
                 <Text style={styles.modalText}>
-                  Esta aplicación recopila y almacena únicamente la información mínima
-                  necesaria para ofrecerte una experiencia personalizada, como tu nombre,
-                  correo electrónico y algunos datos opcionales de perfil. No solicitamos
-                  información bancaria ni datos especialmente sensibles.
+                  {language === 'en'
+                    ? 'This app collects and stores only the minimum information needed to offer you a personalized experience, such as your name, email address and some optional profile data. We do not request banking information or other highly sensitive data.'
+                    : 'Esta aplicación recopila y almacena únicamente la información mínima necesaria para ofrecerte una experiencia personalizada, como tu nombre, correo electrónico y algunos datos opcionales de perfil. No solicitamos información bancaria ni datos especialmente sensibles.'}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>Uso de datos</Text>
+                <Text style={styles.policySubtitle}>
+                  {language === 'en' ? 'Use of data' : 'Uso de datos'}
+                </Text>
                 <Text style={styles.modalText}>
-                  Tus datos se guardan en servicios de terceros especializados y solo se
-                  utilizan para:
+                  {language === 'en'
+                    ? 'Your data is stored in specialized third-party services and is only used to:'
+                    : 'Tus datos se guardan en servicios de terceros especializados y solo se utilizan para:'}
                 </Text>
                 <View style={styles.bulletList}>
                   <View style={styles.bulletItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#38BDF8" />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={accent}
+                    />
                     <Text style={styles.bulletText}>
-                      Gestionar tu cuenta y tu autenticación
+                      {language === 'en'
+                        ? 'Manage your account and authentication'
+                        : 'Gestionar tu cuenta y tu autenticación'}
                     </Text>
                   </View>
                   <View style={styles.bulletItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#38BDF8" />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={accent}
+                    />
                     <Text style={styles.bulletText}>
-                      Mostrar y personalizar tu información de perfil
+                      {language === 'en'
+                        ? 'Display and personalize your profile information'
+                        : 'Mostrar y personalizar tu información de perfil'}
                     </Text>
                   </View>
                   <View style={styles.bulletItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#38BDF8" />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={accent}
+                    />
                     <Text style={styles.bulletText}>
-                      Mejorar y mantener las funcionalidades de la aplicación
+                      {language === 'en'
+                        ? 'Improve and maintain the features of the app'
+                        : 'Mejorar y mantener las funcionalidades de la aplicación'}
                     </Text>
                   </View>
                 </View>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>Compartir información</Text>
+                <Text style={styles.policySubtitle}>
+                  {language === 'en' ? 'Sharing information' : 'Compartir información'}
+                </Text>
                 <Text style={styles.modalText}>
-                  No compartimos tu información personal con terceros con fines
-                  comerciales. Solo podríamos compartir datos en caso de obligación
-                  legal, requerimiento de una autoridad competente o para proteger
-                  la seguridad e integridad del servicio y de otros usuarios.
+                  {language === 'en'
+                    ? 'We do not share your personal information with third parties for commercial purposes. We would only share data if legally required, in response to a request from a competent authority, or to protect the security and integrity of the service and other users.'
+                    : 'No compartimos tu información personal con terceros con fines comerciales. Solo podríamos compartir datos en caso de obligación legal, requerimiento de una autoridad competente o para proteger la seguridad e integridad del servicio y de otros usuarios.'}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>Limitación de responsabilidad</Text>
+                <Text style={styles.policySubtitle}>
+                  {language === 'en'
+                    ? 'Limitation of liability'
+                    : 'Limitación de responsabilidad'}
+                </Text>
                 <Text style={styles.modalText}>
-                  Esta aplicación se ofrece "tal cual" y "según disponibilidad". Aunque
-                  trabajamos para mantener el servicio estable y seguro, no podemos
-                  garantizar que esté libre de errores, interrupciones o pérdidas de
-                  información. El uso de la aplicación es responsabilidad exclusiva del
-                  usuario.
+                  {language === 'en'
+                    ? 'This app is provided “as is” and “as available”. Although we work to keep the service stable and secure, we cannot guarantee that it is free of errors, interruptions or data loss. Your use of the app is entirely at your own risk.'
+                    : 'Esta aplicación se ofrece "tal cual" y "según disponibilidad". Aunque trabajamos para mantener el servicio estable y seguro, no podemos garantizar que esté libre de errores, interrupciones o pérdidas de información. El uso de la aplicación es responsabilidad exclusiva del usuario.'}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>No es asesoramiento profesional</Text>
+                <Text style={styles.policySubtitle}>
+                  {language === 'en'
+                    ? 'Not professional advice'
+                    : 'No es asesoramiento profesional'}
+                </Text>
                 <Text style={styles.modalText}>
-                  La información mostrada en la aplicación tiene un carácter meramente
-                  informativo y de organización personal. No constituye asesoramiento
-                  médico, psicológico, nutricional, financiero, jurídico ni de ningún
-                  otro tipo profesional. Ante cualquier duda relevante para tu salud o
-                  situación personal, consulta siempre con un profesional cualificado.
+                  {language === 'en'
+                    ? 'The information shown in the app is for personal organization and informational purposes only. It does not constitute medical, psychological, nutritional, financial, legal or any other type of professional advice. Always consult a qualified professional for any matter relevant to your health or personal situation.'
+                    : 'La información mostrada en la aplicación tiene un carácter meramente informativo y de organización personal. No constituye asesoramiento médico, psicológico, nutricional, financiero, jurídico ni de ningún otro tipo profesional. Ante cualquier duda relevante para tu salud o situación personal, consulta siempre con un profesional cualificado.'}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>Tus derechos</Text>
+                <Text style={styles.policySubtitle}>
+                  {language === 'en' ? 'Your rights' : 'Tus derechos'}
+                </Text>
                 <Text style={styles.modalText}>
-                  En cualquier momento puedes solicitar la actualización o eliminación
-                  de tus datos de perfil. Al cerrar sesión, tu cuenta permanece
-                  registrada, pero puedes contactar al soporte de la aplicación si
-                  deseas que eliminemos definitivamente tu información, salvo que la
-                  ley nos obligue a conservarla durante más tiempo.
+                  {language === 'en'
+                    ? 'You can request the update or deletion of your profile data at any time. When you log out, your account remains registered, but you can contact the app support team if you want us to permanently delete your information, except where the law requires us to retain it for longer.'
+                    : 'En cualquier momento puedes solicitar la actualización o eliminación de tus datos de perfil. Al cerrar sesión, tu cuenta permanece registrada, pero puedes contactar al soporte de la aplicación si deseas que eliminemos definitivamente tu información, salvo que la ley nos obligue a conservarla durante más tiempo.'}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>Menores de edad</Text>
+                <Text style={styles.policySubtitle}>
+                  {language === 'en' ? 'Minors' : 'Menores de edad'}
+                </Text>
                 <Text style={styles.modalText}>
-                  Si eres menor de edad, debes utilizar la aplicación con el
-                  consentimiento y supervisión de tu madre, padre o tutor legal. No
-                  recopilamos intencionadamente información personal de menores sin
-                  dicho consentimiento.
+                  {language === 'en'
+                    ? 'If you are a minor, you must use the app with the consent and supervision of your parent or legal guardian. We do not knowingly collect personal information from minors without such consent.'
+                    : 'Si eres menor de edad, debes utilizar la aplicación con el consentimiento y supervisión de tu madre, padre o tutor legal. No recopilamos intencionadamente información personal de menores sin dicho consentimiento.'}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>Cambios en la política</Text>
+                <Text style={styles.policySubtitle}>
+                  {language === 'en'
+                    ? 'Changes to this policy'
+                    : 'Cambios en la política'}
+                </Text>
                 <Text style={styles.modalText}>
-                  Podemos actualizar esta política de privacidad cuando sea necesario
-                  para reflejar cambios en la ley, en la aplicación o en la forma en
-                  que tratamos tus datos. Cuando haya cambios relevantes, procuraremos
-                  avisarte dentro de la propia aplicación.
+                  {language === 'en'
+                    ? 'We may update this privacy policy when necessary to reflect changes in the law, in the app, or in how we process your data. When there are important changes, we will try to notify you within the app.'
+                    : 'Podemos actualizar esta política de privacidad cuando sea necesario para reflejar cambios en la ley, en la aplicación o en la forma en que tratamos tus datos. Cuando haya cambios relevantes, procuraremos avisarte dentro de la propia aplicación.'}
                 </Text>
               </View>
 
               <View style={[styles.policySection, styles.acceptanceSection]}>
                 <Text style={styles.modalText}>
-                  Al continuar usando la aplicación declaras haber leído y comprendido
-                  esta política de privacidad y aceptas el tratamiento de tus datos y
-                  las limitaciones de responsabilidad aquí descritas.
+                  {language === 'en'
+                    ? 'By continuing to use the app, you declare that you have read and understood this privacy policy and that you accept the processing of your data and the limitations of liability described here.'
+                    : 'Al continuar usando la aplicación declaras haber leído y comprendido esta política de privacidad y aceptas el tratamiento de tus datos y las limitaciones de responsabilidad aquí descritas.'}
                 </Text>
               </View>
             </ScrollView>
 
             <Pressable
-              style={styles.modalCloseButton}
+              style={[
+                styles.modalCloseButton,
+                { backgroundColor: accent, shadowColor: accent },
+              ]}
               onPress={() => setShowPolicyModal(false)}
             >
               <Ionicons name="checkmark-circle" size={22} color="#fff" />
-              <Text style={styles.modalCloseButtonText}>Entendido</Text>
+              <Text style={styles.modalCloseButtonText}>
+                {t('profile.policyAccept')}
+              </Text>
             </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL AJUSTES PERFIL / APP */}
+      <Modal
+        visible={showSettingsModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowSettingsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalTitleContainer}>
+                <Ionicons name="settings" size={24} color={accent} />
+                <Text style={styles.modalTitle}>
+                  {t('profile.settingsModalTitle')}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setShowSettingsModal(false)}
+                style={styles.modalClose}
+              >
+                <Ionicons name="close-circle" size={28} color="#6b7280" />
+              </Pressable>
+            </View>
+
+            <View style={styles.settingsBodyWrapper}>
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={styles.modalScrollContent}
+                showsVerticalScrollIndicator
+              >
+              {/* CARD INFORMACIÓN */}
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="information-circle" size={22} color={accent} />
+                  <Text style={styles.cardTitle}>{t('profile.personalInfo')}</Text>
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <View style={styles.field}>
+                    <Text style={styles.label}>{t('profile.firstName')}</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="person-outline" size={18} color="#9ca3af" />
+                      <TextInput
+                        style={styles.input}
+                        value={nombre}
+                        onChangeText={setNombre}
+                        placeholder={t('profile.firstName')}
+                        placeholderTextColor="#9ca3af"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.field}>
+                    <Text style={styles.label}>{t('profile.lastName')}</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="person-outline" size={18} color="#9ca3af" />
+                      <TextInput
+                        style={styles.input}
+                        value={apellido}
+                        onChangeText={setApellido}
+                        placeholder={t('profile.lastName')}
+                        placeholderTextColor="#9ca3af"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.field}>
+                    <Text style={styles.label}>{t('profile.email')}</Text>
+                    <View style={styles.valueWrapper}>
+                      <Ionicons name="mail-outline" size={18} color="#6b7280" />
+                      <Text style={styles.value}>{profile?.email}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.field}>
+                    <Text style={styles.label}>{t('profile.age')}</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
+                      <TextInput
+                        style={styles.input}
+                        value={edad}
+                        onChangeText={setEdad}
+                        placeholder={t('profile.age')}
+                        placeholderTextColor="#9ca3af"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.field}>
+                    <Text style={styles.label}>{t('profile.gender')}</Text>
+                    <Pressable
+                      style={styles.genderSelect}
+                      onPress={() => setShowGenderModal(true)}
+                    >
+                      <Text
+                        style={
+                          genero
+                            ? styles.genderValue
+                            : styles.genderPlaceholder
+                        }
+                      >
+                        {genero || t('profile.genderPlaceholder')}
+                      </Text>
+                      <Ionicons
+                        name="chevron-down"
+                        size={18}
+                        color="#6b7280"
+                      />
+                    </Pressable>
+                  </View>
+                </View>
+
+                {successMessage && (
+                  <View style={styles.successContainer}>
+                    <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                    <Text style={styles.successText}>{successMessage}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* CARD PERSONALIZACIÓN */}
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="color-palette" size={22} color={accent} />
+                  <Text style={styles.cardTitle}>{t('profile.customization')}</Text>
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <View style={styles.field}>
+                    <Text style={styles.label}>{t('profile.interfaceColor')}</Text>
+                    <View style={styles.themeRow}>
+                      {[
+                        { key: 'blue', label: t('profile.colorBlue'), color: '#38BDF8' },
+                        { key: 'pink', label: t('profile.colorPink'), color: '#FB7185' },
+                        { key: 'yellow', label: t('profile.colorYellow'), color: '#FACC15' },
+                        { key: 'purple', label: t('profile.colorPurple'), color: '#A855F7' },
+                        { key: 'teal', label: t('profile.colorTeal'), color: '#14B8A6' },
+                      ].map((opt) => {
+                        const isActive = opt.key === themeColor;
+                        return (
+                          <Pressable
+                            key={opt.key}
+                            style={[
+                              styles.themeOption,
+                              isActive && styles.themeOptionActive,
+                            ]}
+                            onPress={() => setThemeColor(opt.key)}
+                          >
+                            <View
+                              style={[
+                                styles.themeColorDot,
+                                { backgroundColor: opt.color },
+                              ]}
+                            />
+                            <Text
+                              style={[
+                                styles.themeLabel,
+                                isActive && styles.themeLabelActive,
+                              ]}
+                            >
+                              {opt.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={styles.field}>
+                    <Text style={styles.label}>{t('profile.appLanguage')}</Text>
+                    <View style={styles.languageRow}>
+                      {[
+                        { key: 'es', label: t('profile.languageEs') },
+                        { key: 'en', label: t('profile.languageEn') },
+                      ].map((opt) => {
+                        const isActive = opt.key === languageValue;
+                        return (
+                          <Pressable
+                            key={opt.key}
+                            style={[
+                              styles.languageChip,
+                              isActive && styles.languageChipActive,
+                            ]}
+                            onPress={() => setLanguageValue(opt.key)}
+                          >
+                            <Text
+                              style={[
+                                styles.languageChipText,
+                                isActive && styles.languageChipTextActive,
+                              ]}
+                            >
+                              {opt.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* CARD ACCIONES */}
+              <View style={styles.actionsCard}>
+                <Pressable
+                  style={styles.linkButton}
+                  onPress={() => setShowPolicyModal(true)}
+                >
+                  <View style={styles.linkButtonContent}>
+                    <Ionicons
+                      name="shield-checkmark-outline"
+                      size={20}
+                      color={accent}
+                    />
+                    <Text
+                      style={[
+                        styles.linkButtonText,
+                        { color: accent },
+                      ]}
+                    >
+                      {t('profile.privacyPolicy')}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                </Pressable>
+
+                <View style={styles.divider} />
+
+                <Pressable
+                  style={[
+                    styles.logoutButton,
+                    { borderColor: accent, backgroundColor: `${accent}20` },
+                  ]}
+                  onPress={handleLogout}
+                >
+                  <Ionicons name="log-out-outline" size={22} color={accent} />
+                  <Text
+                    style={[
+                      styles.logoutButtonText,
+                      { color: accent },
+                    ]}
+                    >
+                    {t('profile.logout')}
+                  </Text>
+                </Pressable>
+              </View>
+                <View style={{ height: 96 }} />
+              </ScrollView>
+
+              {/* BOTÓN FLOTANTE GUARDAR CAMBIOS */}
+              <View style={styles.settingsFloatingFooter}>
+                <Pressable
+                  style={[
+                    styles.primaryButton,
+                    styles.primaryButtonFloating,
+                    { backgroundColor: accent, shadowColor: accent },
+                    saving && styles.primaryButtonDisabled,
+                  ]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  <Ionicons
+                    name={saving ? 'hourglass' : 'save'}
+                    size={20}
+                    color="#fff"
+                  />
+                  <Text style={styles.primaryButtonText}>
+                    {saving ? t('profile.saving') : t('profile.save')}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
           </View>
         </View>
       </Modal>
@@ -464,7 +722,7 @@ export default function ProfileScreen() {
             onPress={(e) => e.stopPropagation()}
           >
             <Text style={styles.genderModalTitle}>
-              Selecciona tu género
+              {t('register.genderModalTitle') || 'Selecciona tu género'}
             </Text>
             {genderOptions.map((option) => (
               <Pressable
@@ -497,35 +755,192 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fafafa',
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 0,
     paddingBottom: 16,
   },
 
-  // Header
+  // Portada
+  coverContainer: {
+    width: '100%',
+    height: 140,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 48,
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverSettingsButton: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  profileAvatarWrapper: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: -44,
+    marginBottom: 16,
+  },
+
+  // Header estilo perfil
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 24,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 14,
   },
   headerIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 58,
+    height: 58,
+    borderRadius: 999,
     backgroundColor: '#38BDF8',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: '#111827',
     letterSpacing: -0.5,
+  },
+  subtitle: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  headerSettingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  // Tarjeta resumen de perfil
+  profileSummaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 4,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+  },
+  profileSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  profileAvatarLarge: {
+    width: 76,
+    height: 76,
+    borderRadius: 999,
+    backgroundColor: '#38BDF8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#38BDF8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  profileAvatarImage: {
+    width: '70%',
+    height: '70%',
+  },
+  profileSummaryTextContainer: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.4,
+  },
+  profileEmail: {
+    marginTop: 2,
+    fontSize: 13,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  profileMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  profileMetaText: {
+    fontSize: 13,
+    color: '#4b5563',
+    fontWeight: '600',
+  },
+  profileMetaTextSeparator: {
+    fontSize: 13,
+    color: '#9ca3af',
+  },
+  profileChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  profileChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#f3f4f6',
+  },
+  profileChipText: {
+    fontSize: 12,
+    color: '#4b5563',
+    fontWeight: '600',
+  },
+  profileHintText: {
+    marginTop: 14,
+    fontSize: 12,
+    color: '#9ca3af',
   },
 
   // Loading
@@ -818,6 +1233,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+  primaryButtonFloating: {
+    marginTop: 0,
+    width: '100%',
+  },
   primaryButtonDisabled: {
     opacity: 0.6,
   },
@@ -826,6 +1245,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.3,
+  },
+
+  // Settings modal floating footer
+  settingsBodyWrapper: {
+    flex: 1,
+  },
+  settingsFloatingFooter: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: Platform.OS === 'ios' ? 24 : 16,
   },
 
   // Actions Card
@@ -854,7 +1284,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   linkButtonText: {
-    color: '#38BDF8',
+    color: '#111827',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -888,6 +1318,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'android' ? 24 : 0,
   },
   modalContent: {
+    flex: 1,
     backgroundColor: '#fff',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
@@ -992,5 +1423,64 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.3,
+  },
+  themeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
+    gap: 6,
+  },
+  themeOptionActive: {
+    borderColor: '#e5e7eb',
+    backgroundColor: '#e5e7eb',
+  },
+  themeColorDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+  },
+  themeLabel: {
+    fontSize: 13,
+    color: '#4b5563',
+    fontWeight: '600',
+  },
+  themeLabelActive: {
+    color: '#1f2937',
+  },
+  languageRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  languageChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
+  },
+  languageChipActive: {
+    borderColor: '#e5e7eb',
+    backgroundColor: '#e5e7eb',
+  },
+  languageChipText: {
+    fontSize: 13,
+    color: '#4b5563',
+    fontWeight: '600',
+  },
+  languageChipTextActive: {
+    color: '#1f2937',
   },
 });

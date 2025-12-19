@@ -10,8 +10,10 @@ import {
   Image,
 } from 'react-native';
 import { supabase } from '../utils/supabase';
+import { useI18n } from '../utils/i18n';
 
 export default function Login({ navigation }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,7 +29,7 @@ export default function Login({ navigation }) {
     });
 
     if (error) {
-      setError('Correo o contraseña incorrectos');
+      setError(t('auth.errorInvalidCredentials') || 'Correo o contraseña incorrectos');
     }
 
     setLoading(false);
@@ -47,12 +49,12 @@ export default function Login({ navigation }) {
         />
 
         <Text style={styles.subtitle}>
-          Inicia sesión para continuar
+          {t('auth.loginSubtitle')}
         </Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Correo"
+          placeholder={t('auth.emailLabel')}
           placeholderTextColor="#9ca3af"
           autoCapitalize="none"
           keyboardType="email-address"
@@ -62,7 +64,7 @@ export default function Login({ navigation }) {
 
         <TextInput
           style={styles.input}
-          placeholder="Contraseña"
+          placeholder={t('auth.passwordLabel')}
           placeholderTextColor="#9ca3af"
           secureTextEntry
           value={password}
@@ -79,7 +81,7 @@ export default function Login({ navigation }) {
           disabled={loading}
         >
           <Text style={styles.primaryText}>
-            {loading ? 'Entrando…' : 'Entrar'}
+            {loading ? t('auth.loginButtonLoading') || 'Entrando…' : t('auth.loginButton')}
           </Text>
         </Pressable>
 
@@ -87,7 +89,7 @@ export default function Login({ navigation }) {
           onPress={() => navigation.navigate('Register')}
         >
           <Text style={styles.link}>
-            ¿No tienes cuenta? Regístrate
+            {t('auth.goToRegister')}
           </Text>
         </Pressable>
       </View>

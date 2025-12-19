@@ -10,10 +10,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabase';
+import { useI18n } from '../utils/i18n';
+import { useSettings } from '../utils/settingsContext';
 
 export default function HabitModal({ onSelect, onClose }) {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useI18n();
+  const { language } = useSettings();
 
   useEffect(() => {
     loadHabits();
@@ -45,8 +49,9 @@ export default function HabitModal({ onSelect, onClose }) {
 
   // Agrupar por categoría
   const grouped = habits.reduce((acc, habit) => {
-    acc[habit.category] = acc[habit.category] || [];
-    acc[habit.category].push(habit);
+    const category = habit.category || 'Sin categoría';
+    acc[category] = acc[category] || [];
+    acc[category].push(habit);
     return acc;
   }, {});
 
@@ -54,7 +59,7 @@ export default function HabitModal({ onSelect, onClose }) {
     <View style={styles.sheet}>
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.title}>Agregar hábito</Text>
+        <Text style={styles.title}>{t('habitList.title')}</Text>
         <Pressable onPress={onClose}>
           <Ionicons name="close" size={24} />
         </Pressable>
@@ -66,11 +71,37 @@ export default function HabitModal({ onSelect, onClose }) {
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
-          {Object.keys(grouped).map((category) => (
-            <View key={category} style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {category}
-              </Text>
+          {Object.keys(grouped).map((category) => {
+            const displayCategory =
+              language === 'en'
+                ? category === 'Cuida de ti'
+                  ? 'Self-care'
+                  : category === 'Actividad física'
+                  ? 'Physical activity'
+                  : category === 'Vive más sano'
+                  ? 'Live healthier'
+                  : category === 'Aprende'
+                  ? 'Learn'
+                  : category === 'Vida social'
+                  ? 'Social life'
+                  : category === 'Hogar'
+                  ? 'Home'
+                  : category === 'Vida económica'
+                  ? 'Finances'
+                  : category === 'Salud'
+                  ? 'Health'
+                  : category === 'Social'
+                  ? 'Social'
+                  : category === 'Productividad'
+                  ? 'Productivity'
+                  : category === 'Sin categoría'
+                  ? 'Uncategorized'
+                  : category
+                : category;
+
+            return (
+              <View key={category} style={styles.section}>
+                <Text style={styles.sectionTitle}>{displayCategory}</Text>
 
               {grouped[category].map((habit) => (
                 <Pressable
@@ -104,7 +135,7 @@ export default function HabitModal({ onSelect, onClose }) {
                 </Pressable>
               ))}
             </View>
-          ))}
+          )})}
         </ScrollView>
       )}
     </View>

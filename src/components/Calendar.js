@@ -29,6 +29,8 @@ import ChecklistTable from './ChecklistTable';
 import MarketTable from './MarketTable';
 import VitaminsTable from './VitaminsTable';
 import { v4 as uuidv4 } from 'uuid';
+import { useSettings, getAccentColor } from '../utils/settingsContext';
+import { useI18n } from '../utils/i18n';
 
 /* =========================
    CONSTANTES
@@ -101,11 +103,10 @@ function generateWeeklyDates(schedule) {
 
   return results.sort();
 }
-
-
-function formatDate(dateString) {
+function formatDate(dateString, lang = 'es') {
   const [y, m, d] = dateString.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('es-ES', {
+  const locale = lang === 'en' ? 'en-US' : 'es-ES';
+  return new Date(y, m - 1, d).toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -113,7 +114,7 @@ function formatDate(dateString) {
 }
 
 /* =========================
-   CONFIGURACIÓN CALENDARIO (ES)
+  CONFIGURACIÓN CALENDARIO (ES/EN)
 ========================= */
 
 LocaleConfig.locales.es = {
@@ -132,6 +133,22 @@ LocaleConfig.locales.es = {
   today: 'Hoy',
 };
 
+LocaleConfig.locales.en = {
+  monthNames: [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ],
+  monthNamesShort: [
+    'Jan','Feb','Mar','Apr','May','Jun',
+    'Jul','Aug','Sep','Oct','Nov','Dec',
+  ],
+  dayNames: [
+    'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday',
+  ],
+  dayNamesShort: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+  today: 'Today',
+};
+
 LocaleConfig.defaultLocale = 'es';
 
 /* =========================
@@ -139,12 +156,16 @@ LocaleConfig.defaultLocale = 'es';
 ========================= */
 
 export default function Calendar() {
+  const { themeColor, language } = useSettings();
+  const { t } = useI18n();
+  const accent = getAccentColor(themeColor);
   const [selectedDate, setSelectedDate] = useState(today);
   const [activities, setActivities] = useState({});
   const [habits, setHabits] = useState([]);
   const [habitsLoading, setHabitsLoading] = useState(true);
 
   const [showHabitModal, setShowHabitModal] = useState(false);
+  const [isChangingHabit, setIsChangingHabit] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState(null);
   const [editingActivity, setEditingActivity] = useState(null);
@@ -168,6 +189,19 @@ export default function Calendar() {
     loadActivities();
     loadHabits();
   }, []);
+
+  useEffect(() => {
+    const localeKey = language === 'en' ? 'en' : 'es';
+    LocaleConfig.defaultLocale = localeKey;
+
+    // Asegurar que la etiqueta "Hoy/Today" del calendario
+    // también respete el idioma actual
+    if (localeKey === 'es') {
+      LocaleConfig.locales.es.today = t('calendar.todayButton');
+    } else {
+      LocaleConfig.locales.en.today = t('calendar.todayButton');
+    }
+  }, [language, t]);
 
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -478,7 +512,6 @@ export default function Calendar() {
       completedAfter === dayActivitiesAfter.length &&
       completedBefore < totalBefore
     ) {
-      setCongratsDate(dateKey);
       setCongratsVisible(true);
     }
 
@@ -491,18 +524,18 @@ export default function Calendar() {
 
   function confirmDelete(activity) {
     Alert.alert(
-      'Eliminar actividad',
-      '¿Qué deseas hacer?',
+      t('calendar.deleteActivityTitle'),
+      t('calendar.deleteActivityMessage'),
       [
         {
-          text: 'Eliminar solo esta',
+          text: t('calendar.deleteOnlyThis'),
           onPress: () => deleteOne(activity),
         },
         {
-          text: 'Eliminar esta y las siguientes',
+          text: t('calendar.deleteThisAndNext'),
           onPress: () => deleteFromHere(activity),
         },
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('calendar.cancel'), style: 'cancel' },
       ],
       { cancelable: true }
     );
@@ -780,7 +813,7 @@ export default function Calendar() {
       } else {
         acc[d] = {
           marked: true,
-          dotColor: '#38BDF8',
+          dotColor: accent,
         };
       }
     }
@@ -810,7 +843,7 @@ export default function Calendar() {
         }
       : {
           container: {
-            backgroundColor: '#38BDF8',
+            backgroundColor: accent,
             borderRadius: 16,
           },
           text: {
@@ -826,22 +859,36 @@ export default function Calendar() {
         date={selectedDate}
         onDateChanged={setSelectedDate}
         showTodayButton
-        todayButtonText="Hoy"
+        todayButtonText={t('calendar.todayButton')}
       >
         <ExpandableCalendar
           firstDay={1}
           markedDates={markedDates}
           markingType="custom"
-          theme={calendarTheme}
+          theme={{
+            ...calendarTheme,
+            selectedDayBackgroundColor: accent,
+            todayTextColor: accent,
+            dotColor: accent,
+            indicatorColor: accent,
+            selectedDotColor: '#ffffff',
+          }}
         />
 
         <View style={styles.content}>
           <View style={styles.dateHeader}>
-            <View style={styles.dateIconContainer}>
+            <View
+              style={[
+                styles.dateIconContainer,
+                { backgroundColor: accent, shadowColor: accent },
+              ]}
+            >
               <Ionicons name="calendar" size={26} color="#fff" />
             </View>
             <View style={styles.dateTextContainer}>
-              <Text style={styles.dayTitle}>{formatDate(selectedDate)}</Text>
+              <Text style={styles.dayTitle}>
+                {formatDate(selectedDate, language)}
+              </Text>
               <Text style={styles.activityCount}>
                 {activities[selectedDate]?.length || 0}{' '}
                 {activities[selectedDate]?.length === 1 ? 'actividad' : 'actividades'}
@@ -948,7 +995,7 @@ export default function Calendar() {
                       >
                         <View style={styles.swipeEdit}>
                           <Ionicons name="create-outline" size={24} color="#fff" />
-                          <Text style={styles.swipeText}>Editar</Text>
+                          <Text style={styles.swipeText}>{t('calendar.edit')}</Text>
                         </View>
                       </Pressable>
                     )}
@@ -992,7 +1039,7 @@ export default function Calendar() {
                             />
                           ) : (
                             <View style={styles.cardIconPlaceholder}>
-                              <Ionicons name="sparkles" size={20} color="#38BDF8" />
+                              <Ionicons name="sparkles" size={20} color={accent} />
                             </View>
                           )}
                         </View>
@@ -1034,7 +1081,7 @@ export default function Calendar() {
                             </Pressable>
                           {hasMarket && (
                             <View style={styles.cardBadge}>
-                              <Ionicons name="list" size={12} color="#38BDF8" />
+                              <Ionicons name="list" size={12} color={accent} />
                               <Text style={styles.cardBadgeText}>Lista</Text>
                             </View>
                           )}
@@ -1059,9 +1106,9 @@ export default function Calendar() {
                 <View style={styles.emptyIconContainer}>
                   <Ionicons name="leaf-outline" size={48} color="#d1d5db" />
                 </View>
-                <Text style={styles.emptyTitle}>No hay actividades</Text>
+                <Text style={styles.emptyTitle}>{t('calendar.emptyTitle')}</Text>
                 <Text style={styles.emptySubtitle}>
-                  Presiona el botón + para agregar una nueva actividad
+                  {t('calendar.emptySubtitle')}
                 </Text>
               </View>
             )}
@@ -1091,9 +1138,9 @@ export default function Calendar() {
                 <View style={styles.modalHeader}>
                   <View style={styles.modalHandle} />
                   <View style={styles.modalTitleContainer}>
-                    <Ionicons name="cart" size={24} color="#38BDF8" />
+                    <Ionicons name="cart" size={24} color={accent} />
                     <Text style={styles.modalTitle}>
-                      {marketModalData.marketLabel || 'Lista de mercado'}
+                      {marketModalData.marketLabel || t('calendar.marketDefaultTitle')}
                     </Text>
                   </View>
                   <Pressable
@@ -1115,16 +1162,17 @@ export default function Calendar() {
                       {marketModalData.activity.title}
                     </Text>
                     <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-                      {formatDate(marketModalData.activity.date)}
+                      {formatDate(marketModalData.activity.date, language)}
                     </Text>
 
                     <View style={styles.checklistSection}>
                       <View style={styles.checklistHeader}>
                         <View style={styles.checklistIconBg}>
-                          <Ionicons name="cart" size={16} color="#38BDF8" />
+                          <Ionicons name="cart" size={16} color={accent} />
                         </View>
                         <Text style={styles.checklistTitle}>
-                          {marketModalData.marketLabel || 'Lista de compras'}
+                          {marketModalData.marketLabel ||
+                            t('calendar.marketDefaultSectionTitle')}
                         </Text>
                         <View style={styles.checklistBadge}>
                           {(() => {
@@ -1195,7 +1243,8 @@ export default function Calendar() {
                   <View style={styles.modalTitleContainer}>
                     <Ionicons name="medkit" size={24} color="#22c55e" />
                     <Text style={styles.modalTitle}>
-                      {vitaminsModalData.vitaminsLabel || 'Vitaminas a tomar'}
+                      {vitaminsModalData.vitaminsLabel ||
+                        t('calendar.vitaminsDefaultTitle')}
                     </Text>
                   </View>
                   <Pressable
@@ -1217,7 +1266,7 @@ export default function Calendar() {
                       {vitaminsModalData.activity.title}
                     </Text>
                     <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-                      {formatDate(vitaminsModalData.activity.date)}
+                      {formatDate(vitaminsModalData.activity.date, language)}
                     </Text>
 
                     <View style={styles.checklistSection}>
@@ -1226,7 +1275,8 @@ export default function Calendar() {
                           <Ionicons name="medkit" size={16} color="#22c55e" />
                         </View>
                         <Text style={styles.checklistTitle}>
-                          {vitaminsModalData.vitaminsLabel || 'Vitaminas'}
+                          {vitaminsModalData.vitaminsLabel ||
+                            t('calendar.vitaminsDefaultSectionTitle')}
                         </Text>
                         <View style={styles.checklistBadge}>
                           {(() => {
@@ -1295,9 +1345,10 @@ export default function Calendar() {
                 <View style={styles.modalHeader}>
                   <View style={styles.modalHandle} />
                   <View style={styles.modalTitleContainer}>
-                    <Ionicons name="checkbox" size={24} color="#38BDF8" />
+                    <Ionicons name="checkbox" size={24} color={accent} />
                     <Text style={styles.modalTitle}>
-                      {checklistModalData.checklistLabel || 'Checklist'}
+                      {checklistModalData.checklistLabel ||
+                        t('calendar.checklistDefaultTitle')}
                     </Text>
                   </View>
                   <Pressable
@@ -1319,16 +1370,17 @@ export default function Calendar() {
                       {checklistModalData.activity.title}
                     </Text>
                     <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-                      {formatDate(checklistModalData.activity.date)}
+                      {formatDate(checklistModalData.activity.date, language)}
                     </Text>
 
                     <View style={styles.checklistSection}>
                       <View style={styles.checklistHeader}>
                         <View style={styles.checklistIconBg}>
-                          <Ionicons name="home" size={16} color="#38BDF8" />
+                          <Ionicons name="home" size={16} color={accent} />
                         </View>
                         <Text style={styles.checklistTitle}>
-                          {checklistModalData.checklistLabel || 'Espacios a organizar'}
+                          {checklistModalData.checklistLabel ||
+                            t('calendar.checklistDefaultSectionTitle')}
                         </Text>
                         <View style={styles.checklistBadge}>
                           {(() => {
@@ -1393,7 +1445,15 @@ export default function Calendar() {
       </Modal>
 
       {/* FAB */}
-      <Pressable style={styles.fab} onPress={() => setShowHabitModal(true)}>
+      <Pressable
+        style={[styles.fab, { backgroundColor: accent, shadowColor: accent }]}
+        onPress={() => {
+          setIsChangingHabit(false);
+          setEditingActivity(null);
+          setEditingSchedule(null);
+          setShowHabitModal(true);
+        }}
+      >
         <Ionicons name="add" size={32} color="#fff" />
       </Pressable>
 
@@ -1408,8 +1468,10 @@ export default function Calendar() {
               <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
-                <Ionicons name="sparkles" size={24} color="#38BDF8" />
-                <Text style={styles.modalTitle}>Selecciona un hábito</Text>
+                <Ionicons name="sparkles" size={24} color={accent} />
+                <Text style={styles.modalTitle}>
+                  {t('calendar.selectHabitTitle')}
+                </Text>
               </View>
               <Pressable onPress={() => setShowHabitModal(false)} style={styles.modalClose}>
                 <Ionicons name="close-circle" size={28} color="#6b7280" />
@@ -1417,8 +1479,10 @@ export default function Calendar() {
             </View>
             {habitsLoading ? (
               <View style={styles.habitsLoadingContainer}>
-                <ActivityIndicator size="large" color="#38BDF8" />
-                <Text style={styles.habitsLoadingText}>Cargando hábitos...</Text>
+                <ActivityIndicator size="large" color={accent} />
+                <Text style={styles.habitsLoadingText}>
+                  {t('calendar.loadingHabits')}
+                </Text>
               </View>
             ) : (
               <ScrollView
@@ -1429,12 +1493,39 @@ export default function Calendar() {
                 {/* Agrupar hábitos por categoría */}
                 {Object.entries(
                   habits.reduce((acc, habit) => {
-                    const category = habit.category || 'Sin categoría';
-                    if (!acc[category]) acc[category] = [];
-                    acc[category].push(habit);
+                    const rawCategory = habit.category || 'Sin categoría';
+                    if (!acc[rawCategory]) acc[rawCategory] = [];
+                    acc[rawCategory].push(habit);
                     return acc;
                   }, {})
-                ).map(([category, categoryHabits]) => (
+                ).map(([category, categoryHabits]) => {
+                  const displayCategory = language === 'en'
+                    ? category === 'Cuida de ti'
+                      ? 'Self-care'
+                      : category === 'Actividad física'
+                      ? 'Physical activity'
+                      : category === 'Vive más sano'
+                      ? 'Live healthier'
+                      : category === 'Aprende'
+                      ? 'Learn'
+                      : category === 'Vida social'
+                      ? 'Social life'
+                      : category === 'Hogar'
+                      ? 'Home'
+                      : category === 'Vida económica'
+                      ? 'Finances'
+                      : category === 'Salud'
+                      ? 'Health'
+                      : category === 'Social'
+                      ? 'Social'
+                      : category === 'Productividad'
+                      ? 'Productivity'
+                      : category === 'Sin categoría'
+                      ? 'Uncategorized'
+                      : category
+                    : category;
+
+                  return (
                   <View key={category} style={styles.categorySection}>
                     <View style={styles.categoryHeader}>
                       <View style={styles.categoryIconContainer}>
@@ -1454,10 +1545,10 @@ export default function Calendar() {
                                                 'sparkles'
                           }
                           size={20}
-                          color="#38BDF8"
+                          color={accent}
                         />
                       </View>
-                      <Text style={styles.categoryTitle}>{category}</Text>
+                      <Text style={styles.categoryTitle}>{displayCategory}</Text>
                       <View style={styles.categoryCount}>
                         <Text style={styles.categoryCountText}>{categoryHabits.length}</Text>
                       </View>
@@ -1470,9 +1561,13 @@ export default function Calendar() {
                           style={styles.habitItem}
                           onPress={() => {
                             setSelectedHabit(habit);
-                            setEditingActivity(null);
+                            if (!isChangingHabit) {
+                              setEditingActivity(null);
+                              setEditingSchedule(null);
+                            }
                             setShowHabitModal(false);
                             setTimeout(() => setShowFormModal(true), 150);
+                            setIsChangingHabit(false);
                           }}
                         >
                           <View style={styles.habitCardContent}>
@@ -1506,7 +1601,8 @@ export default function Calendar() {
                       ))}
                     </View>
                   </View>
-                ))}
+                  );
+                })}
                 <View style={{ height: 20 }} />
               </ScrollView>
             )}
@@ -1526,6 +1622,12 @@ export default function Calendar() {
             setShowFormModal(false);
             setEditingActivity(null);
             setEditingSchedule(null);
+            setIsChangingHabit(false);
+          }}
+          onChangeHabit={() => {
+            setIsChangingHabit(true);
+            setShowFormModal(false);
+            setTimeout(() => setShowHabitModal(true), 150);
           }}
         />
       </Modal>
@@ -1540,19 +1642,21 @@ export default function Calendar() {
         <View style={styles.congratsOverlay}>
           <View style={styles.congratsCard}>
             <View style={styles.congratsIconCircle}>
-              <Ionicons name="trophy" size={40} color="#38BDF8" />
+              <Ionicons name="trophy" size={40} color={accent} />
             </View>
-            <Text style={styles.congratsTitle}>¡Día completado!</Text>
+            <Text style={styles.congratsTitle}>{t('calendar.congratsTitle')}</Text>
             <Text style={styles.congratsSubtitle}>
               {congratsDate === getTodayLocal()
-                ? 'Completaste todas tus actividades de hoy. Sigue así, cada pequeño paso suma.'
-                : 'Completaste todas las actividades de este día. Gran trabajo, estás construyendo hábitos poderosos.'}
+                ? t('calendar.congratsToday')
+                : t('calendar.congratsOther')}
             </Text>
             <Pressable
               style={styles.congratsButton}
               onPress={() => setCongratsVisible(false)}
             >
-              <Text style={styles.congratsButtonText}>Seguir organizando mi día</Text>
+              <Text style={styles.congratsButtonText}>
+                {t('calendar.congratsButton')}
+              </Text>
             </Pressable>
           </View>
         </View>

@@ -13,27 +13,29 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import { useI18n } from '../utils/i18n';
+import { useSettings } from '../utils/settingsContext';
 
 /* ======================
    CONSTANTES
 ====================== */
 
 const WEEK_DAYS = [
-  { key: 'mon', label: 'L' },
-  { key: 'tue', label: 'M' },
-  { key: 'wed', label: 'X' },
-  { key: 'thu', label: 'J' },
-  { key: 'fri', label: 'V' },
-  { key: 'sat', label: 'S' },
-  { key: 'sun', label: 'D' },
+  { key: 'mon', es: 'L', en: 'M' },
+  { key: 'tue', es: 'M', en: 'T' },
+  { key: 'wed', es: 'X', en: 'W' },
+  { key: 'thu', es: 'J', en: 'T' },
+  { key: 'fri', es: 'V', en: 'F' },
+  { key: 'sat', es: 'S', en: 'S' },
+  { key: 'sun', es: 'D', en: 'S' },
 ];
 
 const FREQUENCIES = [
-  { key: 'once', label: 'Una vez', icon: 'radio-button-on' },
-  { key: 'daily', label: 'Diaria', icon: 'today' },
-  { key: 'weekly', label: 'Semanal', icon: 'calendar' },
-  { key: 'monthly', label: 'Mensual', icon: 'calendar-outline' },
-  { key: 'yearly', label: 'Anual', icon: 'time' },
+  { key: 'once', icon: 'radio-button-on' },
+  { key: 'daily', icon: 'today' },
+  { key: 'weekly', icon: 'calendar' },
+  { key: 'monthly', icon: 'calendar-outline' },
+  { key: 'yearly', icon: 'time' },
 ];
 
 /* ======================
@@ -47,7 +49,10 @@ export default function HabitFormModal({
   initialSchedule,
   onSave,
   onClose,
+  onChangeHabit,
 }) {
+  const { t } = useI18n();
+  const { language } = useSettings();
   const baseDate = useMemo(() => {
     if (typeof selectedDate === 'string') {
       const [y, m, d] = selectedDate.split('-').map(Number);
@@ -166,7 +171,7 @@ export default function HabitFormModal({
                 </View>
                 <TextInput
                   style={[styles.input, { flex: 2 }]}
-                  placeholder="Producto"
+                  placeholder={t('habitForm.marketProductPlaceholder')}
                   placeholderTextColor="#9ca3af"
                   value={item.name}
                   onChangeText={(v) => {
@@ -177,7 +182,7 @@ export default function HabitFormModal({
                 />
                 <TextInput
                   style={[styles.input, { width: 60 }]}
-                  placeholder="Cant"
+                  placeholder={t('habitForm.marketQtyPlaceholder')}
                   placeholderTextColor="#9ca3af"
                   keyboardType="numeric"
                   value={item.qty}
@@ -189,7 +194,7 @@ export default function HabitFormModal({
                 />
                 <TextInput
                   style={[styles.input, { width: 70 }]}
-                  placeholder="$"
+                  placeholder={t('habitForm.marketPricePlaceholder')}
                   placeholderTextColor="#9ca3af"
                   keyboardType="numeric"
                   value={item.price}
@@ -220,7 +225,9 @@ export default function HabitFormModal({
               }
             >
               <Ionicons name="add-circle" size={20} color="#38BDF8" />
-              <Text style={styles.addTxt}>Agregar producto</Text>
+              <Text style={styles.addTxt}>
+                {t('habitForm.marketAddButton')}
+              </Text>
             </Pressable>
           </>
         );
@@ -236,7 +243,7 @@ export default function HabitFormModal({
                 </View>
                 <TextInput
                   style={[styles.input, { flex: 2 }]}
-                  placeholder="Vitamina"
+                  placeholder={t('habitForm.vitaminsNamePlaceholder')}
                   placeholderTextColor="#9ca3af"
                   value={item.name}
                   onChangeText={(v) => {
@@ -247,7 +254,7 @@ export default function HabitFormModal({
                 />
                 <TextInput
                   style={[styles.input, { width: 70 }]}
-                  placeholder="Cant"
+                  placeholder={t('habitForm.vitaminsQtyPlaceholder')}
                   placeholderTextColor="#9ca3af"
                   keyboardType="numeric"
                   value={item.qty}
@@ -278,7 +285,9 @@ export default function HabitFormModal({
               }
             >
               <Ionicons name="add-circle" size={20} color="#22c55e" />
-              <Text style={styles.addTxt}>Agregar vitamina</Text>
+              <Text style={styles.addTxt}>
+                {t('habitForm.vitaminsAddButton')}
+              </Text>
             </Pressable>
           </>
         );
@@ -291,7 +300,10 @@ export default function HabitFormModal({
 
   function handleSave() {
     if (frequency === 'weekly' && daysOfWeek.length === 0) {
-      Alert.alert('Error', 'Selecciona al menos un día de la semana');
+      Alert.alert(
+        t('habitForm.weeklyErrorTitle'),
+        t('habitForm.weeklyErrorMessage')
+      );
       return;
     }
 
@@ -328,9 +340,17 @@ export default function HabitFormModal({
               )}
             </View>
           </View>
-          <Pressable onPress={onClose}>
-            <Ionicons name="close" size={28} color="#111" />
-          </Pressable>
+          <View style={styles.headerRight}>
+            {onChangeHabit && (
+              <Pressable style={styles.changeHabitBtn} onPress={onChangeHabit}>
+                <Ionicons name="swap-horizontal" size={18} color="#2563eb" />
+                <Text style={styles.changeHabitTxt}>{t('calendar.changeHabit')}</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={onClose}>
+              <Ionicons name="close" size={28} color="#111" />
+            </Pressable>
+          </View>
         </View>
 
         <ScrollView 
@@ -339,20 +359,23 @@ export default function HabitFormModal({
         >
           {/* PERIODO */}
           <View style={styles.section}>
-            <Text style={styles.label}>📅 Periodo</Text>
+            <Text style={styles.label}>{t('habitForm.periodLabel')}</Text>
 
             <Pressable
               style={styles.box}
               onPress={() => setActivePicker('start')}
             >
-              <Text style={styles.boxLabel}>Inicio</Text>
+              <Text style={styles.boxLabel}>{t('habitForm.startLabel')}</Text>
               <View style={styles.boxRight}>
                 <Text style={styles.boxValue}>
-                  {startDate.toLocaleDateString('es-ES', {
+                  {startDate.toLocaleDateString(
+                    language === 'en' ? 'en-US' : 'es-ES',
+                    {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',
-                  })}
+                    }
+                  )}
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
               </View>
@@ -367,7 +390,9 @@ export default function HabitFormModal({
                 size={22}
                 color="#38BDF8"
               />
-              <Text style={styles.checkTxt}>¿Tiene fecha de fin?</Text>
+              <Text style={styles.checkTxt}>
+                {t('habitForm.hasEndDateQuestion')}
+              </Text>
             </Pressable>
 
             {hasEndDate && (
@@ -375,14 +400,17 @@ export default function HabitFormModal({
                 style={styles.box}
                 onPress={() => setActivePicker('end')}
               >
-                <Text style={styles.boxLabel}>Fin</Text>
+                <Text style={styles.boxLabel}>{t('habitForm.endLabel')}</Text>
                 <View style={styles.boxRight}>
                   <Text style={styles.boxValue}>
-                    {endDate.toLocaleDateString('es-ES', {
+                    {endDate.toLocaleDateString(
+                      language === 'en' ? 'en-US' : 'es-ES',
+                      {
                       day: 'numeric',
                       month: 'short',
                       year: 'numeric',
-                    })}
+                      }
+                    )}
                   </Text>
                   <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
                 </View>
@@ -396,7 +424,13 @@ export default function HabitFormModal({
                   mode="date"
                   minimumDate={activePicker === 'end' ? startDate : undefined}
                   display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                  locale={Platform.OS === 'ios' ? 'es-ES' : undefined}
+                  locale={
+                    Platform.OS === 'ios'
+                      ? language === 'en'
+                        ? 'en-US'
+                        : 'es-ES'
+                      : undefined
+                  }
                   themeVariant="light"
                   textColor={Platform.OS === 'ios' ? '#111827' : undefined}
                   onChange={(_, date) => {
@@ -435,7 +469,7 @@ export default function HabitFormModal({
 
           {/* FRECUENCIA */}
           <View style={styles.section}>
-            <Text style={styles.label}>🔁 Frecuencia</Text>
+            <Text style={styles.label}>{t('habitForm.frequencyLabel')}</Text>
 
             <View style={styles.freqGrid}>
               {FREQUENCIES.map((f) => (
@@ -450,7 +484,9 @@ export default function HabitFormModal({
                     color={frequency === f.key ? '#fff' : '#38BDF8'}
                   />
                   <Text style={[styles.freqTxt, frequency === f.key && styles.freqTxtActive]}>
-                    {f.label}
+                    {t(`habitForm.frequency${
+                      f.key.charAt(0).toUpperCase() + f.key.slice(1)
+                    }`)}
                   </Text>
                 </Pressable>
               ))}
@@ -458,7 +494,9 @@ export default function HabitFormModal({
 
             {frequency === 'weekly' && (
               <>
-                <Text style={styles.sublabel}>Selecciona los días:</Text>
+                <Text style={styles.sublabel}>
+                  {t('habitForm.weeklySelectDays')}
+                </Text>
                 <View style={styles.daysRow}>
                   {WEEK_DAYS.map((d) => (
                     <Pressable
@@ -475,7 +513,7 @@ export default function HabitFormModal({
                           daysOfWeek.includes(d.key) && styles.dayTxtActive,
                         ]}
                       >
-                        {d.label}
+                        {language === 'en' ? d.en : d.es}
                       </Text>
                     </Pressable>
                   ))}
@@ -497,10 +535,10 @@ export default function HabitFormModal({
 
           {/* NOTAS */}
           <View style={styles.section}>
-            <Text style={styles.label}>📝 Notas</Text>
+            <Text style={styles.label}>{t('habitForm.notesLabel')}</Text>
             <TextInput
               style={[styles.input, styles.textarea]}
-              placeholder="Agrega detalles adicionales..."
+              placeholder={t('habitForm.notesPlaceholder')}
               placeholderTextColor="#9ca3af"
               multiline
               numberOfLines={4}
@@ -517,7 +555,7 @@ export default function HabitFormModal({
         <View style={styles.footer}>
           <Pressable style={styles.saveBtn} onPress={handleSave}>
             <Ionicons name="checkmark-circle" size={24} color="#fff" />
-            <Text style={styles.saveTxt}>Guardar</Text>
+            <Text style={styles.saveTxt}>{t('habitForm.saveButton')}</Text>
           </Pressable>
         </View>
       </View>
@@ -560,6 +598,11 @@ const styles = StyleSheet.create({
     gap: 12,
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   icon: {
     width: 56,
     height: 56,
@@ -574,6 +617,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
     marginTop: 2,
+  },
+
+  changeHabitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#eff6ff',
+  },
+  changeHabitTxt: {
+    marginLeft: 6,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563eb',
   },
 
   // Sections

@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { supabase } from '../utils/supabase';
+import { useI18n } from '../utils/i18n';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -30,15 +31,23 @@ function capitalizeWords(text) {
 }
 
 export default function Register({ navigation }) {
+  const { t } = useI18n();
+  // Paso actual del formulario
+  const [step, setStep] = useState(1);
+
+  // Datos de perfil
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [edad, setEdad] = useState('');
   const [genero, setGenero] = useState('');
+
+  // Datos de cuenta
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] =
     useState(false);
 
+  // UI y estados
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showGenderModal, setShowGenderModal] =
@@ -101,111 +110,185 @@ export default function Register({ navigation }) {
             resizeMode="contain"
           />
 
-          <Text style={styles.title}>Crea tu cuenta</Text>
+          <Text style={styles.title}>{t('register.title')}</Text>
           <Text style={styles.subtitle}>
-            Empieza a organizar tu vida 🌱
+            {t('register.subtitle') || 'Empieza a organizar tu vida'}
           </Text>
 
-          {/* FORMULARIO */}
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre"
-            value={nombre}
-            onChangeText={setNombre}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Apellido"
-            value={apellido}
-            onChangeText={setApellido}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Edad"
-            keyboardType="numeric"
-            value={edad}
-            onChangeText={setEdad}
-          />
-
-          <View style={styles.genderField}>
-            <Text style={styles.genderLabel}>Género</Text>
-            <Pressable
-              style={styles.genderSelect}
-              onPress={() => setShowGenderModal(true)}
-            >
-              <Text
-                style={
-                  genero
-                    ? styles.genderValue
-                    : styles.genderPlaceholder
-                }
-              >
-                {genero || 'Selecciona género'}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color="#6b7280"
-              />
-            </Pressable>
-          </View>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Correo"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-
-          {/* CONTRASEÑA CON OJO */}
-          <View style={styles.passwordBox}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Contraseña"
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
+          {/* INDICADOR DE PASOS */}
+          <View style={styles.stepsRow}>
+            <View
+              style={[
+                styles.stepDot,
+                step >= 1 && styles.stepDotActive,
+              ]}
             />
-            <Pressable
-              onPress={() =>
-                setShowPassword(!showPassword)
-              }
-            >
-              <Ionicons
-                name={
-                  showPassword
-                    ? 'eye-off'
-                    : 'eye'
-                }
-                size={22}
-                color="#6b7280"
-              />
-            </Pressable>
+            <View
+              style={[
+                styles.stepLine,
+                step >= 2 && styles.stepLineActive,
+              ]}
+            />
+            <View
+              style={[
+                styles.stepDot,
+                step >= 2 && styles.stepDotActive,
+              ]}
+            />
           </View>
+          <Text style={styles.stepLabel}>
+            {step === 1
+              ? t('register.step1Title')
+              : t('register.step2Title')}
+          </Text>
+
+          {/* PASO 1: NOMBRE / APELLIDO / EDAD */}
+          {step === 1 && (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder={t('profile.firstName')}
+                value={nombre}
+                onChangeText={setNombre}
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder={t('profile.lastName')}
+                value={apellido}
+                onChangeText={setApellido}
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder={t('profile.age')}
+                keyboardType="numeric"
+                value={edad}
+                onChangeText={setEdad}
+              />
+            </>
+          )}
+
+          {/* PASO 2: GÉNERO / EMAIL / CONTRASEÑA */}
+          {step === 2 && (
+            <>
+              <View style={styles.genderField}>
+                <Text style={styles.genderLabel}>{t('profile.gender')}</Text>
+                <Pressable
+                  style={styles.genderSelect}
+                  onPress={() => setShowGenderModal(true)}
+                >
+                  <Text
+                    style={
+                      genero
+                        ? styles.genderValue
+                        : styles.genderPlaceholder
+                    }
+                  >
+                    {genero || t('profile.genderPlaceholder')}
+                  </Text>
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color="#6b7280"
+                  />
+                </Pressable>
+              </View>
+
+              <TextInput
+                style={styles.input}
+                placeholder={t('auth.emailLabel')}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
+
+              <View style={styles.passwordBox}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder={t('auth.passwordLabel')}
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <Pressable
+                  onPress={() =>
+                    setShowPassword(!showPassword)
+                  }
+                >
+                  <Ionicons
+                    name={
+                      showPassword
+                        ? 'eye-off'
+                        : 'eye'
+                    }
+                    size={22}
+                    color="#6b7280"
+                  />
+                </Pressable>
+              </View>
+            </>
+          )}
 
           {error ? (
             <Text style={styles.error}>{error}</Text>
           ) : null}
 
-          <Pressable
-            style={styles.primary}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            <Text style={styles.primaryText}>
-              {loading
-                ? 'Creando cuenta…'
-                : 'Registrarme'}
-            </Text>
-          </Pressable>
+          {/* BOTONES DE NAVEGACIÓN ENTRE PASOS */}
+          <View style={styles.actionsRow}>
+            {step > 1 && (
+              <Pressable
+                style={styles.secondary}
+                onPress={() => {
+                  setError('');
+                  setStep(step - 1);
+                }}
+                disabled={loading}
+              >
+                <Text style={styles.secondaryText}>
+                  Atrás
+                </Text>
+              </Pressable>
+            )}
+
+            {step === 1 && (
+              <Pressable
+                style={styles.primary}
+                onPress={() => {
+                  // Validación simple antes de avanzar
+                    if (!nombre.trim()) {
+                      setError(t('register.errorNameRequired') || 'Por favor, ingresa tu nombre.');
+                    return;
+                  }
+                  setError('');
+                  setStep(2);
+                }}
+              >
+                <Text style={styles.primaryText}>
+                  {t('register.next')}
+                </Text>
+              </Pressable>
+            )}
+
+            {step === 2 && (
+              <Pressable
+                style={styles.primary}
+                onPress={handleRegister}
+                disabled={loading}
+              >
+                <Text style={styles.primaryText}>
+                  {loading
+                    ? t('register.creating') || 'Creando cuenta…'
+                    : t('register.submit')}
+                </Text>
+              </Pressable>
+            )}
+          </View>
 
           <Pressable onPress={() => navigation.goBack()}>
             <Text style={styles.link}>
-              Ya tengo una cuenta
+              {t('register.goToLogin') || 'Ya tengo una cuenta'}
             </Text>
           </Pressable>
         </View>
@@ -227,7 +310,7 @@ export default function Register({ navigation }) {
             onPress={(e) => e.stopPropagation()}
           >
             <Text style={styles.modalTitle}>
-              Selecciona tu género
+              {t('register.genderModalTitle') || 'Selecciona tu género'}
             </Text>
             {genderOptions.map((option) => (
               <Pressable
@@ -285,6 +368,35 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
+  stepsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  stepDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#e5e7eb',
+  },
+  stepDotActive: {
+    backgroundColor: '#38BDF8',
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#e5e7eb',
+    marginHorizontal: 6,
+  },
+  stepLineActive: {
+    backgroundColor: '#38BDF8',
+  },
+  stepLabel: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginBottom: 12,
+  },
   input: {
     width: '100%',
     backgroundColor: '#fff',
@@ -309,8 +421,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
   },
-  primary: {
+  actionsRow: {
     width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  primary: {
+    flex: 1,
     backgroundColor: '#38BDF8',
     padding: 16,
     borderRadius: 18,
@@ -318,6 +437,22 @@ const styles = StyleSheet.create({
   },
   primaryText: {
     color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  secondary: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 18,
+    marginTop: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  secondaryText: {
+    color: '#4b5563',
     textAlign: 'center',
     fontWeight: '600',
     fontSize: 16,
