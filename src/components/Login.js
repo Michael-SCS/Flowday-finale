@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { useI18n } from '../utils/i18n';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function Login({ navigation }) {
   const { t } = useI18n();
@@ -18,6 +19,7 @@ export default function Login({ navigation }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin() {
     setError('');
@@ -62,14 +64,25 @@ export default function Login({ navigation }) {
           onChangeText={setEmail}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder={t('auth.passwordLabel')}
-          placeholderTextColor="#9ca3af"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+        <View style={styles.passwordBox}>
+          <TextInput
+            style={styles.passwordInput}
+            placeholder={t('auth.passwordLabel')}
+            placeholderTextColor="#9ca3af"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+          <Pressable
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off' : 'eye'}
+              size={22}
+              color="#6b7280"
+            />
+          </Pressable>
+        </View>
 
         {error ? (
           <Text style={styles.error}>{error}</Text>
@@ -128,6 +141,20 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     marginBottom: 12,
+  },
+  passwordBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 14,
   },
   primary: {
     width: '100%',

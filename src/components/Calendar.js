@@ -1631,7 +1631,7 @@ export default function Calendar() {
             style={StyleSheet.absoluteFill}
             onPress={() => setShowHabitModal(false)}
           />
-          <Pressable style={styles.modal} onPress={(e) => e.stopPropagation()}>
+          <View style={styles.modal}>
               <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
@@ -1716,9 +1716,6 @@ export default function Calendar() {
                         />
                       </View>
                       <Text style={styles.categoryTitle}>{displayCategory}</Text>
-                      <View style={styles.categoryCount}>
-                        <Text style={styles.categoryCountText}>{categoryHabits.length}</Text>
-                      </View>
                     </View>
 
                     <View style={styles.habitsGrid}>
@@ -1773,7 +1770,7 @@ export default function Calendar() {
                 <View style={{ height: 20 }} />
               </ScrollView>
             )}
-          </Pressable>
+          </View>
         </View>
       </Modal>
 
@@ -1948,17 +1945,20 @@ const styles = StyleSheet.create({
   },
   dateTextContainer: {
     flex: 1,
+    alignItems: 'center',
   },
   dayTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: '#111827',
-    textTransform: 'capitalize',
+    marginBottom: 4,
+    textAlign: 'center',
     letterSpacing: -0.5,
   },
-  activityCount: {
-    fontSize: 14,
+  daySubtitle: {
+    fontSize: 12,
     color: '#6b7280',
+    textAlign: 'center',
     marginTop: 3,
     fontWeight: '500',
   },
@@ -2318,8 +2318,9 @@ const styles = StyleSheet.create({
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-start',
     marginBottom: 12,
-    gap: 10,
+    gap: 8,
   },
   categoryIconContainer: {
     width: 36,
@@ -2330,11 +2331,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryTitle: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
     letterSpacing: 0.2,
+    textAlign: 'left',
   },
   categoryCount: {
     backgroundColor: '#38BDF8',
@@ -2352,12 +2353,10 @@ const styles = StyleSheet.create({
 
   // Habits Grid
   habitsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
   },
   habitItem: {
-    width: '47%',
+    width: '100%',
     borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: '#f9fafb',
@@ -2386,6 +2385,7 @@ const styles = StyleSheet.create({
   },
   habitTextContainer: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   habitTitle: {
     fontSize: 13,
@@ -2394,9 +2394,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   habitDescription: {
-    fontSize: 11,
-    color: '#6b7280',
-    lineHeight: 14,
+    fontSize: 12,
+    color: '#4b5563',
+    lineHeight: 16,
   },
 
   // Congrats Modal

@@ -162,12 +162,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 12,
+    fontSize: 16,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f9fafb',
+    width: '100%',
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 14,
