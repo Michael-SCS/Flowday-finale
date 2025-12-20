@@ -54,7 +54,7 @@ export default function PomodoroScreen() {
   );
   const [running, setRunning] = useState(false);
   const [fullScreenMode, setFullScreenMode] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(true);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [startSound, setStartSound] = useState(null);
   const [endSound, setEndSound] = useState(null);
   const [countdownActive, setCountdownActive] = useState(false);

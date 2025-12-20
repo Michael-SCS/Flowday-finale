@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
-const KEY = 'FLOWDAY_CUSTOM_HABITS';
+const KEY = 'FLUU_CUSTOM_HABITS';
 
 async function getUserKey() {
   const {

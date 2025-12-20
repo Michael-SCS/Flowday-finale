@@ -182,7 +182,7 @@ export default function ProfileScreen() {
           ]}
         >
           <Image
-            source={require('../../assets/icon.png')}
+            source={require('../../assets/mascota_saludando.png')}
             style={styles.profileAvatarImage}
             resizeMode="contain"
           />

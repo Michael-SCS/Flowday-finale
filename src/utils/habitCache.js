@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
-const CACHE_KEY_BASE = '@flowday_habit_templates';
-const CACHE_TIME_KEY_BASE = '@flowday_habit_templates_time';
+const CACHE_KEY_BASE = '@fluu_habit_templates';
+const CACHE_TIME_KEY_BASE = '@fluu_habit_templates_time';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 horas
 
 async function getUserCacheKeys() {

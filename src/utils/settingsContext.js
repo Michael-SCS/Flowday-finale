@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const THEME_KEY = 'FLOWDAY_THEME_COLOR';
-const LANG_KEY = 'FLOWDAY_LANGUAGE';
+const THEME_KEY = 'FLUU_THEME_COLOR';
+const LANG_KEY = 'FLUU_LANGUAGE';
 
 const SettingsContext = createContext({
   themeColor: 'blue',
