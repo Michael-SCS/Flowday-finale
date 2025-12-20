@@ -195,27 +195,39 @@ export default function Register({ navigation }) {
               {/* PASO 1: NOMBRE / APELLIDO / EDAD */}
               {step === 1 && (
                 <>
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('profile.firstName')}
-                    value={nombre}
-                    onChangeText={setNombre}
-                  />
+                  <View style={styles.genderField}>
+                    <Text style={styles.genderLabel}>
+                      {t('profile.firstName')}
+                    </Text>
+                    <TextInput
+                      style={styles.input}
+                      value={nombre}
+                      onChangeText={setNombre}
+                    />
+                  </View>
 
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('profile.lastName')}
-                    value={apellido}
-                    onChangeText={setApellido}
-                  />
+                  <View style={styles.genderField}>
+                    <Text style={styles.genderLabel}>
+                      {t('profile.lastName')}
+                    </Text>
+                    <TextInput
+                      style={styles.input}
+                      value={apellido}
+                      onChangeText={setApellido}
+                    />
+                  </View>
 
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('profile.age')}
-                    keyboardType="numeric"
-                    value={edad}
-                    onChangeText={setEdad}
-                  />
+                  <View style={styles.genderField}>
+                    <Text style={styles.genderLabel}>
+                      {t('profile.age')}
+                    </Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="numeric"
+                      value={edad}
+                      onChangeText={setEdad}
+                    />
+                  </View>
                 </>
               )}
 
@@ -245,38 +257,46 @@ export default function Register({ navigation }) {
                     </Pressable>
                   </View>
 
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('auth.emailLabel')}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    value={email}
-                    onChangeText={setEmail}
-                  />
-
-                  <View style={styles.passwordBox}>
+                  <View style={styles.genderField}>
+                    <Text style={styles.genderLabel}>
+                      {t('auth.emailLabel')}
+                    </Text>
                     <TextInput
-                      style={styles.passwordInput}
-                      placeholder={t('auth.passwordLabel')}
-                      secureTextEntry={!showPassword}
-                      value={password}
-                      onChangeText={setPassword}
+                      style={styles.input}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      value={email}
+                      onChangeText={setEmail}
                     />
-                    <Pressable
-                      onPress={() =>
-                        setShowPassword(!showPassword)
-                      }
-                    >
-                      <Ionicons
-                        name={
-                          showPassword
-                            ? 'eye-off'
-                            : 'eye'
-                        }
-                        size={22}
-                        color="#6b7280"
+                  </View>
+
+                  <View style={styles.genderField}>
+                    <Text style={styles.genderLabel}>
+                      {t('auth.passwordLabel')}
+                    </Text>
+                    <View style={styles.passwordBox}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        secureTextEntry={!showPassword}
+                        value={password}
+                        onChangeText={setPassword}
                       />
-                    </Pressable>
+                      <Pressable
+                        onPress={() =>
+                          setShowPassword(!showPassword)
+                        }
+                      >
+                        <Ionicons
+                          name={
+                            showPassword
+                              ? 'eye-off'
+                              : 'eye'
+                          }
+                          size={22}
+                          color="#6b7280"
+                        />
+                      </Pressable>
+                    </View>
                   </View>
                 </>
               )}
