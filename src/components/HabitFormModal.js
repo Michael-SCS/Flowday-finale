@@ -15,6 +15,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
+import { Picker } from '@react-native-picker/picker';
 
 /* ======================
    CONSTANTES
@@ -69,6 +70,10 @@ export default function HabitFormModal({
   const [daysOfWeek, setDaysOfWeek] = useState([]);
   const [description, setDescription] = useState('');
   const [formData, setFormData] = useState({});
+  const [time, setTime] = useState(null);
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [durationMinutes, setDurationMinutes] = useState(null);
+  const [durationPickerValue, setDurationPickerValue] = useState('');
 
   useEffect(() => {
     if (editingActivity && initialSchedule) {
@@ -81,12 +86,35 @@ export default function HabitFormModal({
           ? initialSchedule.daysOfWeek || []
           : []
       );
+      if (initialSchedule.time) {
+        const [h, m] = String(initialSchedule.time).split(':').map(Number);
+        const d = new Date(baseDate);
+        d.setHours(Number.isFinite(h) ? h : 0, Number.isFinite(m) ? m : 0, 0, 0);
+        setTime(d);
+      } else {
+        setTime(null);
+      }
+      if (typeof initialSchedule.durationMinutes === 'number') {
+        setDurationMinutes(initialSchedule.durationMinutes);
+        if ([10, 15, 30, 60].includes(initialSchedule.durationMinutes)) {
+          setDurationPickerValue(String(initialSchedule.durationMinutes));
+        } else {
+          setDurationPickerValue('custom');
+        }
+      } else {
+        setDurationMinutes(null);
+        setDurationPickerValue('');
+      }
     } else {
       setStartDate(baseDate);
       setEndDate(baseDate);
       setHasEndDate(false);
       setFrequency('once');
       setDaysOfWeek([]);
+      // Por defecto, usar la hora actual del dispositivo
+      setTime(new Date());
+      setDurationMinutes(null);
+      setDurationPickerValue('');
     }
     setDescription(editingActivity?.description || '');
     setFormData(editingActivity?.data || {});
@@ -164,15 +192,32 @@ export default function HabitFormModal({
         const items = value || [];
         return (
           <>
+            {items.length > 0 && (
+              <View style={styles.marketHeaderRow}>
+                <View style={{ flex: 2 }}>
+                  <Text style={styles.marketHeaderText}>
+                    {t('habitForm.marketProductPlaceholder')}
+                  </Text>
+                </View>
+                <View style={{ width: 60 }}>
+                  <Text style={styles.marketHeaderText}>
+                    {t('habitForm.marketQtyPlaceholder')}
+                  </Text>
+                </View>
+                <View style={{ width: 70 }}>
+                  <Text style={styles.marketHeaderText}>
+                    {t('habitForm.marketPricePlaceholder')}
+                  </Text>
+                </View>
+              </View>
+            )}
             {items.map((item, i) => (
               <View key={i} style={styles.marketRow}>
                 <View style={styles.marketNum}>
                   <Text style={styles.marketNumTxt}>{i + 1}</Text>
                 </View>
                 <TextInput
-                  style={[styles.input, { flex: 2 }]}
-                  placeholder={t('habitForm.marketProductPlaceholder')}
-                  placeholderTextColor="#9ca3af"
+                  style={[styles.input, styles.marketInput, { flex: 2 }]}
                   value={item.name}
                   onChangeText={(v) => {
                     const copy = [...items];
@@ -181,9 +226,7 @@ export default function HabitFormModal({
                   }}
                 />
                 <TextInput
-                  style={[styles.input, { width: 60 }]}
-                  placeholder={t('habitForm.marketQtyPlaceholder')}
-                  placeholderTextColor="#9ca3af"
+                  style={[styles.input, styles.marketInput, { width: 60 }]}
                   keyboardType="numeric"
                   value={item.qty}
                   onChangeText={(v) => {
@@ -193,9 +236,7 @@ export default function HabitFormModal({
                   }}
                 />
                 <TextInput
-                  style={[styles.input, { width: 70 }]}
-                  placeholder={t('habitForm.marketPricePlaceholder')}
-                  placeholderTextColor="#9ca3af"
+                  style={[styles.input, styles.marketInput, { width: 70 }]}
                   keyboardType="numeric"
                   value={item.price}
                   onChangeText={(v) => {
@@ -236,15 +277,27 @@ export default function HabitFormModal({
         const vitamins = value || [];
         return (
           <>
+            {vitamins.length > 0 && (
+              <View style={styles.marketHeaderRow}>
+                <View style={{ flex: 2 }}>
+                  <Text style={styles.marketHeaderText}>
+                    {t('habitForm.vitaminsNamePlaceholder')}
+                  </Text>
+                </View>
+                <View style={{ width: 70 }}>
+                  <Text style={styles.marketHeaderText}>
+                    {t('habitForm.vitaminsQtyPlaceholder')}
+                  </Text>
+                </View>
+              </View>
+            )}
             {vitamins.map((item, i) => (
               <View key={i} style={styles.marketRow}>
                 <View style={styles.marketNum}>
                   <Text style={styles.marketNumTxt}>{i + 1}</Text>
                 </View>
                 <TextInput
-                  style={[styles.input, { flex: 2 }]}
-                  placeholder={t('habitForm.vitaminsNamePlaceholder')}
-                  placeholderTextColor="#9ca3af"
+                  style={[styles.input, styles.marketInput, { flex: 2 }]}
                   value={item.name}
                   onChangeText={(v) => {
                     const copy = [...vitamins];
@@ -253,9 +306,7 @@ export default function HabitFormModal({
                   }}
                 />
                 <TextInput
-                  style={[styles.input, { width: 70 }]}
-                  placeholder={t('habitForm.vitaminsQtyPlaceholder')}
-                  placeholderTextColor="#9ca3af"
+                  style={[styles.input, styles.marketInput, { width: 70 }]}
                   keyboardType="numeric"
                   value={item.qty}
                   onChangeText={(v) => {
@@ -307,6 +358,28 @@ export default function HabitFormModal({
       return;
     }
 
+    const timeString = time
+      ? `${String(time.getHours()).padStart(2, '0')}:${String(
+          time.getMinutes()
+        ).padStart(2, '0')}`
+      : null;
+
+    const normalizedDuration =
+      typeof durationMinutes === 'number' && durationMinutes > 0
+        ? durationMinutes
+        : null;
+
+    let endTimeString = null;
+    if (time && normalizedDuration) {
+      const startTotalMinutes = time.getHours() * 60 + time.getMinutes();
+      const total = startTotalMinutes + normalizedDuration;
+      const endHour = Math.floor(total / 60) % 24;
+      const endMin = total % 60;
+      endTimeString = `${String(endHour).padStart(2, '0')}:${String(
+        endMin
+      ).padStart(2, '0')}`;
+    }
+
     onSave({
       habit,
       description,
@@ -317,6 +390,9 @@ export default function HabitFormModal({
         endDate: hasEndDate ? endDate.toISOString().split('T')[0] : null,
         frequency,
         daysOfWeek: frequency === 'weekly' ? daysOfWeek : [],
+        time: timeString,
+        durationMinutes: normalizedDuration,
+        endTime: endTimeString,
       },
     });
   }
@@ -465,6 +541,142 @@ export default function HabitFormModal({
                 />
               </View>
             )}
+          </View>
+
+          {/* HORARIO */}
+          <View style={styles.section}>
+            <Text style={styles.label}>{t('habitForm.timeLabel')}</Text>
+
+            <Pressable
+              style={styles.box}
+              onPress={() => setTimePickerVisible(true)}
+            >
+              <Text style={styles.boxLabel}>{t('habitForm.timeLabel')}</Text>
+              <View style={styles.boxRight}>
+                <Text style={styles.boxValue}>
+                  {time
+                    ? `${String(time.getHours()).padStart(2, '0')}:${String(
+                        time.getMinutes()
+                      ).padStart(2, '0')}`
+                    : t('habitForm.timeNotSet')}
+                </Text>
+                <Ionicons name="time-outline" size={18} color="#9ca3af" />
+              </View>
+            </Pressable>
+
+            {timePickerVisible && (
+              <View style={styles.picker}>
+                <DateTimePicker
+                  value={time || new Date()}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+                  locale={
+                    Platform.OS === 'ios'
+                      ? language === 'en'
+                        ? 'en-US'
+                        : 'es-ES'
+                      : undefined
+                  }
+                  themeVariant="light"
+                  textColor={Platform.OS === 'ios' ? '#111827' : undefined}
+                  onChange={(_, date) => {
+                    if (!date) {
+                      if (Platform.OS === 'android') setTimePickerVisible(false);
+                      return;
+                    }
+                    setTime(date);
+                    if (Platform.OS === 'android') setTimePickerVisible(false);
+                  }}
+                />
+              </View>
+            )}
+
+            {/* DURACIÓN */}
+            <View style={styles.durationSection}>
+              <Text style={styles.label}>{t('habitForm.durationLabel')}</Text>
+              <View style={styles.durationDropdownContainer}>
+                <Picker
+                  selectedValue={durationPickerValue}
+                  onValueChange={(value) => {
+                    setDurationPickerValue(value);
+                    if (value === '') {
+                      setDurationMinutes(null);
+                    } else if (value === 'custom') {
+                      // mantener el valor actual o dejarlo en null hasta que el usuario escriba
+                    } else {
+                      const n = parseInt(value, 10);
+                      if (!Number.isNaN(n)) {
+                        setDurationMinutes(n);
+                      }
+                    }
+                  }}
+                  dropdownIconColor="#6b7280"
+                  mode={Platform.OS === 'ios' ? 'dialog' : 'dropdown'}
+                >
+                  <Picker.Item
+                    label={t('habitForm.durationSelectPlaceholder')}
+                    value=""
+                  />
+                  <Picker.Item label="10 min" value="10" />
+                  <Picker.Item label="15 min" value="15" />
+                  <Picker.Item label="30 min" value="30" />
+                  <Picker.Item label="60 min" value="60" />
+                  <Picker.Item
+                    label={t('habitForm.durationCustom')}
+                    value="custom"
+                  />
+                </Picker>
+              </View>
+
+              {durationPickerValue === 'custom' && (
+                <View style={styles.durationCustomWrapper}>
+                  <Text style={styles.durationCustomLabel}>
+                    {t('habitForm.durationCustom')}
+                  </Text>
+                  <TextInput
+                    style={styles.durationInput}
+                    keyboardType="numeric"
+                    placeholder={t('habitForm.durationCustomPlaceholder')}
+                    placeholderTextColor="#9ca3af"
+                    value={
+                      typeof durationMinutes === 'number' &&
+                      ![10, 15, 30, 60].includes(durationMinutes)
+                        ? String(durationMinutes)
+                        : ''
+                    }
+                    onChangeText={(v) => {
+                      const n = parseInt(v, 10);
+                      if (Number.isNaN(n)) {
+                        setDurationMinutes(null);
+                      } else {
+                        setDurationMinutes(n);
+                      }
+                    }}
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* HORA FIN */}
+            <View style={styles.endTimeRow}>
+              <Text style={styles.boxLabel}>{t('habitForm.endTimeLabel')}</Text>
+              <View style={styles.boxRight}>
+                <Text style={styles.boxValue}>
+                  {time && durationMinutes && durationMinutes > 0
+                    ? (() => {
+                        const startTotal = time.getHours() * 60 + time.getMinutes();
+                        const total = startTotal + durationMinutes;
+                        const h = Math.floor(total / 60) % 24;
+                        const m = total % 60;
+                        return `${String(h).padStart(2, '0')}:${String(m).padStart(
+                          2,
+                          '0'
+                        )}`;
+                      })()
+                    : t('habitForm.timeNotSet')}
+                </Text>
+              </View>
+            </View>
           </View>
 
           {/* FRECUENCIA */}
@@ -652,6 +864,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  durationDropdownContainer: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+    backgroundColor: '#f9fafb',
+  },
+
   // Boxes
   box: {
     flexDirection: 'row',
@@ -770,6 +991,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#111',
   },
+  marketInput: {
+    borderColor: '#111827',
+  },
   textarea: {
     minHeight: 100,
     textAlignVertical: 'top',
@@ -806,23 +1030,43 @@ const styles = StyleSheet.create({
   },
 
   // Market
+  marketHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  marketHeaderText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+  },
   marketRow: {
     flexDirection: 'row',
-    gap: 8,
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 10,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   marketNum: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: '#38BDF8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   marketNumTxt: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
   },
   addBtn: {

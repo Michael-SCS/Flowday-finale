@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../utils/supabase';
+import { loadHabitTemplates } from '../utils/habitCache';
 import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
 
@@ -25,26 +25,16 @@ export default function HabitModal({ onSelect, onClose }) {
 
   async function loadHabits() {
     setLoading(true);
-
-    const { data, error } = await supabase
-      .from('habit_templates')
-      .select(`
-        id,
-        title,
-        category,
-        type,
-        icon,
-        description,
-        config
-      `)
-      .eq('is_active', true)
-      .order('order_index', { ascending: true });
-
-    if (!error && data) {
-      setHabits(data);
+    try {
+      const data = await loadHabitTemplates();
+      if (data && Array.isArray(data)) {
+        setHabits(data);
+      } else {
+        setHabits([]);
+      }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   // Agrupar por categoría

@@ -1,10 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabase';
 
 const KEY = 'FLOWDAY_CUSTOM_HABITS';
 
+async function getUserKey() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+  return `${KEY}_${user.id}`;
+}
+
 /* Obtener hábitos personalizados */
 export async function getLocalHabits() {
-  const data = await AsyncStorage.getItem(KEY);
+  const key = await getUserKey();
+  if (!key) return [];
+
+  const data = await AsyncStorage.getItem(key);
   return data ? JSON.parse(data) : [];
 }
 
@@ -19,7 +32,10 @@ export async function saveLocalHabit(habit) {
   };
 
   const updated = [...habits, newHabit];
-  await AsyncStorage.setItem(KEY, JSON.stringify(updated));
+  const key = await getUserKey();
+  if (!key) return newHabit;
+
+  await AsyncStorage.setItem(key, JSON.stringify(updated));
 
   return newHabit;
 }
@@ -28,5 +44,16 @@ export async function saveLocalHabit(habit) {
 export async function removeLocalHabit(id) {
   const habits = await getLocalHabits();
   const filtered = habits.filter(h => h.id !== id);
-  await AsyncStorage.setItem(KEY, JSON.stringify(filtered));
+  const key = await getUserKey();
+  if (!key) return;
+
+  await AsyncStorage.setItem(key, JSON.stringify(filtered));
+}
+
+// Limpiar hábitos locales del usuario actual
+export async function clearLocalHabits() {
+  const key = await getUserKey();
+  if (!key) return;
+
+  await AsyncStorage.removeItem(key);
 }

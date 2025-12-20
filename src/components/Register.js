@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { useI18n } from '../utils/i18n';
+import { useSettings } from '../utils/settingsContext';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -32,8 +33,10 @@ function capitalizeWords(text) {
 
 export default function Register({ navigation }) {
   const { t } = useI18n();
+  const { language, setLanguage } = useSettings();
   // Paso actual del formulario
   const [step, setStep] = useState(1);
+  const [languageChosen, setLanguageChosen] = useState(false);
 
   // Datos de perfil
   const [nombre, setNombre] = useState('');
@@ -50,17 +53,28 @@ export default function Register({ navigation }) {
   // UI y estados
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showGenderModal, setShowGenderModal] =
-    useState(false);
+  const [showGenderModal, setShowGenderModal] = useState(false);
 
-  const genderOptions = [
-    'Masculino',
-    'Femenino',
-    'No binario',
-    'Género fluido',
-    'Prefiero no decirlo',
-    'Otro',
-  ];
+  const genderOptions = useMemo(() => {
+    if (language === 'en') {
+      return [
+        'Male',
+        'Female',
+        'Non-binary',
+        'Gender fluid',
+        'Prefer not to say',
+        'Other',
+      ];
+    }
+    return [
+      'Masculino',
+      'Femenino',
+      'No binario',
+      'Género fluido',
+      'Prefiero no decirlo',
+      'Otro',
+    ];
+  }, [language]);
 
   async function handleRegister() {
     setError('');
@@ -87,6 +101,7 @@ export default function Register({ navigation }) {
         edad: edad ? parseInt(edad) : null,
         genero,
         email,
+        language,
       });
     }
 
@@ -110,124 +125,161 @@ export default function Register({ navigation }) {
             resizeMode="contain"
           />
 
-          <Text style={styles.title}>{t('register.title')}</Text>
-          <Text style={styles.subtitle}>
-            {t('register.subtitle') || 'Empieza a organizar tu vida'}
-          </Text>
-
-          {/* INDICADOR DE PASOS */}
-          <View style={styles.stepsRow}>
-            <View
-              style={[
-                styles.stepDot,
-                step >= 1 && styles.stepDotActive,
-              ]}
-            />
-            <View
-              style={[
-                styles.stepLine,
-                step >= 2 && styles.stepLineActive,
-              ]}
-            />
-            <View
-              style={[
-                styles.stepDot,
-                step >= 2 && styles.stepDotActive,
-              ]}
-            />
-          </View>
-          <Text style={styles.stepLabel}>
-            {step === 1
-              ? t('register.step1Title')
-              : t('register.step2Title')}
-          </Text>
-
-          {/* PASO 1: NOMBRE / APELLIDO / EDAD */}
-          {step === 1 && (
+          {!languageChosen ? (
             <>
-              <TextInput
-                style={styles.input}
-                placeholder={t('profile.firstName')}
-                value={nombre}
-                onChangeText={setNombre}
-              />
+              <Text style={styles.title}>
+                Elige tu idioma / Choose your language
+              </Text>
+              <Text style={styles.subtitle}>
+                Selecciona cómo quieres ver la app.
+              </Text>
 
-              <TextInput
-                style={styles.input}
-                placeholder={t('profile.lastName')}
-                value={apellido}
-                onChangeText={setApellido}
-              />
+              <View style={{ width: '100%', marginTop: 16 }}>
+                <Pressable
+                  style={styles.languageBtn}
+                  onPress={() => {
+                    setLanguage('es');
+                    setLanguageChosen(true);
+                    setStep(1);
+                  }}
+                >
+                  <Text style={styles.languageBtnText}>Español</Text>
+                </Pressable>
 
-              <TextInput
-                style={styles.input}
-                placeholder={t('profile.age')}
-                keyboardType="numeric"
-                value={edad}
-                onChangeText={setEdad}
-              />
+                <Pressable
+                  style={[styles.languageBtn, { marginTop: 10 }]}
+                  onPress={() => {
+                    setLanguage('en');
+                    setLanguageChosen(true);
+                    setStep(1);
+                  }}
+                >
+                  <Text style={styles.languageBtnText}>English</Text>
+                </Pressable>
+              </View>
             </>
-          )}
-
-          {/* PASO 2: GÉNERO / EMAIL / CONTRASEÑA */}
-          {step === 2 && (
+          ) : (
             <>
-              <View style={styles.genderField}>
-                <Text style={styles.genderLabel}>{t('profile.gender')}</Text>
-                <Pressable
-                  style={styles.genderSelect}
-                  onPress={() => setShowGenderModal(true)}
-                >
-                  <Text
-                    style={
-                      genero
-                        ? styles.genderValue
-                        : styles.genderPlaceholder
-                    }
-                  >
-                    {genero || t('profile.genderPlaceholder')}
-                  </Text>
-                  <Ionicons
-                    name="chevron-down"
-                    size={18}
-                    color="#6b7280"
-                  />
-                </Pressable>
-              </View>
+              <Text style={styles.title}>{t('register.title')}</Text>
+              <Text style={styles.subtitle}>
+                {t('register.subtitle') || 'Empieza a organizar tu vida'}
+              </Text>
 
-              <TextInput
-                style={styles.input}
-                placeholder={t('auth.emailLabel')}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-
-              <View style={styles.passwordBox}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder={t('auth.passwordLabel')}
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={setPassword}
+              {/* INDICADOR DE PASOS */}
+              <View style={styles.stepsRow}>
+                <View
+                  style={[
+                    styles.stepDot,
+                    step >= 1 && styles.stepDotActive,
+                  ]}
                 />
-                <Pressable
-                  onPress={() =>
-                    setShowPassword(!showPassword)
-                  }
-                >
-                  <Ionicons
-                    name={
-                      showPassword
-                        ? 'eye-off'
-                        : 'eye'
-                    }
-                    size={22}
-                    color="#6b7280"
-                  />
-                </Pressable>
+                <View
+                  style={[
+                    styles.stepLine,
+                    step >= 2 && styles.stepLineActive,
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.stepDot,
+                    step >= 2 && styles.stepDotActive,
+                  ]}
+                />
               </View>
+              <Text style={styles.stepLabel}>
+                {step === 1
+                  ? t('register.step1Title')
+                  : t('register.step2Title')}
+              </Text>
+
+              {/* PASO 1: NOMBRE / APELLIDO / EDAD */}
+              {step === 1 && (
+                <>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('profile.firstName')}
+                    value={nombre}
+                    onChangeText={setNombre}
+                  />
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('profile.lastName')}
+                    value={apellido}
+                    onChangeText={setApellido}
+                  />
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('profile.age')}
+                    keyboardType="numeric"
+                    value={edad}
+                    onChangeText={setEdad}
+                  />
+                </>
+              )}
+
+              {/* PASO 2: GÉNERO / EMAIL / CONTRASEÑA */}
+              {step === 2 && (
+                <>
+                  <View style={styles.genderField}>
+                    <Text style={styles.genderLabel}>{t('profile.gender')}</Text>
+                    <Pressable
+                      style={styles.genderSelect}
+                      onPress={() => setShowGenderModal(true)}
+                    >
+                      <Text
+                        style={
+                          genero
+                            ? styles.genderValue
+                            : styles.genderPlaceholder
+                        }
+                      >
+                        {genero || t('profile.genderPlaceholder')}
+                      </Text>
+                      <Ionicons
+                        name="chevron-down"
+                        size={18}
+                        color="#6b7280"
+                      />
+                    </Pressable>
+                  </View>
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('auth.emailLabel')}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    value={email}
+                    onChangeText={setEmail}
+                  />
+
+                  <View style={styles.passwordBox}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder={t('auth.passwordLabel')}
+                      secureTextEntry={!showPassword}
+                      value={password}
+                      onChangeText={setPassword}
+                    />
+                    <Pressable
+                      onPress={() =>
+                        setShowPassword(!showPassword)
+                      }
+                    >
+                      <Ionicons
+                        name={
+                          showPassword
+                            ? 'eye-off'
+                            : 'eye'
+                        }
+                        size={22}
+                        color="#6b7280"
+                      />
+                    </Pressable>
+                  </View>
+                </>
+              )}
             </>
           )}
 
@@ -236,55 +288,60 @@ export default function Register({ navigation }) {
           ) : null}
 
           {/* BOTONES DE NAVEGACIÓN ENTRE PASOS */}
-          <View style={styles.actionsRow}>
-            {step > 1 && (
-              <Pressable
-                style={styles.secondary}
-                onPress={() => {
-                  setError('');
-                  setStep(step - 1);
-                }}
-                disabled={loading}
-              >
-                <Text style={styles.secondaryText}>
-                  Atrás
-                </Text>
-              </Pressable>
-            )}
+          {languageChosen && (
+            <View style={styles.actionsRow}>
+              {step > 1 && (
+                <Pressable
+                  style={styles.secondary}
+                  onPress={() => {
+                    setError('');
+                    setStep(step - 1);
+                  }}
+                  disabled={loading}
+                >
+                  <Text style={styles.secondaryText}>
+                    Atrás
+                  </Text>
+                </Pressable>
+              )}
 
-            {step === 1 && (
-              <Pressable
-                style={styles.primary}
-                onPress={() => {
-                  // Validación simple antes de avanzar
+              {step === 1 && (
+                <Pressable
+                  style={styles.primary}
+                  onPress={() => {
+                    // Validación simple antes de avanzar
                     if (!nombre.trim()) {
-                      setError(t('register.errorNameRequired') || 'Por favor, ingresa tu nombre.');
-                    return;
-                  }
-                  setError('');
-                  setStep(2);
-                }}
-              >
-                <Text style={styles.primaryText}>
-                  {t('register.next')}
-                </Text>
-              </Pressable>
-            )}
+                      setError(
+                        t('register.errorNameRequired') ||
+                          'Por favor, ingresa tu nombre.'
+                      );
+                      return;
+                    }
+                    setError('');
+                    setStep(2);
+                  }}
+                >
+                  <Text style={styles.primaryText}>
+                    {t('register.next')}
+                  </Text>
+                </Pressable>
+              )}
 
-            {step === 2 && (
-              <Pressable
-                style={styles.primary}
-                onPress={handleRegister}
-                disabled={loading}
-              >
-                <Text style={styles.primaryText}>
-                  {loading
-                    ? t('register.creating') || 'Creando cuenta…'
-                    : t('register.submit')}
-                </Text>
-              </Pressable>
-            )}
-          </View>
+              {step === 2 && (
+                <Pressable
+                  style={styles.primary}
+                  onPress={handleRegister}
+                  disabled={loading}
+                >
+                  <Text style={styles.primaryText}>
+                    {loading
+                      ? t('register.creating') || 'Creando cuenta…'
+                      : t('register.submit')}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
 
           <Pressable onPress={() => navigation.goBack()}>
             <Text style={styles.link}>
@@ -467,6 +524,18 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     textAlign: 'center',
     marginBottom: 8,
+  },
+  languageBtn: {
+    width: '100%',
+    backgroundColor: '#111827',
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  languageBtnText: {
+    color: '#f9fafb',
+    fontSize: 16,
+    fontWeight: '700',
   },
   genderField: {
     width: '100%',

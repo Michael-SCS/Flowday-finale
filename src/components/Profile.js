@@ -5,6 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabase';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n, translate } from '../utils/i18n';
+import { clearLocalHabits } from '../utils/localHabits';
+import { clearActivities } from '../utils/localActivities';
+import { clearHabitCache } from '../utils/habitCache';
 
 export default function ProfileScreen() {
   const { themeColor, language, setThemeColor, setLanguage } = useSettings();
@@ -125,6 +128,8 @@ export default function ProfileScreen() {
         if (data.language) {
           setLanguage(data.language);
         }
+        // Cerrar el modal de ajustes tras guardar correctamente
+        setShowSettingsModal(false);
       }
     } catch {
       setError(t('profile.unexpectedUpdateError'));
@@ -135,6 +140,15 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
+      // Limpiar caches y datos locales asociados al usuario actual
+      try {
+        await clearHabitCache();
+        await clearLocalHabits();
+        await clearActivities();
+      } catch {
+        // ignorar errores locales de limpieza
+      }
+
       await supabase.auth.signOut();
     } catch {
       // ignorar error de logout

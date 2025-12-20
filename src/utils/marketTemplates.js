@@ -38,6 +38,10 @@ export async function saveMarketTemplate({
     .insert(itemsToInsert);
 }
 export async function getMarketTemplates() {
+  const user = (await supabase.auth.getUser()).data.user;
+
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from('market_templates')
     .select(`
@@ -49,6 +53,7 @@ export async function getMarketTemplates() {
         price
       )
     `)
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   if (error) {

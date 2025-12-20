@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle } from 'react-native-svg';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n } from '../utils/i18n';
 
@@ -28,6 +29,11 @@ const PRESETS = [
 ];
 
 const INITIAL_PRESET = PRESETS[2]; // 25 / 5
+
+const RING_RADIUS = 110;
+const RING_STROKE = 6;
+const RING_DIAMETER = RING_RADIUS * 2;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export default function PomodoroScreen() {
   const { t } = useI18n();
@@ -74,6 +80,9 @@ export default function PomodoroScreen() {
   const totalPhaseSeconds = (phase === 'work' ? workMinutes : restMinutes) * 60 || 1;
   const progressRaw = 1 - secondsRemaining / totalPhaseSeconds;
   const progress = Math.min(Math.max(progressRaw, 0), 1);
+
+  const phaseColor = phase === 'work' ? '#ef4444' : '#22c55e';
+  const strokeDashoffset = RING_CIRCUMFERENCE * (1 - progress);
 
   const totalMinutesPerSession = workMinutes + restMinutes;
   const totalPlanMinutes = totalMinutesPerSession * totalSessions;
@@ -304,6 +313,33 @@ export default function PomodoroScreen() {
         <View style={styles.fullScreenContent}>
             <View style={styles.timerCard}>
             <View style={[styles.timerCircle, { shadowColor: accent }]}>
+              <Svg
+                style={styles.progressSvg}
+                width={RING_DIAMETER}
+                height={RING_DIAMETER}
+                viewBox={`0 0 ${RING_DIAMETER} ${RING_DIAMETER}`}
+              >
+                <Circle
+                  cx={RING_RADIUS}
+                  cy={RING_RADIUS}
+                  r={RING_RADIUS}
+                  stroke="#e5e7eb"
+                  strokeWidth={RING_STROKE}
+                  fill="none"
+                />
+                <Circle
+                  cx={RING_RADIUS}
+                  cy={RING_RADIUS}
+                  r={RING_RADIUS}
+                  stroke={phaseColor}
+                  strokeWidth={RING_STROKE}
+                  fill="none"
+                  strokeDasharray={`${RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  transform={`rotate(-90 ${RING_RADIUS} ${RING_RADIUS})`}
+                />
+              </Svg>
               <View style={styles.timerInner}>
                 {countdownActive ? (
                   <>
@@ -336,15 +372,6 @@ export default function PomodoroScreen() {
                 )}
               </View>
             </View>
-
-            <View style={styles.progressBarBackground}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${progress * 100}%`, backgroundColor: accent },
-                ]}
-              />
-            </View>
           </View>
 
           <Pressable
@@ -362,6 +389,33 @@ export default function PomodoroScreen() {
       <View style={styles.mainContent}>
             <View style={styles.timerCard}>
             <View style={[styles.timerCircle, { shadowColor: accent }]}>
+              <Svg
+                style={styles.progressSvg}
+                width={RING_DIAMETER}
+                height={RING_DIAMETER}
+                viewBox={`0 0 ${RING_DIAMETER} ${RING_DIAMETER}`}
+              >
+                <Circle
+                  cx={RING_RADIUS}
+                  cy={RING_RADIUS}
+                  r={RING_RADIUS}
+                  stroke="#e5e7eb"
+                  strokeWidth={RING_STROKE}
+                  fill="none"
+                />
+                <Circle
+                  cx={RING_RADIUS}
+                  cy={RING_RADIUS}
+                  r={RING_RADIUS}
+                  stroke={phaseColor}
+                  strokeWidth={RING_STROKE}
+                  fill="none"
+                  strokeDasharray={`${RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  transform={`rotate(-90 ${RING_RADIUS} ${RING_RADIUS})`}
+                />
+              </Svg>
               <View style={styles.timerInner}>
                 <Text style={styles.timerText}>
                   {minutes}:{secs.toString().padStart(2, '0')}
@@ -384,15 +438,6 @@ export default function PomodoroScreen() {
                   </Text>
                 </View>
               </View>
-            </View>
-
-            <View style={styles.progressBarBackground}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${progress * 100}%`, backgroundColor: accent },
-                ]}
-              />
             </View>
 
             {customInvalid && (
@@ -733,6 +778,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#38BDF8',
     fontWeight: '700',
+  },
+  progressSvg: {
+    position: 'absolute',
   },
   progressBarBackground: {
     width: '100%',

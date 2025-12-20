@@ -19,7 +19,6 @@ import {
   ExpandableCalendar,
   LocaleConfig,
 } from 'react-native-calendars';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { ActivityIndicator } from 'react-native';
@@ -31,12 +30,10 @@ import VitaminsTable from './VitaminsTable';
 import { v4 as uuidv4 } from 'uuid';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n } from '../utils/i18n';
-
-/* =========================
-   CONSTANTES
-========================= */
-
-const STORAGE_KEY = 'FLOWDAY_ACTIVITIES';
+import {
+  loadActivities as loadUserActivities,
+  saveActivities as saveUserActivities,
+} from '../utils/localActivities';
 
 // Función para obtener la fecha local correctamente
 function getTodayLocal() {
@@ -56,6 +53,44 @@ const today = getTodayLocal();
 function parseLocalDate(dateString) {
   const [y, m, d] = dateString.split('-').map(Number);
   return new Date(y, m - 1, d);
+}
+
+function timeStringToMinutes(timeStr) {
+  if (!timeStr) return null;
+  const [h, m] = String(timeStr).split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
+
+function hasTimeConflictForDate(existingActivities, candidate, editingActivityId) {
+  const candidateStart = timeStringToMinutes(candidate.time);
+  if (candidateStart == null) return false;
+
+  const candidateDuration =
+    typeof candidate.durationMinutes === 'number' && candidate.durationMinutes > 0
+      ? candidate.durationMinutes
+      : 0;
+  const candidateEnd = candidateDuration > 0 ? candidateStart + candidateDuration : candidateStart;
+
+  for (const act of existingActivities) {
+    if (editingActivityId && act.id === editingActivityId) continue;
+    const otherStart = timeStringToMinutes(act.time);
+    if (otherStart == null) continue;
+
+    const otherDuration =
+      typeof act.durationMinutes === 'number' && act.durationMinutes > 0
+        ? act.durationMinutes
+        : 0;
+    const otherEnd = otherDuration > 0 ? otherStart + otherDuration : otherStart;
+
+    if (candidateDuration === 0 && otherDuration === 0) {
+      if (candidateStart === otherStart) return true;
+    } else {
+      if (candidateStart < otherEnd && candidateEnd > otherStart) return true;
+    }
+  }
+
+  return false;
 }
 
 function formatLocalDate(date) {
@@ -190,18 +225,16 @@ export default function Calendar() {
     loadHabits();
   }, []);
 
-  useEffect(() => {
-    const localeKey = language === 'en' ? 'en' : 'es';
-    LocaleConfig.defaultLocale = localeKey;
+  const localeKey = language === 'en' ? 'en' : 'es';
+  LocaleConfig.defaultLocale = localeKey;
 
-    // Asegurar que la etiqueta "Hoy/Today" del calendario
-    // también respete el idioma actual
-    if (localeKey === 'es') {
-      LocaleConfig.locales.es.today = t('calendar.todayButton');
-    } else {
-      LocaleConfig.locales.en.today = t('calendar.todayButton');
-    }
-  }, [language, t]);
+  // Asegurar que la etiqueta "Hoy/Today" del calendario
+  // también respete el idioma actual
+  if (localeKey === 'es') {
+    LocaleConfig.locales.es.today = t('calendar.todayButton');
+  } else {
+    LocaleConfig.locales.en.today = t('calendar.todayButton');
+  }
 
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -211,10 +244,11 @@ export default function Calendar() {
 
   async function loadActivities() {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setActivities(parsed);
+      const data = await loadUserActivities();
+      if (data) {
+        setActivities(data);
+      } else {
+        setActivities({});
       }
     } catch (error) {
       console.error('Error loading activities:', error);
@@ -223,10 +257,10 @@ export default function Calendar() {
 
   async function saveActivities(data) {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      await saveUserActivities(data);
       // IMPORTANTE: Actualizar el estado DESPUÉS de guardar
       setActivities({ ...data }); // Crear nuevo objeto para forzar re-render
-      console.log('💾 Estado actualizado:', Object.keys(data).length, 'fechas');
+      console.log('💾 Estado actualizado (por usuario):', Object.keys(data).length, 'fechas');
     } catch (error) {
       console.error('Error saving activities:', error);
     }
@@ -261,6 +295,25 @@ export default function Calendar() {
         const dateKey = editingActivity.date;
 
         if (updated[dateKey]) {
+          if (schedule?.time) {
+            const hasConflict = hasTimeConflictForDate(
+              updated[dateKey],
+              {
+                time: schedule.time,
+                durationMinutes: schedule.durationMinutes,
+              },
+              editingActivity.id
+            );
+
+            if (hasConflict) {
+              Alert.alert(
+                t('calendar.timeConflictTitle'),
+                t('calendar.timeConflictMessage')
+              );
+              return;
+            }
+          }
+
           updated[dateKey] = updated[dateKey].map((act) => {
             if (act.id !== editingActivity.id) return act;
             return {
@@ -269,6 +322,12 @@ export default function Calendar() {
               title: habit.title,
               icon: habit.icon,
               description: description || null,
+              time: schedule?.time ?? act.time ?? null,
+              durationMinutes:
+                typeof schedule?.durationMinutes === 'number'
+                  ? schedule.durationMinutes
+                  : act.durationMinutes ?? null,
+              endTime: schedule?.endTime ?? act.endTime ?? null,
               data: data || {},
             };
           });
@@ -348,6 +407,25 @@ export default function Calendar() {
         datesToCreate = datesToCreate.filter((d) => d <= schedule.endDate);
       }
 
+      if (schedule.time) {
+        const candidate = {
+          time: schedule.time,
+          durationMinutes: schedule.durationMinutes,
+        };
+
+        const hasConflictSomeDay = datesToCreate.some((date) =>
+          hasTimeConflictForDate(updated[date] || [], candidate, null)
+        );
+
+        if (hasConflictSomeDay) {
+          Alert.alert(
+            t('calendar.timeConflictTitle'),
+            t('calendar.timeConflictMessage')
+          );
+          return;
+        }
+      }
+
       datesToCreate.forEach((date) => {
         if (!updated[date]) updated[date] = [];
 
@@ -357,6 +435,12 @@ export default function Calendar() {
           title: habit.title,
           icon: habit.icon,
           description: description || null,
+          time: schedule.time || null,
+          durationMinutes:
+            typeof schedule.durationMinutes === 'number'
+              ? schedule.durationMinutes
+              : null,
+          endTime: schedule.endTime || null,
           data: data || {},
           date,
           completed: false,
@@ -370,7 +454,7 @@ export default function Calendar() {
     }
 
     const updated = { ...activities };
-    const { schedule, habit, description, data } = payload;
+    const { schedule, habit, description, data, allowDuplicate } = payload;
 
     let datesToCreate = [];
 
@@ -424,6 +508,56 @@ export default function Calendar() {
       datesToCreate = datesToCreate.filter((d) => d <= schedule.endDate);
     }
 
+    if (schedule.time) {
+      const candidate = {
+        time: schedule.time,
+        durationMinutes: schedule.durationMinutes,
+      };
+
+      const hasConflictSomeDay = datesToCreate.some((date) =>
+        hasTimeConflictForDate(updated[date] || [], candidate, null)
+      );
+
+      if (hasConflictSomeDay) {
+        Alert.alert(
+          t('calendar.timeConflictTitle'),
+          t('calendar.timeConflictMessage')
+        );
+        return;
+      }
+    }
+
+    // Evitar duplicar el mismo evento en el mismo día, salvo confirmación
+    if (!allowDuplicate) {
+      const hasDuplicateSameDay = datesToCreate.some((date) => {
+        const dayActs = updated[date] || [];
+        return dayActs.some((act) => act.habit_id === habit.id);
+      });
+
+      if (hasDuplicateSameDay) {
+        Alert.alert(
+          t('calendar.duplicateActivityTitle'),
+          t('calendar.duplicateActivityMessage'),
+          [
+            {
+              text: t('calendar.duplicateCancel'),
+              style: 'cancel',
+            },
+            {
+              text: t('calendar.duplicateConfirm'),
+              onPress: () =>
+                handleSaveHabit({
+                  ...payload,
+                  allowDuplicate: true,
+                }),
+            },
+          ],
+          { cancelable: true }
+        );
+        return;
+      }
+    }
+
     datesToCreate.forEach((date) => {
       if (!updated[date]) updated[date] = [];
 
@@ -433,6 +567,12 @@ export default function Calendar() {
         title: habit.title,
         icon: habit.icon,
         description: description || null,
+        time: schedule.time || null,
+        durationMinutes:
+          typeof schedule.durationMinutes === 'number'
+            ? schedule.durationMinutes
+            : null,
+        endTime: schedule.endTime || null,
         data: data || {},
         date,
         completed: false,
@@ -599,8 +739,8 @@ export default function Calendar() {
 
     // Itera sobre todas las fechas
     Object.keys(updated).forEach((date) => {
-      // Solo elimina en fechas >= a la fecha seleccionada
-      if (date >= activity.date) {
+      // Solo elimina en fechas posteriores a la seleccionada (no el mismo día)
+      if (date > activity.date) {
         const before = updated[date].length;
 
         console.log(`📅 Procesando ${date}:`);
@@ -700,7 +840,24 @@ export default function Calendar() {
       };
     }
 
-    setEditingSchedule(inferredSchedule);
+    const scheduleWithTime = inferredSchedule
+      ? {
+          ...inferredSchedule,
+          time: activity.time || null,
+          durationMinutes: activity.durationMinutes || null,
+          endTime: activity.endTime || null,
+        }
+      : {
+          startDate: parseLocalDate(activity.date),
+          endDate: null,
+          frequency: 'once',
+          daysOfWeek: [],
+          time: activity.time || null,
+          durationMinutes: activity.durationMinutes || null,
+          endTime: activity.endTime || null,
+        };
+
+    setEditingSchedule(scheduleWithTime);
     setEditingActivity(activity);
     setSelectedHabit(habitTemplate || activity);
     setShowFormModal(true);
@@ -862,6 +1019,7 @@ export default function Calendar() {
         todayButtonText={t('calendar.todayButton')}
       >
         <ExpandableCalendar
+          key={language}
           firstDay={1}
           markedDates={markedDates}
           markingType="custom"
@@ -876,29 +1034,14 @@ export default function Calendar() {
         />
 
         <View style={styles.content}>
-          <View style={styles.dateHeader}>
-            <View
-              style={[
-                styles.dateIconContainer,
-                { backgroundColor: accent, shadowColor: accent },
-              ]}
-            >
-              <Ionicons name="calendar" size={26} color="#fff" />
-            </View>
-            <View style={styles.dateTextContainer}>
-              <Text style={styles.dayTitle}>
-                {formatDate(selectedDate, language)}
-              </Text>
-              <Text style={styles.activityCount}>
-                {activities[selectedDate]?.length || 0}{' '}
-                {activities[selectedDate]?.length === 1 ? 'actividad' : 'actividades'}
-              </Text>
-            </View>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false}>
             {activities[selectedDate]?.length ? (
-              activities[selectedDate].map((activity) => {
+              [...(activities[selectedDate] || [])]
+                .sort((a, b) => {
+                  const aMin = timeStringToMinutes(a.time) ?? Number.POSITIVE_INFINITY;
+                  const bMin = timeStringToMinutes(b.time) ?? Number.POSITIVE_INFINITY;
+                  return aMin - bMin;
+                })
+                .map((activity) => {
                 // IMPORTANTE: Agregamos la fecha al objeto activity
                 const activityWithDate = {
                   ...activity,
@@ -937,6 +1080,14 @@ export default function Calendar() {
                     Array.isArray(activityWithDate.data[vitaminsKey]) &&
                     activityWithDate.data[vitaminsKey].length > 0
                   );
+
+                const timeRangeText = (() => {
+                  if (!activityWithDate.time) return null;
+                  if (activityWithDate.endTime && activityWithDate.endTime !== activityWithDate.time) {
+                    return `${activityWithDate.time} - ${activityWithDate.endTime}`;
+                  }
+                  return activityWithDate.time;
+                })();
 
                 let friendlySubtitle = null;
                 const rawTextValue = textKey
@@ -1053,6 +1204,23 @@ export default function Calendar() {
                             >
                               {activity.title}
                             </Text>
+                            {timeRangeText && (
+                              <View style={styles.cardTimeRow}>
+                                <Ionicons
+                                  name="time-outline"
+                                  size={14}
+                                  color="#f97316"
+                                />
+                                <Text
+                                  style={[
+                                    styles.cardTimeText,
+                                    isCompleted && styles.cardSubtitleCompleted,
+                                  ]}
+                                >
+                                  {timeRangeText}
+                                </Text>
+                              </View>
+                            )}
                             {friendlySubtitle && (
                               <Text
                                 style={[
@@ -1113,7 +1281,6 @@ export default function Calendar() {
               </View>
             )}
             <View style={{ height: 100 }} />
-          </ScrollView>
         </View>
       </CalendarProvider>
 
@@ -1891,6 +2058,17 @@ const styles = StyleSheet.create({
   },
   cardSubtitleCompleted: {
     color: '#16a34a',
+  },
+  cardTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  cardTimeText: {
+    fontSize: 12,
+    color: '#f97316',
+    fontWeight: '600',
   },
   cardRightActions: {
     flexDirection: 'row',
