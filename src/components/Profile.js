@@ -8,10 +8,15 @@ import { useI18n, translate } from '../utils/i18n';
 import { clearLocalHabits } from '../utils/localHabits';
 import { clearActivities } from '../utils/localActivities';
 import { clearHabitCache } from '../utils/habitCache';
+import { useTour } from '../utils/tourContext';
+import { useProStatus } from '../utils/proStatus';
+import { loadActivities as loadUserActivities } from '../utils/localActivities';
 
 export default function ProfileScreen() {
   const { themeColor, language, setThemeColor, setLanguage } = useSettings();
   const { t } = useI18n();
+  const { openTour } = useTour();
+  const { isPro } = useProStatus();
   const accent = getAccentColor(themeColor);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
@@ -21,6 +26,9 @@ export default function ProfileScreen() {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [stats, setStats] = useState(null);
 
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -93,6 +101,78 @@ export default function ProfileScreen() {
     loadProfile();
   }, []);
 
+  useEffect(() => {
+    if (isPro !== true) return;
+
+    let cancelled = false;
+    const loadStats = async () => {
+      try {
+        setStatsLoading(true);
+        const activitiesByDate = await loadUserActivities();
+
+        const today = new Date();
+        const ONE_DAY = 24 * 60 * 60 * 1000;
+
+        const dateStr = (d) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+
+        // Últimos 7 días
+        const last7Days = [];
+        for (let i = 6; i >= 0; i -= 1) {
+          const d = new Date(today.getTime() - i * ONE_DAY);
+          last7Days.push(dateStr(d));
+        }
+
+        let weekTotal = 0;
+        let weekCompleted = 0;
+        let bestDay = null;
+        let bestRatio = 0;
+
+        last7Days.forEach((ds) => {
+          const acts = activitiesByDate[ds] || [];
+          const total = acts.length;
+          const completed = acts.filter((a) => a.completed).length;
+          weekTotal += total;
+          weekCompleted += completed;
+
+          if (total > 0) {
+            const ratio = completed / total;
+            if (ratio > bestRatio) {
+              bestRatio = ratio;
+              bestDay = { date: ds, completed, total };
+            }
+          }
+        });
+
+        if (!cancelled) {
+          setStats({
+            weekTotal,
+            weekCompleted,
+            bestDay,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setStats(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setStatsLoading(false);
+        }
+      }
+    };
+
+    loadStats();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPro]);
+
   const handleSave = async () => {
     if (!profile) return;
     try {
@@ -123,12 +203,10 @@ export default function ProfileScreen() {
       if (data) {
         setProfile(data);
         const nextLanguage = data.language || languageValue || language || 'es';
-        // Mostrar el mensaje en el idioma destino que acaba de guardar
         setSuccessMessage(translate('profile.updated', nextLanguage));
         if (data.language) {
           setLanguage(data.language);
         }
-        // Cerrar el modal de ajustes tras guardar correctamente
         setShowSettingsModal(false);
       }
     } catch {
@@ -140,18 +218,15 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      // Limpiar caches y datos locales asociados al usuario actual
       try {
         await clearHabitCache();
         await clearLocalHabits();
         await clearActivities();
       } catch {
-        // ignorar errores locales de limpieza
       }
 
       await supabase.auth.signOut();
     } catch {
-      // ignorar error de logout
     }
   };
 
@@ -165,11 +240,12 @@ export default function ProfileScreen() {
           style={styles.coverImage}
           resizeMode="cover"
         />
+        <View style={styles.coverGradient} />
         <Pressable
           style={styles.coverSettingsButton}
           onPress={() => setShowSettingsModal(true)}
         >
-          <Ionicons name="settings-outline" size={22} color={accent} />
+          <Ionicons name="settings-outline" size={24} color={accent} />
         </Pressable>
       </View>
 
@@ -201,10 +277,10 @@ export default function ProfileScreen() {
         >
           {error && (
             <View style={styles.cardError}>
-              <View style={styles.errorHeader}>
-                <Ionicons name="alert-circle" size={24} color="#ef4444" />
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={styles.errorIconWrapper}>
+                <Ionicons name="alert-circle" size={32} color="#ef4444" />
               </View>
+              <Text style={styles.errorText}>{error}</Text>
               <Pressable
                 style={[
                   styles.reloadButton,
@@ -212,7 +288,7 @@ export default function ProfileScreen() {
                 ]}
                 onPress={loadProfile}
               >
-                <Ionicons name="refresh" size={18} color="#fff" />
+                <Ionicons name="refresh" size={20} color="#fff" />
                 <Text style={styles.reloadButtonText}>{t('profile.retry')}</Text>
               </Pressable>
             </View>
@@ -224,34 +300,87 @@ export default function ProfileScreen() {
                 <Text style={styles.profileName}>
                   {(profile.nombre || 'Tu nombre') + (profile.apellido ? ` ${profile.apellido}` : '')}
                 </Text>
-                <Text style={styles.profileEmail}>{profile.email}</Text>
-                <View style={styles.profileMetaRow}>
-                  {edad ? (
-                    <Text style={styles.profileMetaText}>{edad} años</Text>
-                  ) : null}
-                  {genero ? (
-                    <Text style={styles.profileMetaTextSeparator}>•</Text>
-                  ) : null}
-                  {genero ? (
-                    <Text style={styles.profileMetaText}>{genero}</Text>
-                  ) : null}
+                <View style={styles.profileEmailContainer}>
+                  <Ionicons name="mail" size={14} color="#9ca3af" />
+                  <Text style={styles.profileEmail}>{profile.email}</Text>
                 </View>
+                {(edad || genero) && (
+                  <View style={styles.profileMetaRow}>
+                    {edad ? (
+                      <View style={styles.profileMetaBadge}>
+                        <Ionicons name="calendar" size={12} color={accent} />
+                        <Text style={styles.profileMetaText}>{edad} años</Text>
+                      </View>
+                    ) : null}
+                    {genero ? (
+                      <View style={styles.profileMetaBadge}>
+                        <Ionicons name="person" size={12} color={accent} />
+                        <Text style={styles.profileMetaText}>{genero}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
                 <View style={styles.profileChipsRow}>
-                  <View style={styles.profileChip}>
+                  <View style={[styles.profileChip, { backgroundColor: `${accent}15` }]}>
                     <Ionicons name="color-palette" size={14} color={accent} />
-                    <Text style={styles.profileChipText}>
-                      {t('profile.themeChipLabel')}: {themeColor}
+                    <Text style={[styles.profileChipText, { color: accent }]}>
+                      {themeColor}
                     </Text>
                   </View>
-                  <View style={styles.profileChip}>
-                    <Ionicons name="globe-outline" size={14} color={accent} />
-                    <Text style={styles.profileChipText}>
-                      {t('profile.languageChipLabel')}: {languageValue.toUpperCase()}
+                  <View style={[styles.profileChip, { backgroundColor: `${accent}15` }]}>
+                    <Ionicons name="globe" size={14} color={accent} />
+                    <Text style={[styles.profileChipText, { color: accent }]}>
+                      {language.toUpperCase()}
                     </Text>
                   </View>
                 </View>
               </View>
-              <Text style={styles.profileHintText}>{t('profile.profileHint')}</Text>
+              <View style={styles.profileHintContainer}>
+                <Ionicons name="information-circle-outline" size={16} color="#9ca3af" />
+                <Text style={styles.profileHintText}>{t('profile.profileHint')}</Text>
+              </View>
+            </View>
+          )}
+
+          {isPro === true && (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={[styles.cardIconCircle, { backgroundColor: `${accent}20` }]}>
+                  <Ionicons name="stats-chart" size={20} color={accent} />
+                </View>
+                <Text style={styles.cardTitle}>{t('profile.proStatsTitle')}</Text>
+              </View>
+
+              {statsLoading && (
+                <View style={styles.centerContent}>
+                  <ActivityIndicator color={accent} size="small" />
+                  <Text style={styles.loadingText}>{t('profile.proStatsLoading')}</Text>
+                </View>
+              )}
+
+              {!statsLoading && (!stats || (stats.weekTotal === 0)) && (
+                <Text style={styles.profileHintText}>{t('profile.proStatsEmpty')}</Text>
+              )}
+
+              {!statsLoading && stats && stats.weekTotal > 0 && (
+                <View style={styles.fieldGroup}>
+                  <View style={styles.field}>
+                    <Text style={styles.label}>{t('profile.proStatsWeekLabel')}</Text>
+                    <Text style={styles.value}>
+                      {stats.weekCompleted} / {stats.weekTotal}
+                    </Text>
+                  </View>
+
+                  {stats.bestDay && (
+                    <View style={styles.field}>
+                      <Text style={styles.label}>{t('profile.proStatsBestDayLabel')}</Text>
+                      <Text style={styles.value}>
+                        {stats.bestDay.completed} / {stats.bestDay.total}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           )}
         </ScrollView>
@@ -264,23 +393,21 @@ export default function ProfileScreen() {
         transparent
         onRequestClose={() => setShowPolicyModal(false)}
       >
-        <View 
-          style={styles.modalOverlay}
-        >
-          <View 
-            style={styles.modalContent}
-          >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
+                <View style={[styles.modalIconCircle, { backgroundColor: `${accent}20` }]}>
                   <Ionicons name="shield-checkmark" size={24} color={accent} />
+                </View>
                 <Text style={styles.modalTitle}>{t('profile.privacyPolicy')}</Text>
               </View>
               <Pressable 
                 onPress={() => setShowPolicyModal(false)}
                 style={styles.modalClose}
               >
-                <Ionicons name="close-circle" size={28} color="#6b7280" />
+                <Ionicons name="close" size={26} color="#6b7280" />
               </Pressable>
             </View>
 
@@ -290,155 +417,151 @@ export default function ProfileScreen() {
               showsVerticalScrollIndicator
             >
               <View style={styles.policySection}>
-                <Text style={styles.modalText}>
-                  {language === 'en'
-                    ? 'This app collects and stores only the minimum information needed to offer you a personalized experience, such as your name, email address and some optional profile data. We do not request banking information or other highly sensitive data.'
-                    : 'Esta aplicación recopila y almacena únicamente la información mínima necesaria para ofrecerte una experiencia personalizada, como tu nombre, correo electrónico y algunos datos opcionales de perfil. No solicitamos información bancaria ni datos especialmente sensibles.'}
-                </Text>
+                <Text style={styles.modalText}>{t('profile.privacyIntro')}</Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>
-                  {language === 'en' ? 'Use of data' : 'Uso de datos'}
-                </Text>
+                <View style={styles.policySectionHeader}>
+                  <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
+                    <Ionicons name="shield" size={18} color={accent} />
+                  </View>
+                  <Text style={styles.policySubtitle}>
+                    {t('profile.privacyUseOfDataTitle')}
+                  </Text>
+                </View>
                 <Text style={styles.modalText}>
-                  {language === 'en'
-                    ? 'Your data is stored in specialized third-party services and is only used to:'
-                    : 'Tus datos se guardan en servicios de terceros especializados y solo se utilizan para:'}
+                  {t('profile.privacyUseOfDataText')}
                 </Text>
                 <View style={styles.bulletList}>
                   <View style={styles.bulletItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={18}
-                      color={accent}
-                    />
+                    <View style={[styles.bulletDot, { backgroundColor: accent }]} />
                     <Text style={styles.bulletText}>
-                      {language === 'en'
-                        ? 'Manage your account and authentication'
-                        : 'Gestionar tu cuenta y tu autenticación'}
+                      {t('profile.privacyUseOfDataBullet1')}
                     </Text>
                   </View>
                   <View style={styles.bulletItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={18}
-                      color={accent}
-                    />
+                    <View style={[styles.bulletDot, { backgroundColor: accent }]} />
                     <Text style={styles.bulletText}>
-                      {language === 'en'
-                        ? 'Display and personalize your profile information'
-                        : 'Mostrar y personalizar tu información de perfil'}
+                      {t('profile.privacyUseOfDataBullet2')}
                     </Text>
                   </View>
                   <View style={styles.bulletItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={18}
-                      color={accent}
-                    />
+                    <View style={[styles.bulletDot, { backgroundColor: accent }]} />
                     <Text style={styles.bulletText}>
-                      {language === 'en'
-                        ? 'Improve and maintain the features of the app'
-                        : 'Mejorar y mantener las funcionalidades de la aplicación'}
+                      {t('profile.privacyUseOfDataBullet3')}
                     </Text>
                   </View>
                 </View>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>
-                  {language === 'en' ? 'Sharing information' : 'Compartir información'}
-                </Text>
+                <View style={styles.policySectionHeader}>
+                  <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
+                    <Ionicons name="people" size={18} color={accent} />
+                  </View>
+                  <Text style={styles.policySubtitle}>
+                    {t('profile.privacySharingTitle')}
+                  </Text>
+                </View>
                 <Text style={styles.modalText}>
-                  {language === 'en'
-                    ? 'We do not share your personal information with third parties for commercial purposes. We would only share data if legally required, in response to a request from a competent authority, or to protect the security and integrity of the service and other users.'
-                    : 'No compartimos tu información personal con terceros con fines comerciales. Solo podríamos compartir datos en caso de obligación legal, requerimiento de una autoridad competente o para proteger la seguridad e integridad del servicio y de otros usuarios.'}
+                  {t('profile.privacySharingText')}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>
-                  {language === 'en'
-                    ? 'Limitation of liability'
-                    : 'Limitación de responsabilidad'}
-                </Text>
+                <View style={styles.policySectionHeader}>
+                  <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
+                    <Ionicons name="warning" size={18} color={accent} />
+                  </View>
+                  <Text style={styles.policySubtitle}>
+                    {t('profile.privacyLiabilityTitle')}
+                  </Text>
+                </View>
                 <Text style={styles.modalText}>
-                  {language === 'en'
-                    ? 'This app is provided “as is” and “as available”. Although we work to keep the service stable and secure, we cannot guarantee that it is free of errors, interruptions or data loss. Your use of the app is entirely at your own risk.'
-                    : 'Esta aplicación se ofrece "tal cual" y "según disponibilidad". Aunque trabajamos para mantener el servicio estable y seguro, no podemos garantizar que esté libre de errores, interrupciones o pérdidas de información. El uso de la aplicación es responsabilidad exclusiva del usuario.'}
+                  {t('profile.privacyLiabilityText')}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>
-                  {language === 'en'
-                    ? 'Not professional advice'
-                    : 'No es asesoramiento profesional'}
-                </Text>
+                <View style={styles.policySectionHeader}>
+                  <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
+                    <Ionicons name="medical" size={18} color={accent} />
+                  </View>
+                  <Text style={styles.policySubtitle}>
+                    {t('profile.privacyNotAdviceTitle')}
+                  </Text>
+                </View>
                 <Text style={styles.modalText}>
-                  {language === 'en'
-                    ? 'The information shown in the app is for personal organization and informational purposes only. It does not constitute medical, psychological, nutritional, financial, legal or any other type of professional advice. Always consult a qualified professional for any matter relevant to your health or personal situation.'
-                    : 'La información mostrada en la aplicación tiene un carácter meramente informativo y de organización personal. No constituye asesoramiento médico, psicológico, nutricional, financiero, jurídico ni de ningún otro tipo profesional. Ante cualquier duda relevante para tu salud o situación personal, consulta siempre con un profesional cualificado.'}
+                  {t('profile.privacyNotAdviceText')}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>
-                  {language === 'en' ? 'Your rights' : 'Tus derechos'}
-                </Text>
+                <View style={styles.policySectionHeader}>
+                  <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
+                    <Ionicons name="hand-right" size={18} color={accent} />
+                  </View>
+                  <Text style={styles.policySubtitle}>
+                    {t('profile.privacyRightsTitle')}
+                  </Text>
+                </View>
                 <Text style={styles.modalText}>
-                  {language === 'en'
-                    ? 'You can request the update or deletion of your profile data at any time. When you log out, your account remains registered, but you can contact the app support team if you want us to permanently delete your information, except where the law requires us to retain it for longer.'
-                    : 'En cualquier momento puedes solicitar la actualización o eliminación de tus datos de perfil. Al cerrar sesión, tu cuenta permanece registrada, pero puedes contactar al soporte de la aplicación si deseas que eliminemos definitivamente tu información, salvo que la ley nos obligue a conservarla durante más tiempo.'}
+                  {t('profile.privacyRightsText')}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>
-                  {language === 'en' ? 'Minors' : 'Menores de edad'}
-                </Text>
+                <View style={styles.policySectionHeader}>
+                  <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
+                    <Ionicons name="happy" size={18} color={accent} />
+                  </View>
+                  <Text style={styles.policySubtitle}>
+                    {t('profile.privacyMinorsTitle')}
+                  </Text>
+                </View>
                 <Text style={styles.modalText}>
-                  {language === 'en'
-                    ? 'If you are a minor, you must use the app with the consent and supervision of your parent or legal guardian. We do not knowingly collect personal information from minors without such consent.'
-                    : 'Si eres menor de edad, debes utilizar la aplicación con el consentimiento y supervisión de tu madre, padre o tutor legal. No recopilamos intencionadamente información personal de menores sin dicho consentimiento.'}
+                  {t('profile.privacyMinorsText')}
                 </Text>
               </View>
 
               <View style={styles.policySection}>
-                <Text style={styles.policySubtitle}>
-                  {language === 'en'
-                    ? 'Changes to this policy'
-                    : 'Cambios en la política'}
-                </Text>
+                <View style={styles.policySectionHeader}>
+                  <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
+                    <Ionicons name="sync" size={18} color={accent} />
+                  </View>
+                  <Text style={styles.policySubtitle}>
+                    {t('profile.privacyChangesTitle')}
+                  </Text>
+                </View>
                 <Text style={styles.modalText}>
-                  {language === 'en'
-                    ? 'We may update this privacy policy when necessary to reflect changes in the law, in the app, or in how we process your data. When there are important changes, we will try to notify you within the app.'
-                    : 'Podemos actualizar esta política de privacidad cuando sea necesario para reflejar cambios en la ley, en la aplicación o en la forma en que tratamos tus datos. Cuando haya cambios relevantes, procuraremos avisarte dentro de la propia aplicación.'}
+                  {t('profile.privacyChangesText')}
                 </Text>
               </View>
 
               <View style={[styles.policySection, styles.acceptanceSection]}>
-                <Text style={styles.modalText}>
-                  {language === 'en'
-                    ? 'By continuing to use the app, you declare that you have read and understood this privacy policy and that you accept the processing of your data and the limitations of liability described here.'
-                    : 'Al continuar usando la aplicación declaras haber leído y comprendido esta política de privacidad y aceptas el tratamiento de tus datos y las limitaciones de responsabilidad aquí descritas.'}
+                <View style={styles.acceptanceIconWrapper}>
+                  <Ionicons name="checkmark-circle" size={28} color={accent} />
+                </View>
+                <Text style={styles.acceptanceText}>
+                  {t('profile.privacyAcceptanceText')}
                 </Text>
               </View>
             </ScrollView>
 
-            <Pressable
-              style={[
-                styles.modalCloseButton,
-                { backgroundColor: accent, shadowColor: accent },
-              ]}
-              onPress={() => setShowPolicyModal(false)}
-            >
-              <Ionicons name="checkmark-circle" size={22} color="#fff" />
-              <Text style={styles.modalCloseButtonText}>
-                {t('profile.policyAccept')}
-              </Text>
-            </Pressable>
+            <View style={styles.modalFooter}>
+              <Pressable
+                style={[
+                  styles.modalCloseButton,
+                  { backgroundColor: accent, shadowColor: accent },
+                ]}
+                onPress={() => setShowPolicyModal(false)}
+              >
+                <Ionicons name="checkmark-circle" size={22} color="#fff" />
+                <Text style={styles.modalCloseButtonText}>
+                  {t('profile.policyAccept')}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -455,7 +578,9 @@ export default function ProfileScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
-                <Ionicons name="settings" size={24} color={accent} />
+                <View style={[styles.modalIconCircle, { backgroundColor: `${accent}20` }]}>
+                  <Ionicons name="settings" size={24} color={accent} />
+                </View>
                 <Text style={styles.modalTitle}>
                   {t('profile.settingsModalTitle')}
                 </Text>
@@ -464,7 +589,7 @@ export default function ProfileScreen() {
                 onPress={() => setShowSettingsModal(false)}
                 style={styles.modalClose}
               >
-                <Ionicons name="close-circle" size={28} color="#6b7280" />
+                <Ionicons name="close" size={26} color="#6b7280" />
               </Pressable>
             </View>
 
@@ -477,7 +602,9 @@ export default function ProfileScreen() {
               {/* CARD INFORMACIÓN */}
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <Ionicons name="information-circle" size={22} color={accent} />
+                  <View style={[styles.cardIconCircle, { backgroundColor: `${accent}20` }]}>
+                    <Ionicons name="information-circle" size={20} color={accent} />
+                  </View>
                   <Text style={styles.cardTitle}>{t('profile.personalInfo')}</Text>
                 </View>
 
@@ -513,7 +640,7 @@ export default function ProfileScreen() {
                   <View style={styles.field}>
                     <Text style={styles.label}>{t('profile.email')}</Text>
                     <View style={styles.valueWrapper}>
-                      <Ionicons name="mail-outline" size={18} color="#6b7280" />
+                      <Ionicons name="mail" size={18} color="#6b7280" />
                       <Text style={styles.value}>{profile?.email}</Text>
                     </View>
                   </View>
@@ -539,19 +666,22 @@ export default function ProfileScreen() {
                       style={styles.genderSelect}
                       onPress={() => setShowGenderModal(true)}
                     >
-                      <Text
-                        style={
-                          genero
-                            ? styles.genderValue
-                            : styles.genderPlaceholder
-                        }
-                      >
-                        {genero || t('profile.genderPlaceholder')}
-                      </Text>
+                      <View style={styles.genderSelectContent}>
+                        <Ionicons name="people-outline" size={18} color={genero ? '#111827' : '#9ca3af'} />
+                        <Text
+                          style={
+                            genero
+                              ? styles.genderValue
+                              : styles.genderPlaceholder
+                          }
+                        >
+                          {genero || t('profile.genderPlaceholder')}
+                        </Text>
+                      </View>
                       <Ionicons
                         name="chevron-down"
                         size={18}
-                        color="#6b7280"
+                        color="#9ca3af"
                       />
                     </Pressable>
                   </View>
@@ -559,7 +689,7 @@ export default function ProfileScreen() {
 
                 {successMessage && (
                   <View style={styles.successContainer}>
-                    <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                    <Ionicons name="checkmark-circle" size={24} color="#10b981" />
                     <Text style={styles.successText}>{successMessage}</Text>
                   </View>
                 )}
@@ -568,7 +698,9 @@ export default function ProfileScreen() {
               {/* CARD PERSONALIZACIÓN */}
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <Ionicons name="color-palette" size={22} color={accent} />
+                  <View style={[styles.cardIconCircle, { backgroundColor: `${accent}20` }]}>
+                    <Ionicons name="color-palette" size={20} color={accent} />
+                  </View>
                   <Text style={styles.cardTitle}>{t('profile.customization')}</Text>
                 </View>
 
@@ -589,7 +721,10 @@ export default function ProfileScreen() {
                             key={opt.key}
                             style={[
                               styles.themeOption,
-                              isActive && styles.themeOptionActive,
+                              isActive && [
+                                styles.themeOptionActive,
+                                { borderColor: opt.color, backgroundColor: `${opt.color}20` },
+                              ],
                             ]}
                             onPress={() => setThemeColor(opt.key)}
                           >
@@ -597,12 +732,13 @@ export default function ProfileScreen() {
                               style={[
                                 styles.themeColorDot,
                                 { backgroundColor: opt.color },
+                                isActive && styles.themeColorDotActive,
                               ]}
                             />
                             <Text
                               style={[
                                 styles.themeLabel,
-                                isActive && styles.themeLabelActive,
+                                isActive && [styles.themeLabelActive, { color: opt.color }],
                               ]}
                             >
                               {opt.label}
@@ -617,8 +753,10 @@ export default function ProfileScreen() {
                     <Text style={styles.label}>{t('profile.appLanguage')}</Text>
                     <View style={styles.languageRow}>
                       {[
-                        { key: 'es', label: t('profile.languageEs') },
-                        { key: 'en', label: t('profile.languageEn') },
+                        { key: 'es', label: t('profile.languageEs'), flag: '🇪🇸' },
+                        { key: 'en', label: t('profile.languageEn'), flag: '🇺🇸' },
+                        { key: 'pt', label: t('profile.languagePt'), flag: '🇧🇷' },
+                        { key: 'fr', label: t('profile.languageFr'), flag: '🇫🇷' },
                       ].map((opt) => {
                         const isActive = opt.key === languageValue;
                         return (
@@ -626,14 +764,28 @@ export default function ProfileScreen() {
                             key={opt.key}
                             style={[
                               styles.languageChip,
-                              isActive && styles.languageChipActive,
+                              isActive && [
+                                styles.languageChipActive,
+                                { borderColor: accent, backgroundColor: `${accent}20` },
+                              ],
                             ]}
-                            onPress={() => setLanguageValue(opt.key)}
+                            onPress={async () => {
+                              setLanguageValue(opt.key);
+                              setLanguage(opt.key);
+                              try {
+                                await clearHabitCache();
+                              } catch {
+                              }
+                            }}
                           >
+                            <Text style={styles.languageFlag}>{opt.flag}</Text>
                             <Text
                               style={[
                                 styles.languageChipText,
-                                isActive && styles.languageChipTextActive,
+                                isActive && [
+                                  styles.languageChipTextActive,
+                                  { color: accent },
+                                ],
                               ]}
                             >
                               {opt.label}
@@ -653,11 +805,13 @@ export default function ProfileScreen() {
                   onPress={() => setShowPolicyModal(true)}
                 >
                   <View style={styles.linkButtonContent}>
-                    <Ionicons
-                      name="shield-checkmark-outline"
-                      size={20}
-                      color={accent}
-                    />
+                    <View style={[styles.linkIconCircle, { backgroundColor: `${accent}15` }]}>
+                      <Ionicons
+                        name="shield-checkmark"
+                        size={18}
+                        color={accent}
+                      />
+                    </View>
                     <Text
                       style={[
                         styles.linkButtonText,
@@ -667,15 +821,13 @@ export default function ProfileScreen() {
                       {t('profile.privacyPolicy')}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                  <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
                 </Pressable>
-
-                <View style={styles.divider} />
 
                 <Pressable
                   style={[
                     styles.logoutButton,
-                    { borderColor: accent, backgroundColor: `${accent}20` },
+                    { borderColor: `${accent}40`, backgroundColor: `${accent}10` },
                   ]}
                   onPress={handleLogout}
                 >
@@ -706,8 +858,8 @@ export default function ProfileScreen() {
                   disabled={saving}
                 >
                   <Ionicons
-                    name={saving ? 'hourglass' : 'save'}
-                    size={20}
+                    name={saving ? 'hourglass' : 'checkmark-circle'}
+                    size={22}
                     color="#fff"
                   />
                   <Text style={styles.primaryButtonText}>
@@ -735,23 +887,40 @@ export default function ProfileScreen() {
             style={styles.genderModalContent}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={styles.genderModalTitle}>
-              {t('register.genderModalTitle') || 'Selecciona tu género'}
-            </Text>
-            {genderOptions.map((option) => (
-              <Pressable
-                key={option}
-                style={styles.genderOption}
-                onPress={() => {
-                  setGenero(option);
-                  setShowGenderModal(false);
-                }}
-              >
-                <Text style={styles.genderOptionText}>
-                  {option}
-                </Text>
-              </Pressable>
-            ))}
+            <View style={styles.genderModalHeader}>
+              <View style={[styles.genderModalIconCircle, { backgroundColor: `${accent}20` }]}>
+                <Ionicons name="people" size={24} color={accent} />
+              </View>
+              <Text style={styles.genderModalTitle}>
+                {t('register.genderModalTitle') || 'Selecciona tu género'}
+              </Text>
+            </View>
+            <View style={styles.genderOptionsContainer}>
+              {genderOptions.map((option, index) => (
+                <Pressable
+                  key={option}
+                  style={[
+                    styles.genderOption,
+                    index !== genderOptions.length - 1 && styles.genderOptionBorder,
+                    genero === option && [styles.genderOptionActive, { backgroundColor: `${accent}10` }]
+                  ]}
+                  onPress={() => {
+                    setGenero(option);
+                    setShowGenderModal(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.genderOptionText,
+                    genero === option && [styles.genderOptionTextActive, { color: accent }]
+                  ]}>
+                    {option}
+                  </Text>
+                  {genero === option && (
+                    <Ionicons name="checkmark-circle" size={20} color={accent} />
+                  )}
+                </Pressable>
+              ))}
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -763,738 +932,759 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
-    paddingHorizontal: 20,
-    paddingTop: 0,
-    paddingBottom: 16,
+    backgroundColor: '#f8fafc',
   },
 
-  // Portada
+  // Portada con gradiente
   coverContainer: {
     width: '100%',
-    height: 140,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
-    marginBottom: 48,
+    height: 180,
+    position: 'relative',
+    marginBottom: 50,
   },
   coverImage: {
     width: '100%',
     height: '100%',
   },
+  coverGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    backgroundColor: 'transparent',
+  },
   coverSettingsButton: {
     position: 'absolute',
-    right: 16,
-    top: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    right: 20,
+    top: Platform.OS === 'ios' ? 50 : 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.8)',
   },
 
+  // Avatar mejorado
   profileAvatarWrapper: {
     width: '100%',
     alignItems: 'center',
-    marginTop: -44,
-    marginBottom: 16,
-  },
-
-  // Header estilo perfil
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  headerIconContainer: {
-    width: 58,
-    height: 58,
-    borderRadius: 999,
-    backgroundColor: '#38BDF8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    marginTop: 2,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  headerSettingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  // Tarjeta resumen de perfil
-  profileSummaryCard: {
-    backgroundColor: '#fff',
-    borderRadius: 22,
-    padding: 20,
-    marginBottom: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 4,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-  },
-  profileSummaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+    marginTop: -50,
+    marginBottom: 20,
+    zIndex: 10,
   },
   profileAvatarLarge: {
-    width: 76,
-    height: 76,
-    borderRadius: 999,
-    backgroundColor: '#38BDF8',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+    borderWidth: 5,
+    borderColor: '#fff',
   },
   profileAvatarImage: {
-    width: '70%',
-    height: '70%',
-  },
-  profileSummaryTextContainer: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.4,
-  },
-  profileEmail: {
-    marginTop: 2,
-    fontSize: 13,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  profileMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-  },
-  profileMetaText: {
-    fontSize: 13,
-    color: '#4b5563',
-    fontWeight: '600',
-  },
-  profileMetaTextSeparator: {
-    fontSize: 13,
-    color: '#9ca3af',
-  },
-  profileChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
-  },
-  profileChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#f3f4f6',
-  },
-  profileChipText: {
-    fontSize: 12,
-    color: '#4b5563',
-    fontWeight: '600',
-  },
-  profileHintText: {
-    marginTop: 14,
-    fontSize: 12,
-    color: '#9ca3af',
+    width: '75%',
+    height: '75%',
   },
 
-  // Loading
+  // Loading mejorado
   centerContent: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 16,
   },
   loadingText: {
-    marginTop: 12,
-    color: '#6b7280',
-    fontSize: 15,
-    fontWeight: '500',
+    color: '#64748b',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
 
   // Scroll
   scrollContent: {
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
 
-  // Error Card
+  // Card de error mejorada
   cardError: {
-    backgroundColor: '#fef2f2',
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#fecaca',
-    gap: 16,
-  },
-  errorHeader: {
-    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
+    borderWidth: 2,
+    borderColor: '#fee2e2',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  errorIconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#fef2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   errorText: {
-    flex: 1,
-    color: '#ef4444',
+    color: '#dc2626',
     fontSize: 15,
     fontWeight: '600',
+    textAlign: 'center',
     lineHeight: 22,
   },
   reloadButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: '#38BDF8',
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
   },
   reloadButtonText: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
 
-  // Card
+  // Card resumen perfil mejorada
+  profileSummaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  profileSummaryTextContainer: {
+    gap: 8,
+  },
+  profileName: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.8,
+    marginBottom: 4,
+  },
+  profileEmailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  profileEmail: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  profileMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  profileMetaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  profileMetaText: {
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  profileChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 8,
+  },
+  profileChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  profileChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  profileHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  profileHintText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#94a3b8',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+
+  // Card mejorada
   card: {
     backgroundColor: '#fff',
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     marginBottom: 20,
     paddingBottom: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: '#f3f4f6',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  cardIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.3,
+    color: '#0f172a',
+    letterSpacing: -0.4,
   },
 
-  // Fields
+  // Fields mejorados
   fieldGroup: {
-    gap: 16,
+    gap: 18,
   },
   field: {
-    gap: 8,
-  },
-  fieldRow: {
-    flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   label: {
-    fontSize: 13,
-    color: '#6b7280',
-    fontWeight: '600',
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#fafafa',
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 12,
+    backgroundColor: '#f8fafc',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   input: {
     flex: 1,
-    color: '#111827',
+    color: '#0f172a',
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   valueWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#f9fafb',
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 12,
+    backgroundColor: '#f8fafc',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   value: {
     flex: 1,
     fontSize: 15,
-    color: '#4b5563',
-    fontWeight: '500',
-  },
-  genderChipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  genderChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
-  genderChipActive: {
-    borderColor: '#38BDF8',
-    backgroundColor: '#dbeafe',
-  },
-  genderChipText: {
-    fontSize: 13,
-    color: '#4b5563',
+    color: '#475569',
     fontWeight: '600',
   },
-  genderChipTextActive: {
-    color: '#b91c1c',
-  },
   genderSelect: {
-    marginTop: 8,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  genderValue: {
-    color: '#111827',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  genderPlaceholder: {
-    color: '#9ca3af',
-    fontSize: 15,
-  },
-  genderModalContent: {
-    width: '86%',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 18,
-  },
-  genderModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-    textAlign: 'center',
-    color: '#111827',
-  },
-  genderOption: {
-    paddingVertical: 10,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-  },
-  genderOptionText: {
-    fontSize: 15,
-    color: '#111827',
-    textAlign: 'center',
-  },
-  genderSelect: {
-    marginTop: 8,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  genderSelectContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   genderValue: {
-    color: '#111827',
+    color: '#0f172a',
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   genderPlaceholder: {
-    color: '#9ca3af',
+    color: '#94a3b8',
     fontSize: 15,
-  },
-  genderModalContent: {
-    width: '86%',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 18,
-  },
-  genderModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-    textAlign: 'center',
-    color: '#111827',
-  },
-  genderOption: {
-    paddingVertical: 10,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-  },
-  genderOptionText: {
-    fontSize: 15,
-    color: '#111827',
-    textAlign: 'center',
+    fontWeight: '500',
   },
 
-  // Success
+  // Success mejorado
   successContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 16,
-    padding: 12,
+    gap: 12,
+    marginTop: 20,
+    padding: 16,
     backgroundColor: '#f0fdf4',
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: 14,
+    borderWidth: 2,
     borderColor: '#bbf7d0',
   },
   successText: {
     flex: 1,
-    color: '#10b981',
+    color: '#16a34a',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
 
-  // Buttons
+  // Botones mejorados
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    marginTop: 20,
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 16,
-    backgroundColor: '#38BDF8',
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowRadius: 12,
+    elevation: 8,
   },
   primaryButtonFloating: {
     marginTop: 0,
-    width: '100%',
   },
   primaryButtonDisabled: {
     opacity: 0.6,
   },
   primaryButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
 
-  // Settings modal floating footer
   settingsBodyWrapper: {
     flex: 1,
   },
   settingsFloatingFooter: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: Platform.OS === 'ios' ? 24 : 16,
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    backgroundColor: '#fff',
   },
 
-  // Actions Card
+  // Actions Card mejorada
   actionsCard: {
     backgroundColor: '#fff',
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   linkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   linkButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
     flex: 1,
   },
+  linkIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   linkButtonText: {
-    color: '#111827',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   divider: {
-    height: 1.5,
-    backgroundColor: '#f3f4f6',
-    marginVertical: 12,
+    height: 1,
+    backgroundColor: '#f1f5f9',
+    marginVertical: 14,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
     borderWidth: 2,
-    borderColor: '#fecaca',
-    backgroundColor: '#fef2f2',
   },
   logoutButtonText: {
-    color: '#ef4444',
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
 
-  // Modal
+  // Modal mejorado
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
-    paddingBottom: Platform.OS === 'android' ? 24 : 0,
   },
   modalContent: {
     flex: 1,
     backgroundColor: '#fff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: '90%',
-    paddingBottom: 20,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    maxHeight: '92%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 16,
   },
   modalHeader: {
     alignItems: 'center',
-    paddingTop: 8,
-    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingHorizontal: 24,
     paddingBottom: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: '#f3f4f6',
-    position: 'relative',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   modalHandle: {
-    width: 40,
+    width: 48,
     height: 5,
-    backgroundColor: '#d1d5db',
+    backgroundColor: '#cbd5e1',
     borderRadius: 3,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   modalTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+  },
+  modalIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
+    color: '#0f172a',
+    letterSpacing: -0.6,
   },
   modalClose: {
     position: 'absolute',
-    right: 16,
-    top: 16,
+    right: 20,
+    top: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: '#f8fafc',
   },
   modalScroll: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
   modalScrollContent: {
-    paddingBottom: 28,
+    paddingBottom: 32,
   },
   policySection: {
-    marginBottom: 20,
+    marginBottom: 24,
+  },
+  policySectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  policySectionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   policySubtitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.3,
   },
   modalText: {
-    color: '#4b5563',
-    fontSize: 14,
-    lineHeight: 22,
+    color: '#475569',
+    fontSize: 15,
+    lineHeight: 24,
     fontWeight: '500',
   },
   bulletList: {
-    marginTop: 12,
-    gap: 10,
+    marginTop: 14,
+    gap: 12,
   },
   bulletItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 12,
+    paddingLeft: 4,
+  },
+  bulletDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 9,
   },
   bulletText: {
     flex: 1,
-    color: '#4b5563',
-    fontSize: 14,
-    lineHeight: 22,
+    color: '#475569',
+    fontSize: 15,
+    lineHeight: 24,
     fontWeight: '500',
   },
   acceptanceSection: {
-    backgroundColor: '#dbeafe',
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#fecdd3',
+    backgroundColor: '#f0fdf4',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#bbf7d0',
+    alignItems: 'center',
+    gap: 12,
+  },
+  acceptanceIconWrapper: {
+    marginBottom: 4,
+  },
+  acceptanceText: {
+    color: '#166534',
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  modalFooter: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    backgroundColor: '#fff',
   },
   modalCloseButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    marginHorizontal: 20,
-    marginTop: 16,
-    backgroundColor: '#38BDF8',
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 16,
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowRadius: 12,
+    elevation: 8,
   },
   modalCloseButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
+
+  // Theme options mejoradas
   themeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
+    gap: 10,
   },
   themeOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
-    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    gap: 8,
   },
   themeOptionActive: {
-    borderColor: '#e5e7eb',
-    backgroundColor: '#e5e7eb',
+    borderWidth: 2,
   },
   themeColorDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  themeColorDotActive: {
+    borderWidth: 3,
   },
   themeLabel: {
-    fontSize: 13,
-    color: '#4b5563',
+    fontSize: 14,
+    color: '#475569',
     fontWeight: '600',
   },
   themeLabelActive: {
-    color: '#1f2937',
+    fontWeight: '800',
   },
+
+  // Language options mejoradas
   languageRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
+    gap: 10,
+    flexWrap: 'wrap',
   },
   languageChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    gap: 8,
   },
   languageChipActive: {
-    borderColor: '#e5e7eb',
-    backgroundColor: '#e5e7eb',
+    borderWidth: 2,
+  },
+  languageFlag: {
+    fontSize: 18,
   },
   languageChipText: {
-    fontSize: 13,
-    color: '#4b5563',
+    fontSize: 14,
+    color: '#475569',
     fontWeight: '600',
   },
   languageChipTextActive: {
-    color: '#1f2937',
+    fontWeight: '800',
+  },
+
+  // Gender modal mejorado
+  genderModalContent: {
+    width: '88%',
+    maxWidth: 400,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  genderModalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  genderModalIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.4,
+  },
+  genderOptionsContainer: {
+    gap: 0,
+  },
+  genderOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 12,
+  },
+  genderOptionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  genderOptionActive: {
+    borderBottomWidth: 0,
+  },
+  genderOptionText: {
+    fontSize: 16,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  genderOptionTextActive: {
+    fontWeight: '800',
   },
 });

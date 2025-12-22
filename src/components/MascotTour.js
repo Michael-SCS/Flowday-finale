@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettings } from '../utils/settingsContext';
 import imgMascotaSaludando from '../../assets/mascota_saludando.png';
 import imgMascotaCalendario from '../../assets/mascota_calendario.png';
-import imgMascotaBoton from '../../assets/mascota_boton.png';
 import imgMascotaPomodoro from '../../assets/mascota_pomodoro.png';
 import imgMascotaFinal from '../../assets/mascota_final.png';
 
@@ -39,7 +38,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           text:
             'Use the floating + button at the bottom right of Calendar to create new habits and activities in a simple way.',
           tab: 'Calendario',
-          image: imgMascotaBoton,
+          image: imgMascotaCalendario,
           imageStyle: 'button',
         },
         {
@@ -82,7 +81,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           text:
             'Usa el botón flotante + que ves abajo a la derecha en el Calendario para agregar nuevos hábitos y actividades de forma sencilla.',
           tab: 'Calendario',
-          image: imgMascotaBoton,
+          image: imgMascotaCalendario,
           imageStyle: 'button',
         },
         {
@@ -118,6 +117,12 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
     } catch (e) {
       // ignore storage errors, tour will just aparecer otra vez
     }
+
+    // Al terminar el tour, vuelve siempre al Calendario
+    if (onRequestTabChange) {
+      onRequestTabChange('Calendario');
+    }
+
     if (onClose) onClose();
   }
 
@@ -215,21 +220,22 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   headerRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   mascot: {
-    width: 120,
-    height: 120,
+    width: 140,
+    height: 140,
     borderRadius: 32,
   },
   mascotButton: {
-    width: 160,
-    height: 160,
+    width: 140,
+    height: 140,
   },
   textContainer: {
-    flex: 1,
+    alignItems: 'center',
+    marginTop: 8,
   },
   title: {
     fontSize: 18,
@@ -241,6 +247,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4b5563',
     lineHeight: 20,
+    textAlign: 'center',
   },
   footerRow: {
     flexDirection: 'row',

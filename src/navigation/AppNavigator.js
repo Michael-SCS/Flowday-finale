@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 
 import CalendarScreen from '../components/Calendar';
 import PomodoroScreen from '../components/Pomodoro';
 import ProfileScreen from '../components/Profile';
+import PremiumUpsellScreen from '../components/PremiumUpsell';
 import MascotTour from '../components/MascotTour';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n } from '../utils/i18n';
 import { TourProvider } from '../utils/tourContext';
+import { useProStatus } from '../utils/proStatus';
 
 const Tab = createBottomTabNavigator();
 const TOUR_STORAGE_KEY = 'fluu_hasSeenMascotTour';
@@ -23,6 +25,7 @@ export default function TabNavigator() {
   const accent = getAccentColor(themeColor);
   const navigation = useNavigation();
   const [showTour, setShowTour] = useState(false);
+  const { isPro } = useProStatus();
 
   const tourValue = useMemo(
     () => ({
@@ -88,6 +91,19 @@ export default function TabNavigator() {
           ),
         }}
       />
+
+      {isPro === false && (
+        <Tab.Screen
+          name="Premium"
+          component={PremiumUpsellScreen}
+          options={{
+            tabBarLabel: t('premium.title'),
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons name="crown-outline" size={size} color="#FACC15" />
+            ),
+          }}
+        />
+      )}
 
       <Tab.Screen
         name="Perfil"

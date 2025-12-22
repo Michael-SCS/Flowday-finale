@@ -43,9 +43,9 @@ export default function Login({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.card}>
-        {/* LOGO */}
+        {/* IMAGEN LOGIN */}
         <Image
-          source={require('../../assets/adaptive-icon.png')}
+          source={require('../../assets/login.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -54,34 +54,36 @@ export default function Login({ navigation }) {
           {t('auth.loginSubtitle')}
         </Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder={t('auth.emailLabel')}
-          placeholderTextColor="#9ca3af"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-
-        <View style={styles.passwordBox}>
+        {/* Email */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.inputLabel}>{t('auth.emailLabel')}</Text>
           <TextInput
-            style={styles.passwordInput}
-            placeholder={t('auth.passwordLabel')}
-            placeholderTextColor="#9ca3af"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
+            style={styles.input}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
           />
-          <Pressable
-            onPress={() => setShowPassword(!showPassword)}
-          >
-            <Ionicons
-              name={showPassword ? 'eye-off' : 'eye'}
-              size={22}
-              color="#6b7280"
+        </View>
+
+        {/* Password */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.inputLabel}>{t('auth.passwordLabel')}</Text>
+          <View style={styles.passwordBox}>
+            <TextInput
+              style={styles.passwordInput}
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
             />
-          </Pressable>
+            <Pressable onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={22}
+                color="#6b7280"
+              />
+            </Pressable>
+          </View>
         </View>
 
         {error ? (
@@ -124,33 +126,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 140,
-    height: 140,
-    marginBottom: 12,
+    width: 180,
+    height: 180,
+    marginBottom: 16,
   },
   subtitle: {
     textAlign: 'center',
     color: '#6b7280',
     marginBottom: 20,
   },
+  fieldGroup: {
+    width: '100%',
+    marginBottom: 10,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 6,
+  },
   input: {
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: '#f9fafb',
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: '#e5e7eb',
     borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   passwordBox: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: '#e5e7eb',
     borderRadius: 14,
     paddingHorizontal: 14,
-    marginBottom: 12,
+    paddingVertical: 2,
   },
   passwordInput: {
     flex: 1,

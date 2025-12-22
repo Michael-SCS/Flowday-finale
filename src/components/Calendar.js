@@ -34,6 +34,7 @@ import {
   loadActivities as loadUserActivities,
   saveActivities as saveUserActivities,
 } from '../utils/localActivities';
+import { scheduleReminderForActivity } from '../utils/notifications';
 
 // Función para obtener la fecha local correctamente
 function getTodayLocal() {
@@ -140,7 +141,21 @@ function generateWeeklyDates(schedule) {
 }
 function formatDate(dateString, lang = 'es') {
   const [y, m, d] = dateString.split('-').map(Number);
-  const locale = lang === 'en' ? 'en-US' : 'es-ES';
+  let locale;
+  switch (lang) {
+    case 'en':
+      locale = 'en-US';
+      break;
+    case 'pt':
+      locale = 'pt-BR';
+      break;
+    case 'fr':
+      locale = 'fr-FR';
+      break;
+    default:
+      locale = 'es-ES';
+      break;
+  }
   return new Date(y, m - 1, d).toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
@@ -149,7 +164,7 @@ function formatDate(dateString, lang = 'es') {
 }
 
 /* =========================
-  CONFIGURACIÓN CALENDARIO (ES/EN)
+  CONFIGURACIÓN CALENDARIO (ES/EN/PT/FR)
 ========================= */
 
 LocaleConfig.locales.es = {
@@ -182,6 +197,38 @@ LocaleConfig.locales.en = {
   ],
   dayNamesShort: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
   today: 'Today',
+};
+
+LocaleConfig.locales.pt = {
+  monthNames: [
+    'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
+  ],
+  monthNamesShort: [
+    'Jan','Fev','Mar','Abr','Mai','Jun',
+    'Jul','Ago','Set','Out','Nov','Dez',
+  ],
+  dayNames: [
+    'Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado',
+  ],
+  dayNamesShort: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+  today: 'Hoje',
+};
+
+LocaleConfig.locales.fr = {
+  monthNames: [
+    'Janvier','Février','Mars','Avril','Mai','Juin',
+    'Juillet','Août','Septembre','Octobre','Novembre','Décembre',
+  ],
+  monthNamesShort: [
+    'Jan','Fév','Mar','Avr','Mai','Jun',
+    'Jul','Aoû','Sep','Oct','Nov','Déc',
+  ],
+  dayNames: [
+    'Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi',
+  ],
+  dayNamesShort: ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],
+  today: "Aujourd'hui",
 };
 
 LocaleConfig.defaultLocale = 'es';
@@ -225,15 +272,21 @@ export default function Calendar() {
     loadHabits();
   }, []);
 
-  const localeKey = language === 'en' ? 'en' : 'es';
+  // Recargar hábitos cuando cambie el idioma de la app
+  useEffect(() => {
+    loadHabits();
+  }, [language]);
+
+  // Configurar idioma del calendario según el idioma de la app
+  const localeKey = ['es', 'en', 'pt', 'fr'].includes(language)
+    ? language
+    : 'es';
   LocaleConfig.defaultLocale = localeKey;
 
-  // Asegurar que la etiqueta "Hoy/Today" del calendario
-  // también respete el idioma actual
-  if (localeKey === 'es') {
-    LocaleConfig.locales.es.today = t('calendar.todayButton');
-  } else {
-    LocaleConfig.locales.en.today = t('calendar.todayButton');
+  // Asegurar que la etiqueta "Hoy" del calendario
+  // respete el idioma actual usando las traducciones
+  if (LocaleConfig.locales[localeKey]) {
+    LocaleConfig.locales[localeKey].today = t('calendar.todayButton');
   }
 
   useEffect(() => {
@@ -269,7 +322,7 @@ export default function Calendar() {
   async function loadHabits() {
     try {
       setHabitsLoading(true);
-      const data = await loadHabitTemplates();
+      const data = await loadHabitTemplates(language);
       if (data && Array.isArray(data)) {
         setHabits(data);
       }
@@ -333,6 +386,19 @@ export default function Calendar() {
           });
 
           saveActivities(updated);
+
+          const updatedActivity = (updated[dateKey] || []).find(
+            (act) => act.id === editingActivity.id
+          );
+
+          if (updatedActivity && updatedActivity.time) {
+            scheduleReminderForActivity({
+              date: dateKey,
+              time: updatedActivity.time,
+              title: t('calendar.reminderTitle'),
+              body: `${t('calendar.reminderBodyPrefix')} ${updatedActivity.title}`,
+            });
+          }
         }
 
         setEditingActivity(null);
@@ -426,10 +492,33 @@ export default function Calendar() {
         }
       }
 
+      // Determinar solo la PRÓXIMA fecha futura para programar recordatorio,
+      // evitando inundar al usuario con una notificación por cada día de la serie.
+      let nextReminderDate = null;
+      if (schedule.time && datesToCreate.length > 0) {
+        const now = new Date();
+        const [h, m] = String(schedule.time).split(':').map(Number);
+
+        const orderedDates = [...datesToCreate].sort();
+        for (const dStr of orderedDates) {
+          const [year, month, day] = dStr.split('-').map(Number);
+          if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+            continue;
+          }
+          const target = new Date(year, month - 1, day, h, m, 0, 0);
+          const triggerTime = new Date(target.getTime() - 30 * 60 * 1000);
+
+          if (target.getTime() > now.getTime() && triggerTime.getTime() > now.getTime()) {
+            nextReminderDate = dStr;
+            break;
+          }
+        }
+      }
+
       datesToCreate.forEach((date) => {
         if (!updated[date]) updated[date] = [];
 
-        updated[date].push({
+        const newActivity = {
           id: uuidv4(),
           habit_id: habit.id,
           title: habit.title,
@@ -444,7 +533,19 @@ export default function Calendar() {
           data: data || {},
           date,
           completed: false,
-        });
+        };
+
+        updated[date].push(newActivity);
+
+        // Solo programamos notificación para la siguiente ocurrencia futura
+        if (newActivity.time && nextReminderDate && date === nextReminderDate) {
+          scheduleReminderForActivity({
+            date,
+            time: newActivity.time,
+            title: t('calendar.reminderTitle'),
+            body: `${t('calendar.reminderBodyPrefix')} ${newActivity.title}`,
+          });
+        }
       });
 
       saveActivities(updated);
@@ -527,6 +628,28 @@ export default function Calendar() {
       }
     }
 
+    // Determinar solo la PRÓXIMA fecha futura para programar recordatorio
+    let nextReminderDate = null;
+    if (schedule.time && datesToCreate.length > 0) {
+      const now = new Date();
+      const [h, m] = String(schedule.time).split(':').map(Number);
+
+      const orderedDates = [...datesToCreate].sort();
+      for (const dStr of orderedDates) {
+        const [year, month, day] = dStr.split('-').map(Number);
+        if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+          continue;
+        }
+        const target = new Date(year, month - 1, day, h, m, 0, 0);
+        const triggerTime = new Date(target.getTime() - 30 * 60 * 1000);
+
+        if (target.getTime() > now.getTime() && triggerTime.getTime() > now.getTime()) {
+          nextReminderDate = dStr;
+          break;
+        }
+      }
+    }
+
     // Evitar duplicar el mismo evento en el mismo día, salvo confirmación
     if (!allowDuplicate) {
       const hasDuplicateSameDay = datesToCreate.some((date) => {
@@ -561,7 +684,7 @@ export default function Calendar() {
     datesToCreate.forEach((date) => {
       if (!updated[date]) updated[date] = [];
 
-      updated[date].push({
+      const newActivity = {
         id: uuidv4(),
         habit_id: habit.id,
         title: habit.title,
@@ -576,7 +699,19 @@ export default function Calendar() {
         data: data || {},
         date,
         completed: false,
-      });
+      };
+
+      updated[date].push(newActivity);
+
+      // Solo programamos notificación para la siguiente ocurrencia futura
+      if (newActivity.time && nextReminderDate && date === nextReminderDate) {
+        scheduleReminderForActivity({
+          date,
+          time: newActivity.time,
+          title: t('calendar.reminderTitle'),
+          body: `${t('calendar.reminderBodyPrefix')} ${newActivity.title}`,
+        });
+      }
     });
 
     saveActivities(updated);
@@ -737,9 +872,35 @@ export default function Calendar() {
     const updated = { ...activities };
     let totalDeleted = 0;
 
-    // Itera sobre todas las fechas
+    // 1) Elimina también la actividad del día actual ("esta")
+    if (updated[activity.date]) {
+      const beforeToday = updated[activity.date].length;
+      console.log(`📅 Procesando día seleccionado ${activity.date}:`);
+      updated[activity.date].forEach(a => {
+        console.log(`  - ${a.title} (id: ${a.id}, habit_id: ${a.habit_id})`);
+      });
+
+      updated[activity.date] = updated[activity.date].filter(act => {
+        const isSame = act.id === activity.id || act.habit_id === activity.habit_id;
+        const keep = !isSame;
+        if (!keep) {
+          totalDeleted++;
+          console.log(`  🗑️ Borrando en fecha actual: ${act.title}`);
+        }
+        return keep;
+      });
+
+      const afterToday = updated[activity.date].length;
+      console.log(`   Resultado día actual: ${beforeToday} -> ${afterToday}`);
+
+      if (updated[activity.date].length === 0) {
+        delete updated[activity.date];
+      }
+    }
+
+    // 2) Itera sobre todas las fechas posteriores para borrar "las siguientes"
     Object.keys(updated).forEach((date) => {
-      // Solo elimina en fechas posteriores a la seleccionada (no el mismo día)
+      // Solo elimina en fechas posteriores a la seleccionada
       if (date > activity.date) {
         const before = updated[date].length;
 

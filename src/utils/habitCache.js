@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
-const CACHE_KEY_BASE = '@fluu_habit_templates';
-const CACHE_TIME_KEY_BASE = '@fluu_habit_templates_time';
+// v2: incluimos versión en la clave para evitar usar cache antiguo
+const CACHE_KEY_BASE = '@fluu_habit_templates_v2';
+const CACHE_TIME_KEY_BASE = '@fluu_habit_templates_time_v2';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 horas
+const SUPPORTED_LANGUAGES = ['es', 'en', 'fr', 'pt', 'de'];
 
-async function getUserCacheKeys() {
+async function getUserCacheKeys(language = 'es') {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -17,17 +19,17 @@ async function getUserCacheKeys() {
   const suffix = `_${user.id}`;
   return {
     user,
-    cacheKey: `${CACHE_KEY_BASE}${suffix}`,
-    cacheTimeKey: `${CACHE_TIME_KEY_BASE}${suffix}`,
+    cacheKey: `${CACHE_KEY_BASE}${suffix}_${language}`,
+    cacheTimeKey: `${CACHE_TIME_KEY_BASE}${suffix}_${language}`,
   };
 }
 
 /* ======================
-   OBTENER DESDE CACHE
+  OBTENER DESDE CACHE
 ====================== */
-export async function getCachedHabits() {
+export async function getCachedHabits(language = 'es') {
   try {
-    const { cacheKey } = await getUserCacheKeys();
+   const { cacheKey } = await getUserCacheKeys(language);
     if (!cacheKey) return null;
 
     const cached = await AsyncStorage.getItem(cacheKey);
@@ -41,10 +43,10 @@ export async function getCachedHabits() {
 }
 
 /* ======================
-   GUARDAR CACHE
+  GUARDAR CACHE
 ====================== */
-async function saveCache(data) {
-  const { cacheKey, cacheTimeKey } = await getUserCacheKeys();
+async function saveCache(data, language = 'es') {
+  const { cacheKey, cacheTimeKey } = await getUserCacheKeys(language);
   if (!cacheKey || !cacheTimeKey) return;
 
   await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
@@ -52,10 +54,10 @@ async function saveCache(data) {
 }
 
 /* ======================
-   SABER SI DEBE REFRESCAR
+  SABER SI DEBE REFRESCAR
 ====================== */
-async function shouldRefresh() {
-  const { cacheTimeKey } = await getUserCacheKeys();
+async function shouldRefresh(language = 'es') {
+  const { cacheTimeKey } = await getUserCacheKeys(language);
   if (!cacheTimeKey) return true;
 
   const last = await AsyncStorage.getItem(cacheTimeKey);
@@ -64,92 +66,120 @@ async function shouldRefresh() {
 }
 
 /* ======================
+   HELPERS DE CARGA REMOTA
+====================== */
+async function fetchTemplatesForLanguage(lang) {
+  const language = SUPPORTED_LANGUAGES.includes(lang) ? lang : 'en';
+
+  const { data, error } = await supabase
+    .from('habit_templates')
+    .select(`
+      id,
+      category,
+      type,
+      icon,
+      order_index,
+      config,
+      is_active,
+      habit_template_translations!inner (
+        language,
+        title,
+        description
+      )
+    `)
+    .eq('is_active', true)
+    .eq('habit_template_translations.language', language)
+    .order('order_index');
+
+  if (error || !data || data.length === 0) {
+    return [];
+  }
+
+  return data.map((row) => {
+    const translations = row.habit_template_translations || [];
+    const t = Array.isArray(translations) ? translations[0] : translations;
+
+    return {
+      id: row.id,
+      category: row.category,
+      type: row.type,
+      icon: row.icon,
+      orderIndex: row.order_index,
+      config: row.config,
+      isActive: row.is_active,
+      title: t?.title ?? '',
+      description: t?.description ?? '',
+      language: t?.language ?? language,
+    };
+  });
+}
+
+/* ======================
    CARGA OPTIMIZADA
 ====================== */
-export async function loadHabitTemplates() {
-  const { user } = await getUserCacheKeys();
+export async function loadHabitTemplates(appLanguage = 'es') {
+  const lang = SUPPORTED_LANGUAGES.includes(appLanguage) ? appLanguage : 'en';
+
+  const { user } = await getUserCacheKeys(lang);
   if (!user) return [];
 
-  // 1️⃣ DEVOLVER CACHE INMEDIATO
-  const cached = await getCachedHabits();
+  // 1️⃣ Devolver cache inmediato si existe
+  const cached = await getCachedHabits(lang);
   if (cached) {
-    // refresco en segundo plano
-    refreshInBackground();
+    refreshInBackground(lang);
     return cached;
   }
 
-  // 2️⃣ SI NO HAY CACHE, BAJAR DE SUPABASE
-  const userFilter = `user_id.eq.${user.id},user_id.is.null`;
+  // 2️⃣ Intentar con el idioma actual
+  let templates = await fetchTemplatesForLanguage(lang);
 
-  // Intento 1: plantillas por usuario o globales (user_id null)
-  const { data, error } = await supabase
-    .from('habit_templates')
-    .select('*')
-    .eq('is_active', true)
-    .or(userFilter)
-    .order('order_index');
-
-  if (!error && data && data.length > 0) {
-    await saveCache(data);
-    return data;
+  // 3️⃣ Fallback a inglés si no hay traducciones para el idioma actual
+  if (templates.length === 0 && lang !== 'en') {
+    templates = await fetchTemplatesForLanguage('en');
   }
 
-  // Fallback: tabla sin user_id o sin datos por usuario → cargar todas las activas
-  const { data: fallbackData, error: fallbackError } = await supabase
-    .from('habit_templates')
-    .select('*')
-    .eq('is_active', true)
-    .order('order_index');
-
-  if (!fallbackError && fallbackData) {
-    await saveCache(fallbackData);
-    return fallbackData;
-  }
-
-  return [];
+  await saveCache(templates, lang);
+  return templates;
 }
 
 /* ======================
    REFRESCO SILENCIOSO
 ====================== */
-async function refreshInBackground() {
-  const { user } = await getUserCacheKeys();
+async function refreshInBackground(language = 'es') {
+  const lang = SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
+
+  const { user } = await getUserCacheKeys(lang);
   if (!user) return;
 
-  const refresh = await shouldRefresh();
+  const refresh = await shouldRefresh(lang);
   if (!refresh) return;
 
-  const userFilter = `user_id.eq.${user.id},user_id.is.null`;
-
-  // Intento 1: plantillas por usuario o globales
-  const { data, error } = await supabase
-    .from('habit_templates')
-    .select('*')
-    .eq('is_active', true)
-    .or(userFilter)
-    .order('order_index');
-
-  if (!error && data && data.length > 0) {
-    await saveCache(data);
-    return;
+  let templates = await fetchTemplatesForLanguage(lang);
+  if (templates.length === 0 && lang !== 'en') {
+    templates = await fetchTemplatesForLanguage('en');
   }
 
-  // Fallback: tabla sin user_id o sin datos por usuario
-  const { data: fallbackData, error: fallbackError } = await supabase
-    .from('habit_templates')
-    .select('*')
-    .eq('is_active', true)
-    .order('order_index');
-
-  if (!fallbackError && fallbackData) {
-    await saveCache(fallbackData);
-  }
+  await saveCache(templates, lang);
 }
 
 // Limpiar cache de plantillas de hábitos del usuario actual
 export async function clearHabitCache() {
-  const { cacheKey, cacheTimeKey } = await getUserCacheKeys();
-  if (!cacheKey || !cacheTimeKey) return;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  await AsyncStorage.multiRemove([cacheKey, cacheTimeKey]);
+  if (!user) return;
+
+  const suffix = `_${user.id}`;
+  const languages = SUPPORTED_LANGUAGES;
+  const keysToRemove = [];
+
+  for (const lang of languages) {
+    keysToRemove.push(
+      `${CACHE_KEY_BASE}${suffix}_${lang}`,
+      `${CACHE_TIME_KEY_BASE}${suffix}_${lang}`,
+    );
+  }
+
+  await AsyncStorage.multiRemove(keysToRemove);
 }

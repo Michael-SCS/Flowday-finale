@@ -3,10 +3,12 @@ import { supabase } from '../utils/supabase';
 import { loadHabitTemplates } from '../utils/habitCache';
 import AppNavigator from './AppNavigator';
 import AuthNavigator from './AuthNavigator';
+import { useSettings } from '../utils/settingsContext';
 
 export default function AuthGate() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { language } = useSettings();
 
   useEffect(() => {
     // Sesión inicial (persistida)
@@ -29,10 +31,10 @@ export default function AuthGate() {
   useEffect(() => {
     if (!session) return;
 
-    loadHabitTemplates().catch(() => {
+    loadHabitTemplates(language).catch(() => {
       // si falla, simplemente se cargará más tarde desde Calendar
     });
-  }, [session]);
+  }, [session, language]);
 
   if (loading) return null;
 

@@ -35,7 +35,43 @@ export function SettingsProvider({ children }) {
           AsyncStorage.getItem(LANG_KEY),
         ]);
         if (storedTheme) setThemeColorState(storedTheme);
-        if (storedLang) setLanguageState(storedLang);
+        if (storedLang) {
+          setLanguageState(storedLang);
+        } else {
+          // Si no hay idioma guardado, detectamos el idioma del dispositivo
+          let systemLanguage = 'es';
+          try {
+            const locale =
+              typeof Intl !== 'undefined' &&
+              Intl.DateTimeFormat &&
+              Intl.DateTimeFormat().resolvedOptions().locale;
+
+            if (locale && typeof locale === 'string') {
+              const code = locale
+                .split(/[-_]/)[0]
+                .toLowerCase();
+
+              if (code === 'en') {
+                systemLanguage = 'en';
+              } else if (code === 'es') {
+                systemLanguage = 'es';
+              } else if (code === 'pt') {
+                systemLanguage = 'pt';
+              } else if (code === 'fr') {
+                systemLanguage = 'fr';
+              }
+            }
+          } catch {
+            // si falla la detección, mantenemos 'es' como valor por defecto
+          }
+
+          setLanguageState(systemLanguage);
+          try {
+            await AsyncStorage.setItem(LANG_KEY, systemLanguage);
+          } catch {
+            // ignorar error de persistencia
+          }
+        }
       } catch {
         // si falla, usamos defaults
       }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   Image,
   SafeAreaView,
   Modal,
+  Platform,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { useI18n } from '../utils/i18n';
@@ -33,10 +36,9 @@ function capitalizeWords(text) {
 
 export default function Register({ navigation }) {
   const { t } = useI18n();
-  const { language, setLanguage } = useSettings();
+  const { language } = useSettings();
   // Paso actual del formulario
   const [step, setStep] = useState(1);
-  const [languageChosen, setLanguageChosen] = useState(false);
 
   // Datos de perfil
   const [nombre, setNombre] = useState('');
@@ -54,6 +56,18 @@ export default function Register({ navigation }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [legalModalType, setLegalModalType] = useState('terms'); // 'terms' | 'privacy'
+
+  useEffect(() => {
+    if (
+      Platform.OS === 'android' &&
+      UIManager.setLayoutAnimationEnabledExperimental
+    ) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
 
   const genderOptions = useMemo(() => {
     if (language === 'en') {
@@ -118,188 +132,221 @@ export default function Register({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          {/* LOGO */}
+          {/* LOGO / MASCOTA */}
           <Image
-            source={require('../../assets/adaptive-icon.png')}
+            source={require('../../assets/mascota_saludando.png')}
             style={styles.logo}
             resizeMode="contain"
           />
 
-          {!languageChosen ? (
+          <Text style={styles.mascotWelcome}>
+            {language === 'es' && 'Kuro te da la bienvenida a Fluu 🐾'}
+            {language === 'en' && 'Kuro welcomes you to Fluu 🐾'}
+            {language === 'pt' && 'Kuro dá as boas-vindas a você no Fluu 🐾'}
+            {language === 'fr' && 'Kuro vous souhaite la bienvenue sur Fluu 🐾'}
+          </Text>
+
+          <Text style={styles.title}>{t('register.title')}</Text>
+          <Text style={styles.subtitle}>
+            {t('register.subtitle') || 'Empieza a organizar tu vida'}
+          </Text>
+
+          {/* INDICADOR DE PASOS */}
+          <View style={styles.stepsRow}>
+            <View
+              style={[
+                styles.stepDot,
+                step >= 1 && styles.stepDotActive,
+              ]}
+            />
+            <View
+              style={[
+                styles.stepLine,
+                step >= 2 && styles.stepLineActive,
+              ]}
+            />
+            <View
+              style={[
+                styles.stepDot,
+                step >= 2 && styles.stepDotActive,
+              ]}
+            />
+          </View>
+          <Text style={styles.stepLabel}>
+            {step === 1
+              ? t('register.step1Title')
+              : t('register.step2Title')}
+          </Text>
+          <Text style={styles.helperText}>
+            {step === 1
+              ? t('register.step1Helper')
+              : t('register.step2Helper')}
+          </Text>
+
+          {/* PASO 1: NOMBRE / APELLIDO / EDAD */}
+          {step === 1 && (
             <>
-              <Text style={styles.title}>
-                Elige tu idioma / Choose your language
-              </Text>
-              <Text style={styles.subtitle}>
-                Selecciona cómo quieres ver la app.
-              </Text>
+              <View style={styles.genderField}>
+                <Text style={styles.genderLabel}>
+                  {t('profile.firstName')}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={nombre}
+                  onChangeText={setNombre}
+                />
+              </View>
 
-              <View style={{ width: '100%', marginTop: 16 }}>
-                <Pressable
-                  style={styles.languageBtn}
-                  onPress={() => {
-                    setLanguage('es');
-                    setLanguageChosen(true);
-                    setStep(1);
-                  }}
-                >
-                  <Text style={styles.languageBtnText}>Español</Text>
-                </Pressable>
+              <View style={styles.genderField}>
+                <Text style={styles.genderLabel}>
+                  {t('profile.lastName')}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={apellido}
+                  onChangeText={setApellido}
+                />
+              </View>
 
-                <Pressable
-                  style={[styles.languageBtn, { marginTop: 10 }]}
-                  onPress={() => {
-                    setLanguage('en');
-                    setLanguageChosen(true);
-                    setStep(1);
-                  }}
-                >
-                  <Text style={styles.languageBtnText}>English</Text>
-                </Pressable>
+              <View style={styles.genderField}>
+                <Text style={styles.genderLabel}>
+                  {t('profile.age')}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={edad}
+                  onChangeText={setEdad}
+                />
               </View>
             </>
-          ) : (
-            <>
-              <Text style={styles.title}>{t('register.title')}</Text>
-              <Text style={styles.subtitle}>
-                {t('register.subtitle') || 'Empieza a organizar tu vida'}
-              </Text>
+          )}
 
-              {/* INDICADOR DE PASOS */}
-              <View style={styles.stepsRow}>
-                <View
-                  style={[
-                    styles.stepDot,
-                    step >= 1 && styles.stepDotActive,
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.stepLine,
-                    step >= 2 && styles.stepLineActive,
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.stepDot,
-                    step >= 2 && styles.stepDotActive,
-                  ]}
+          {/* PASO 2: GÉNERO / EMAIL / CONTRASEÑA */}
+          {step === 2 && (
+            <>
+              <View style={styles.genderField}>
+                <Text style={styles.genderLabel}>{t('profile.gender')}</Text>
+                <Pressable
+                  style={styles.genderSelect}
+                  onPress={() => setShowGenderModal(true)}
+                >
+                  <Text
+                    style={
+                      genero
+                        ? styles.genderValue
+                        : styles.genderPlaceholder
+                    }
+                  >
+                    {genero || t('profile.genderPlaceholder')}
+                  </Text>
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color="#6b7280"
+                  />
+                </Pressable>
+              </View>
+
+              <View style={styles.genderField}>
+                <Text style={styles.genderLabel}>
+                  {t('auth.emailLabel')}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
                 />
               </View>
-              <Text style={styles.stepLabel}>
-                {step === 1
-                  ? t('register.step1Title')
-                  : t('register.step2Title')}
-              </Text>
 
-              {/* PASO 1: NOMBRE / APELLIDO / EDAD */}
-              {step === 1 && (
-                <>
-                  <View style={styles.genderField}>
-                    <Text style={styles.genderLabel}>
-                      {t('profile.firstName')}
-                    </Text>
-                    <TextInput
-                      style={styles.input}
-                      value={nombre}
-                      onChangeText={setNombre}
+              <View style={styles.genderField}>
+                <Text style={styles.genderLabel}>
+                  {t('auth.passwordLabel')}
+                </Text>
+                <View style={styles.passwordBox}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                  <Pressable
+                    onPress={() =>
+                      setShowPassword(!showPassword)
+                    }
+                  >
+                    <Ionicons
+                      name={
+                        showPassword
+                          ? 'eye-off'
+                          : 'eye'
+                      }
+                      size={22}
+                      color="#6b7280"
                     />
-                  </View>
+                  </Pressable>
+                </View>
+              </View>
 
-                  <View style={styles.genderField}>
-                    <Text style={styles.genderLabel}>
-                      {t('profile.lastName')}
-                    </Text>
-                    <TextInput
-                      style={styles.input}
-                      value={apellido}
-                      onChangeText={setApellido}
+              {/* BLOQUE LEGAL: TÉRMINOS Y PRIVACIDAD */}
+              <View style={styles.legalCard}>
+                <Text style={styles.legalTitle}>
+                  {t('register.legalTitle')}
+                </Text>
+                <Text style={styles.legalNote}>
+                  {t('register.privacyShort')}
+                </Text>
+
+                <View style={styles.acceptRow}>
+                  <Pressable
+                    style={styles.checkbox}
+                    onPress={() => setAcceptedTerms(!acceptedTerms)}
+                  >
+                    <Ionicons
+                      name={
+                        acceptedTerms
+                          ? 'checkbox'
+                          : 'square-outline'
+                      }
+                      size={20}
+                      color={
+                        acceptedTerms
+                          ? '#4c1d95'
+                          : '#6b7280'
+                      }
                     />
-                  </View>
+                  </Pressable>
+                  <Text style={styles.acceptText}>
+                    {t('register.acceptLabel')}
+                  </Text>
+                </View>
 
-                  <View style={styles.genderField}>
-                    <Text style={styles.genderLabel}>
-                      {t('profile.age')}
+                <View style={styles.legalLinksRow}>
+                  <Pressable
+                    onPress={() => {
+                      setLegalModalType('terms');
+                      setShowLegalModal(true);
+                    }}
+                  >
+                    <Text style={styles.legalLink}>
+                      {t('register.viewTerms')}
                     </Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="numeric"
-                      value={edad}
-                      onChangeText={setEdad}
-                    />
-                  </View>
-                </>
-              )}
-
-              {/* PASO 2: GÉNERO / EMAIL / CONTRASEÑA */}
-              {step === 2 && (
-                <>
-                  <View style={styles.genderField}>
-                    <Text style={styles.genderLabel}>{t('profile.gender')}</Text>
-                    <Pressable
-                      style={styles.genderSelect}
-                      onPress={() => setShowGenderModal(true)}
-                    >
-                      <Text
-                        style={
-                          genero
-                            ? styles.genderValue
-                            : styles.genderPlaceholder
-                        }
-                      >
-                        {genero || t('profile.genderPlaceholder')}
-                      </Text>
-                      <Ionicons
-                        name="chevron-down"
-                        size={18}
-                        color="#6b7280"
-                      />
-                    </Pressable>
-                  </View>
-
-                  <View style={styles.genderField}>
-                    <Text style={styles.genderLabel}>
-                      {t('auth.emailLabel')}
+                  </Pressable>
+                  <Text style={styles.legalDot}>·</Text>
+                  <Pressable
+                    onPress={() => {
+                      setLegalModalType('privacy');
+                      setShowLegalModal(true);
+                    }}
+                  >
+                    <Text style={styles.legalLink}>
+                      {t('register.viewPrivacy')}
                     </Text>
-                    <TextInput
-                      style={styles.input}
-                      autoCapitalize="none"
-                      keyboardType="email-address"
-                      value={email}
-                      onChangeText={setEmail}
-                    />
-                  </View>
-
-                  <View style={styles.genderField}>
-                    <Text style={styles.genderLabel}>
-                      {t('auth.passwordLabel')}
-                    </Text>
-                    <View style={styles.passwordBox}>
-                      <TextInput
-                        style={styles.passwordInput}
-                        secureTextEntry={!showPassword}
-                        value={password}
-                        onChangeText={setPassword}
-                      />
-                      <Pressable
-                        onPress={() =>
-                          setShowPassword(!showPassword)
-                        }
-                      >
-                        <Ionicons
-                          name={
-                            showPassword
-                              ? 'eye-off'
-                              : 'eye'
-                          }
-                          size={22}
-                          color="#6b7280"
-                        />
-                      </Pressable>
-                    </View>
-                  </View>
-                </>
-              )}
+                  </Pressable>
+                </View>
+              </View>
             </>
           )}
 
@@ -307,61 +354,63 @@ export default function Register({ navigation }) {
             <Text style={styles.error}>{error}</Text>
           ) : null}
 
-          {/* BOTONES DE NAVEGACIÓN ENTRE PASOS */}
-          {languageChosen && (
-            <View style={styles.actionsRow}>
-              {step > 1 && (
-                <Pressable
-                  style={styles.secondary}
-                  onPress={() => {
-                    setError('');
-                    setStep(step - 1);
-                  }}
-                  disabled={loading}
-                >
-                  <Text style={styles.secondaryText}>
-                    Atrás
-                  </Text>
-                </Pressable>
-              )}
+          <View style={styles.actionsRow}>
+            {step === 2 && (
+              <Pressable
+                style={styles.secondary}
+                onPress={() => {
+                  LayoutAnimation.configureNext(
+                    LayoutAnimation.Presets.easeInEaseOut
+                  );
+                  setStep(1);
+                  setError('');
+                }}
+                disabled={loading}
+              >
+                <Text style={styles.secondaryText}>
+                  {t('register.back')}
+                </Text>
+              </Pressable>
+            )}
 
-              {step === 1 && (
-                <Pressable
-                  style={styles.primary}
-                  onPress={() => {
-                    // Validación simple antes de avanzar
-                    if (!nombre.trim()) {
-                      setError(
-                        t('register.errorNameRequired') ||
-                          'Por favor, ingresa tu nombre.'
+            <Pressable
+              style={[
+                styles.primary,
+                step === 2 && !acceptedTerms
+                  ? styles.primaryDisabled
+                  : null,
+              ]}
+              onPress={
+                step === 1
+                  ? () => {
+                      if (!nombre.trim()) {
+                        setError(
+                          t('register.errorNameRequired') ||
+                            'Por favor, ingresa tu nombre.'
+                        );
+                        return;
+                      }
+                      setError('');
+                      LayoutAnimation.configureNext(
+                        LayoutAnimation.Presets.easeInEaseOut
                       );
-                      return;
+                      setStep(2);
                     }
-                    setError('');
-                    setStep(2);
-                  }}
-                >
-                  <Text style={styles.primaryText}>
-                    {t('register.next')}
-                  </Text>
-                </Pressable>
-              )}
-
-              {step === 2 && (
-                <Pressable
-                  style={styles.primary}
-                  onPress={handleRegister}
-                  disabled={loading}
-                >
-                  <Text style={styles.primaryText}>
-                    {loading
-                      ? t('register.creating') || 'Creando cuenta…'
-                      : t('register.submit')}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          )}
+                  : handleRegister
+              }
+              disabled={
+                loading || (step === 2 && !acceptedTerms)
+              }
+            >
+              <Text style={styles.primaryText}>
+                {loading
+                  ? t('register.creating') || 'Creando cuenta…'
+                  : step === 1
+                  ? t('register.next')
+                  : t('register.submit')}
+              </Text>
+            </Pressable>
+          </View>
 
           <Pressable onPress={() => navigation.goBack()}>
             <Text style={styles.link}>
@@ -406,6 +455,48 @@ export default function Register({ navigation }) {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* MODAL TÉRMINOS / PRIVACIDAD */}
+      <Modal
+        visible={showLegalModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLegalModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowLegalModal(false)}
+        >
+          <Pressable
+            style={[styles.modalContent, { maxHeight: '75%' }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.modalTitle}>
+              {legalModalType === 'terms'
+                ? t('register.legalModalTermsTitle')
+                : t('register.legalModalPrivacyTitle')}
+            </Text>
+            <KeyboardAwareScrollView
+              style={{ maxHeight: '70%' }}
+              showsVerticalScrollIndicator
+            >
+              <Text style={styles.modalBodyText}>
+                {legalModalType === 'terms'
+                  ? t('register.termsContent')
+                  : t('register.privacyContent')}
+              </Text>
+            </KeyboardAwareScrollView>
+            <Pressable
+              style={styles.modalPrimary}
+              onPress={() => setShowLegalModal(false)}
+            >
+              <Text style={styles.modalPrimaryText}>
+                {t('profile.policyAccept')}
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -434,6 +525,12 @@ const styles = StyleSheet.create({
   logo: {
     width: 130,
     height: 130,
+    marginBottom: 4,
+  },
+  mascotWelcome: {
+    fontSize: 14,
+    color: '#4b5563',
+    textAlign: 'center',
     marginBottom: 8,
   },
   title: {
@@ -472,7 +569,13 @@ const styles = StyleSheet.create({
   stepLabel: {
     fontSize: 13,
     color: '#6b7280',
+    marginBottom: 4,
+  },
+  helperText: {
+    fontSize: 13,
+    color: '#9ca3af',
     marginBottom: 12,
+    textAlign: 'center',
   },
   input: {
     width: '100%',
@@ -511,6 +614,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 18,
     marginTop: 8,
+  },
+  primaryDisabled: {
+    opacity: 0.6,
   },
   primaryText: {
     color: '#fff',
@@ -642,5 +748,100 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#111827',
     textAlign: 'center',
+  },
+  legalCard: {
+    width: '100%',
+    marginTop: 4,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: '#f5f3ff',
+    borderWidth: 1,
+    borderColor: '#e0e7ff',
+  },
+  legalTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4c1d95',
+    marginBottom: 4,
+  },
+  legalRecommended: {
+    fontSize: 12,
+    color: '#6b21a8',
+    marginBottom: 6,
+  },
+  legalDescription: {
+    fontSize: 12,
+    color: '#4b5563',
+    marginBottom: 4,
+  },
+  legalBulletRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  legalBulletIconCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#eef2ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  legalBulletText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#374151',
+  },
+  legalNote: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginTop: 6,
+  },
+  acceptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  checkbox: {
+    marginRight: 8,
+  },
+  acceptText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#4b5563',
+  },
+  legalLinksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    flexWrap: 'wrap',
+  },
+  legalLink: {
+    fontSize: 11,
+    color: '#4c1d95',
+    fontWeight: '600',
+  },
+  legalDot: {
+    marginHorizontal: 6,
+    color: '#9ca3af',
+  },
+  modalBodyText: {
+    fontSize: 13,
+    color: '#4b5563',
+    lineHeight: 20,
+  },
+  modalPrimary: {
+    backgroundColor: '#38BDF8',
+    paddingVertical: 14,
+    borderRadius: 18,
+    marginTop: 12,
+  },
+  modalPrimaryText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
+    fontSize: 15,
   },
 });

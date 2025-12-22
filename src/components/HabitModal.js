@@ -21,12 +21,12 @@ export default function HabitModal({ onSelect, onClose }) {
 
   useEffect(() => {
     loadHabits();
-  }, []);
+  }, [language]);
 
   async function loadHabits() {
     setLoading(true);
     try {
-      const data = await loadHabitTemplates();
+      const data = await loadHabitTemplates(language);
       if (data && Array.isArray(data)) {
         setHabits(data);
       } else {
@@ -62,9 +62,11 @@ export default function HabitModal({ onSelect, onClose }) {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
           {Object.keys(grouped).map((category) => {
-            const displayCategory =
-              language === 'en'
-                ? category === 'Cuida de ti'
+            let displayCategory = category;
+
+            if (language === 'en') {
+              displayCategory =
+                category === 'Cuida de ti'
                   ? 'Self-care'
                   : category === 'Actividad física'
                   ? 'Physical activity'
@@ -86,8 +88,58 @@ export default function HabitModal({ onSelect, onClose }) {
                   ? 'Productivity'
                   : category === 'Sin categoría'
                   ? 'Uncategorized'
-                  : category
-                : category;
+                  : category;
+            } else if (language === 'pt') {
+              displayCategory =
+                category === 'Cuida de ti'
+                  ? 'Cuide de você'
+                  : category === 'Actividad física'
+                  ? 'Atividade física'
+                  : category === 'Vive más sano'
+                  ? 'Viva mais saudável'
+                  : category === 'Aprende'
+                  ? 'Aprender'
+                  : category === 'Vida social'
+                  ? 'Vida social'
+                  : category === 'Hogar'
+                  ? 'Casa'
+                  : category === 'Vida económica'
+                  ? 'Finanças'
+                  : category === 'Salud'
+                  ? 'Saúde'
+                  : category === 'Social'
+                  ? 'Social'
+                  : category === 'Productividad'
+                  ? 'Produtividade'
+                  : category === 'Sin categoría'
+                  ? 'Sem categoria'
+                  : category;
+            } else if (language === 'fr') {
+              displayCategory =
+                category === 'Cuida de ti'
+                  ? 'Prends soin de toi'
+                  : category === 'Actividad física'
+                  ? 'Activité physique'
+                  : category === 'Vive más sano'
+                  ? 'Vis plus sainement'
+                  : category === 'Aprende'
+                  ? 'Apprendre'
+                  : category === 'Vida social'
+                  ? 'Vie sociale'
+                  : category === 'Hogar'
+                  ? 'Maison'
+                  : category === 'Vida económica'
+                  ? 'Finances'
+                  : category === 'Salud'
+                  ? 'Santé'
+                  : category === 'Social'
+                  ? 'Social'
+                  : category === 'Productividad'
+                  ? 'Productivité'
+                  : category === 'Sin categoría'
+                  ? 'Sans catégorie'
+                  : category;
+            }
 
             return (
               <View key={category} style={styles.section}>
