@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n } from '../utils/i18n';
+import { addFocusedMinutes } from '../utils/pomodoroStats';
 
 /* =========================
    CONSTANTES
@@ -258,6 +259,9 @@ export default function PomodoroScreen() {
 
         if (next <= 0) {
           if (phase === 'work') {
+            // Registrar minutos de foco completados en esta fase de trabajo
+            addFocusedMinutes(workMinutes);
+
             setPhase('break');
             return restMinutes * 60;
           }

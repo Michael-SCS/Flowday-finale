@@ -123,16 +123,43 @@ const translations = {
       proStatsEmpty: 'Cuando empieces a completar hábitos aquí verás un resumen rápido de tu progreso.',
     },
     premium: {
-      title: 'PRO',
+      title: 'Fluu PRO',
       subtitle:
-        'Fluu seguirá teniendo una versión gratuita. PRO añadirá herramientas extra para quienes quieran ir un paso más allá.',
-      featuresTitle: 'Qué desbloquearás con PRO (próximamente)',
-      benefit1: 'Estadísticas avanzadas para ver rachas, días más productivos y tu progreso semana a semana.',
-      benefit2: 'Pomodoro PRO con ciclos personalizados, sesiones de trabajo profundo e historial completo por hábito.',
-      benefit3: 'Recordatorios inteligentes y automatizaciones que reordenan tu día cuando algo no se cumple.',
-      benefit4: 'Extras PRO como temas exclusivos, más control de tus datos y resúmenes automáticos de tu mes.',
-      cta: 'Me interesa PRO',
-      comingSoon: 'Todavía no puedes pagar. Estamos construyendo estas funciones y te avisaremos cuando estén listas.',
+        'Deja de improvisar tu día. Fluu PRO te ayuda a sostener tus hábitos y a priorizar con calma, incluso cuando la vida se complica.',
+      featuresTitle: 'Todo lo que desbloqueas con PRO',
+      statsTitle: 'Estadísticas avanzadas',
+      statsDescription:
+        'Rachas claras, % de cumplimiento semanal y mensual, y la mejor hora del día para completar tus hábitos.',
+      smartHabitsTitle: 'Hábitos inteligentes',
+      smartHabitsDescription:
+        'Detecta cuando llevas varios días fallando, te propone mover hábitos a los días donde más cumples (por ejemplo domingos) y sugiere pequeños ajustes antes de rendirte.',
+      focusTitle: 'Profundidad y enfoque',
+      focusDescription:
+        'Resumen diario de tu Pomodoro enfocado por hábito, para ver en qué se fue realmente tu energía.',
+      calendarTitle: 'Calendario con reflexión diaria',
+      calendarDescription:
+        'Notas privadas como “Reflexión diaria” o “¿Por qué fallé hoy?” directamente en tu calendario, para aprender de tus días y no solo tacharlos.',
+      weeklyPlannerTitle: 'Planificación semanal guiada',
+      weeklyPlannerDescription:
+        'Cada domingo te preguntamos qué quieres priorizar y qué hábito te cuesta más, y te ayudamos a armar la semana automáticamente.',
+      overloadTitle: 'Días llenos, menos ruido',
+      overloadDescription:
+        'Si detectamos un día demasiado cargado, te avisamos y te ayudamos a mover o priorizar tareas para que no vivas en modo incendio permanente.',
+      plansTitle: 'Planes PRO',
+      selectedLabel: 'Plan elegido',
+      monthlyLabel: 'Mensual',
+      monthlyPrice: 'USD 1,99 / mes',
+      monthlyTagline: 'Menos que un café. Más orden para tu vida.',
+      annualLabel: 'Plan anual',
+      annualPrice: 'USD 14,99 / año',
+      annualBadge: 'Más elegido',
+      annualSavings: 'Ahorras ~30%',
+      annualOneTime: 'Pago único · Menos fricción mental',
+      annualMessage:
+        'Un año completo de enfoque y hábitos, al precio de dos salidas.',
+      ctaPrimary: 'Quiero Fluu PRO',
+      ctaSecondary:
+        'Podrás cambiar de plan más adelante. Tu progreso y tus hábitos se mantienen.',
     },
     calendar: {
       title: 'Calendario',
@@ -352,16 +379,43 @@ const translations = {
       proStatsEmpty: 'Once you start completing habits you will see a quick summary of your progress here.',
     },
     premium: {
-      title: 'PRO',
+      title: 'Fluu PRO',
       subtitle:
-        'Soon you will be able to unlock advanced features to organize your life even better ✨',
-      featuresTitle: 'What PRO will unlock (coming soon)',
-      benefit1: 'Advanced stats to see streaks, your most productive days and week/month comparisons.',
-      benefit2: 'Pomodoro PRO with custom cycles, deep work sessions and a full history per habit.',
-      benefit3: 'Smart reminders and simple automations that rearrange your day when things slip.',
-      benefit4: 'PRO extras like exclusive themes, more control over your data and automatic summaries.',
-      cta: 'I am interested in PRO',
-      comingSoon: 'You cannot pay yet. We are building these features and will let you know when they are ready.',
+        'Stop improvising your day. Fluu PRO helps you sustain your habits and prioritize calmly, even when life gets messy.',
+      featuresTitle: 'Everything you unlock with PRO',
+      statsTitle: 'Advanced stats',
+      statsDescription:
+        'Clear streaks, weekly and monthly completion %, and the best time of day to complete your habits.',
+      smartHabitsTitle: 'Smart habits',
+      smartHabitsDescription:
+        'Detects when you have been failing a habit for several days, suggests moving it to the days you complete it most (for example Sundays) and recommends small tweaks before you give up.',
+      focusTitle: 'Depth and focus',
+      focusDescription:
+        'Daily summary of your focused Pomodoro by habit so you can see where your energy really went.',
+      calendarTitle: 'Calendar with daily reflection',
+      calendarDescription:
+        'Private notes like “Daily reflection” or “Why did I fail today?” directly in your calendar so you can learn from your days, not just tick boxes.',
+      weeklyPlannerTitle: 'Guided weekly planning',
+      weeklyPlannerDescription:
+        'Every Sunday we ask what you want to prioritize and which habit is hardest for you, then we help you shape your week automatically.',
+      overloadTitle: 'Busy days, less noise',
+      overloadDescription:
+        'If we detect an overloaded day, we warn you and help you move or prioritize tasks so you do not live in constant firefighting mode.',
+      plansTitle: 'PRO plans',
+      selectedLabel: 'Selected plan',
+      monthlyLabel: 'Monthly',
+      monthlyPrice: 'USD 1.99 / month',
+      monthlyTagline: 'Less than a coffee. More order for your life.',
+      annualLabel: 'Annual plan',
+      annualPrice: 'USD 14.99 / year',
+      annualBadge: 'Most popular',
+      annualSavings: 'Save ~30%',
+      annualOneTime: 'One-time payment · Less mental friction',
+      annualMessage:
+        'A full year of focus and habits, for the price of two nights out.',
+      ctaPrimary: 'Get Fluu PRO',
+      ctaSecondary:
+        'You can change plan later. Your progress and habits stay with you.',
     },
     calendar: {
       title: 'Calendar',
@@ -583,16 +637,43 @@ const translations = {
       proStatsEmpty: 'Quando você começar a completar hábitos verá aqui um resumo rápido do seu progresso.',
     },
     premium: {
-      title: 'PRO',
+      title: 'Fluu PRO',
       subtitle:
-        'Em breve você poderá desbloquear recursos avançados para organizar ainda melhor a sua vida ✨',
-      featuresTitle: 'O que o PRO vai desbloquear (em breve)',
-      benefit1: 'Estatísticas avançadas para ver sequências, dias mais produtivos e comparações semana/mês.',
-      benefit2: 'Pomodoro PRO com ciclos personalizados, sessões de deep work e histórico completo por hábito.',
-      benefit3: 'Lembretes inteligentes e automações simples que reorganizam o seu dia quando algo não acontece.',
-      benefit4: 'Extras PRO como temas exclusivos, mais controle dos seus dados e resumos automáticos.',
-      cta: 'Tenho interesse no PRO',
-      comingSoon: 'Ainda não é possível pagar. Estamos construindo esses recursos e avisaremos quando estiverem prontos.',
+        'Pare de improvisar o seu dia. Fluu PRO ajuda você a manter hábitos e a priorizar com calma, mesmo quando tudo está corrido.',
+      featuresTitle: 'Tudo o que você desbloqueia com o PRO',
+      statsTitle: 'Estatísticas avançadas',
+      statsDescription:
+        'Sequências claras, % de cumprimento semanal e mensal e o melhor horário do dia para completar seus hábitos.',
+      smartHabitsTitle: 'Hábitos inteligentes',
+      smartHabitsDescription:
+        'Detecta quando você está falhando em um hábito há vários dias, sugere movê‑lo para os dias em que você mais cumpre (por exemplo domingos) e propõe pequenos ajustes antes de desistir.',
+      focusTitle: 'Profundidade e foco',
+      focusDescription:
+        'Resumo diário do seu Pomodoro focado por hábito, para ver onde sua energia realmente foi.',
+      calendarTitle: 'Calendário com reflexão diária',
+      calendarDescription:
+        'Notas privadas como “Reflexão diária” ou “Por que falhei hoje?” direto no calendário, para aprender com seus dias e não apenas marcá‑los como feitos.',
+      weeklyPlannerTitle: 'Planejamento semanal guiado',
+      weeklyPlannerDescription:
+        'Todo domingo perguntamos o que você quer priorizar e qual hábito é mais difícil, e ajudamos a montar a semana automaticamente.',
+      overloadTitle: 'Dias cheios, menos ruído',
+      overloadDescription:
+        'Se detectarmos um dia muito carregado, avisamos você e ajudamos a mover ou priorizar tarefas para que não viva sempre apagando incêndios.',
+      plansTitle: 'Planos PRO',
+      selectedLabel: 'Plano escolhido',
+      monthlyLabel: 'Mensal',
+      monthlyPrice: 'USD 1,99 / mês',
+      monthlyTagline: 'Menos que um café. Mais ordem para a sua vida.',
+      annualLabel: 'Plano anual',
+      annualPrice: 'USD 14,99 / ano',
+      annualBadge: 'Mais escolhido',
+      annualSavings: 'Você economiza ~30%',
+      annualOneTime: 'Pagamento único · Menos atrito mental',
+      annualMessage:
+        'Um ano inteiro de foco e hábitos, pelo preço de duas saídas.',
+      ctaPrimary: 'Quero o Fluu PRO',
+      ctaSecondary:
+        'Você pode mudar de plano depois. Seu progresso e seus hábitos continuam com você.',
     },
     calendar: {
       title: 'Calendário',
@@ -816,16 +897,43 @@ const translations = {
       proStatsEmpty: 'Lorsque vous commencerez à compléter des habitudes, vous verrez ici un résumé rapide de vos progrès.',
     },
     premium: {
-      title: 'PRO',
+      title: 'Fluu PRO',
       subtitle:
-        'Bientôt vous pourrez débloquer des fonctionnalités avancées pour encore mieux organiser votre vie ✨',
-      featuresTitle: 'Ce que PRO va débloquer (bientôt)',
-      benefit1: 'Statistiques avancées pour voir vos séries, vos jours les plus productifs et vos comparaisons semaine/mois.',
-      benefit2: 'Pomodoro PRO avec cycles personnalisés, sessions de deep work et historique complet par habitude.',
-      benefit3: 'Rappels intelligents et automatisations simples qui réorganisent votre journée quand quelque chose ne se fait pas.',
-      benefit4: 'Extras PRO comme des thèmes exclusifs, plus de contrôle sur vos données et des résumés automatiques.',
-      cta: 'Je suis intéressé par PRO',
-      comingSoon: 'Vous ne pouvez pas encore payer. Nous construisons ces fonctionnalités et vous préviendrons lorsqu’elles seront prêtes.',
+        'Cessez d’improviser vos journées. Fluu PRO vous aide à maintenir vos habitudes et à prioriser avec sérénité, même quand la vie devient chaotique.',
+      featuresTitle: 'Tout ce que vous débloquez avec PRO',
+      statsTitle: 'Statistiques avancées',
+      statsDescription:
+        'Séries claires, % de réussite hebdomadaire et mensuelle, et meilleur moment de la journée pour compléter vos habitudes.',
+      smartHabitsTitle: 'Habitudes intelligentes',
+      smartHabitsDescription:
+        'Détecte lorsque vous échouez plusieurs jours de suite, propose de déplacer l’habitude aux jours où vous la complétez le plus (par exemple le dimanche) et suggère de petits ajustements avant que vous n’abandonniez.',
+      focusTitle: 'Profondeur et focus',
+      focusDescription:
+        'Résumé quotidien de votre Pomodoro concentré par habitude, pour voir où votre énergie est réellement passée.',
+      calendarTitle: 'Calendrier avec réflexion quotidienne',
+      calendarDescription:
+        'Notes privées comme « Réflexion du jour » ou « Pourquoi ai-je échoué aujourd’hui ? » directement dans le calendrier, pour apprendre de vos journées et pas seulement cocher des cases.',
+      weeklyPlannerTitle: 'Planification hebdomadaire guidée',
+      weeklyPlannerDescription:
+        'Chaque dimanche, nous vous demandons ce que vous voulez prioriser et quelle habitude est la plus difficile, puis nous vous aidons à construire la semaine automatiquement.',
+      overloadTitle: 'Journées chargées, moins de bruit',
+      overloadDescription:
+        'Si nous détectons une journée trop remplie, nous vous avertissons et vous aidons à déplacer ou prioriser des tâches pour éviter de vivre en mode urgence permanente.',
+      plansTitle: 'Forfaits PRO',
+      selectedLabel: 'Forfait sélectionné',
+      monthlyLabel: 'Mensuel',
+      monthlyPrice: 'USD 1,99 / mois',
+      monthlyTagline: 'Moins qu’un café. Plus d’ordre dans votre vie.',
+      annualLabel: 'Forfait annuel',
+      annualPrice: 'USD 14,99 / an',
+      annualBadge: 'Le plus choisi',
+      annualSavings: 'Économisez ~30 %',
+      annualOneTime: 'Paiement unique · Moins de friction mentale',
+      annualMessage:
+        'Une année entière de focus et d’habitudes, pour le prix de deux sorties.',
+      ctaPrimary: 'Je veux Fluu PRO',
+      ctaSecondary:
+        'Vous pourrez changer de forfait plus tard. Vos progrès et vos habitudes restent avec vous.',
     },
     calendar: {
       title: 'Calendrier',

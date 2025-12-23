@@ -9,6 +9,7 @@ import CalendarScreen from '../components/Calendar';
 import PomodoroScreen from '../components/Pomodoro';
 import ProfileScreen from '../components/Profile';
 import PremiumUpsellScreen from '../components/PremiumUpsell';
+import AdvancedStatsScreen from '../components/AdvancedStats';
 import MascotTour from '../components/MascotTour';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n } from '../utils/i18n';
@@ -115,6 +116,18 @@ export default function TabNavigator() {
           ),
         }}
       />
+      {isPro === true && (
+        <Tab.Screen
+          name="Estadísticas"
+          component={AdvancedStatsScreen}
+          options={{
+            tabBarLabel: t('premium.statsTitle'),
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="stats-chart" size={size} color={color} />
+            ),
+          }}
+        />
+      )}
       </Tab.Navigator>
 
       <MascotTour

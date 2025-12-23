@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Localization from 'expo-localization';
 
 const THEME_KEY = 'FLUU_THEME_COLOR';
 const LANG_KEY = 'FLUU_LANGUAGE';
 
 const SettingsContext = createContext({
   themeColor: 'blue',
-  language: 'es',
+  language: 'en',
   setThemeColor: () => {},
   setLanguage: () => {},
 });
@@ -25,7 +26,7 @@ export function getAccentColor(themeColor) {
 
 export function SettingsProvider({ children }) {
   const [themeColor, setThemeColorState] = useState('blue');
-  const [language, setLanguageState] = useState('es');
+  const [language, setLanguageState] = useState('en');
 
   useEffect(() => {
     (async () => {
@@ -39,30 +40,33 @@ export function SettingsProvider({ children }) {
           setLanguageState(storedLang);
         } else {
           // Si no hay idioma guardado, detectamos el idioma del dispositivo
-          let systemLanguage = 'es';
+          // y si no está soportado usamos inglés por defecto.
+          let systemLanguage = 'en';
           try {
-            const locale =
-              typeof Intl !== 'undefined' &&
-              Intl.DateTimeFormat &&
-              Intl.DateTimeFormat().resolvedOptions().locale;
+            // En Expo/React Native, expo-localization es la forma más fiable
+            // de obtener el locale del sistema.
+            const locale = Localization.locale || Localization.locales?.[0];
 
             if (locale && typeof locale === 'string') {
               const code = locale
                 .split(/[-_]/)[0]
                 .toLowerCase();
 
-              if (code === 'en') {
-                systemLanguage = 'en';
-              } else if (code === 'es') {
+              if (code === 'es') {
                 systemLanguage = 'es';
               } else if (code === 'pt') {
                 systemLanguage = 'pt';
               } else if (code === 'fr') {
                 systemLanguage = 'fr';
+              } else if (code === 'en') {
+                systemLanguage = 'en';
+              } else {
+                // Idioma no soportado -> inglés por defecto
+                systemLanguage = 'en';
               }
             }
           } catch {
-            // si falla la detección, mantenemos 'es' como valor por defecto
+            // si falla la detección, mantenemos 'en' como valor por defecto
           }
 
           setLanguageState(systemLanguage);
