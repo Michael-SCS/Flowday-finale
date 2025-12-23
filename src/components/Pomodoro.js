@@ -38,8 +38,9 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export default function PomodoroScreen() {
   const { t } = useI18n();
-  const { themeColor } = useSettings();
+  const { themeColor, themeMode } = useSettings();
   const accent = getAccentColor(themeColor);
+  const isDark = themeMode === 'dark';
   // Configuración
   const [selectedPresetId, setSelectedPresetId] = useState(INITIAL_PRESET.id);
   const [useCustom, setUseCustom] = useState(false);
@@ -293,11 +294,9 @@ export default function PomodoroScreen() {
   /* =========================
      UI
   ========================= */
-
-
   return (
-  <SafeAreaView style={styles.safeArea}>
-    <View style={styles.container}>
+  <SafeAreaView style={[styles.safeArea, isDark && { backgroundColor: '#020617' }]}>
+    <View style={[styles.container, isDark && { backgroundColor: '#020617' }]}>
     {/* HEADER */}
     {!fullScreenMode && (
       <View style={styles.header}>
@@ -309,7 +308,7 @@ export default function PomodoroScreen() {
       >
         <Ionicons name="timer" size={28} color="#fff" />
       </View>
-      <Text style={styles.title}>{t('pomodoro.title')}</Text>
+      <Text style={[styles.title, isDark && { color: '#e5e7eb' }]}>{t('pomodoro.title')}</Text>
       </View>
     )}
 

@@ -22,8 +22,9 @@ function dateKey(d) {
 
 export default function AdvancedStatsScreen() {
   const { t } = useI18n();
-  const { themeColor } = useSettings();
+  const { themeColor, themeMode } = useSettings();
   const accent = getAccentColor(themeColor);
+  const isDark = themeMode === 'dark';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -272,15 +273,15 @@ export default function AdvancedStatsScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, isDark && { backgroundColor: '#020617' }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <View style={[styles.headerIconCircle, { backgroundColor: `${accent}15` }]}>
             <Ionicons name="stats-chart" size={24} color={accent} />
           </View>
           <View style={styles.headerTextBox}>
-            <Text style={styles.headerTitle}>{t('profile.proStatsTitle')}</Text>
-            <Text style={styles.headerSubtitle}>Resumen avanzado</Text>
+            <Text style={[styles.headerTitle, isDark && { color: '#e5e7eb' }]}>{t('profile.proStatsTitle')}</Text>
+            <Text style={[styles.headerSubtitle, isDark && { color: '#94a3b8' }]}>Resumen avanzado</Text>
           </View>
         </View>
 
@@ -525,22 +526,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0b1120',
     borderRadius: 20,
     padding: 18,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#1e293b',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
     elevation: 3,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0f172a',
+    color: '#e5e7eb',
     marginBottom: 10,
   },
   row: {
@@ -551,11 +552,11 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 12,
     borderRadius: 16,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#020617',
   },
   metricLabel: {
     fontSize: 13,
-    color: '#64748b',
+    color: '#cbd5e1',
     marginBottom: 4,
   },
   metricValue: {
@@ -565,7 +566,7 @@ const styles = StyleSheet.create({
   metricHint: {
     marginTop: 4,
     fontSize: 12,
-    color: '#6b7280',
+    color: '#94a3b8',
   },
   streakRow: {
     flexDirection: 'row',

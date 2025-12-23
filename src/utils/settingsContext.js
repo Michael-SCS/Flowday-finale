@@ -3,12 +3,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Localization from 'expo-localization';
 
 const THEME_KEY = 'FLUU_THEME_COLOR';
+const THEME_MODE_KEY = 'FLUU_THEME_MODE';
 const LANG_KEY = 'FLUU_LANGUAGE';
 
 const SettingsContext = createContext({
   themeColor: 'blue',
+  themeMode: 'light',
   language: 'en',
   setThemeColor: () => {},
+  setThemeMode: () => {},
   setLanguage: () => {},
 });
 
@@ -26,16 +29,21 @@ export function getAccentColor(themeColor) {
 
 export function SettingsProvider({ children }) {
   const [themeColor, setThemeColorState] = useState('blue');
+  const [themeMode, setThemeModeState] = useState('light');
   const [language, setLanguageState] = useState('en');
 
   useEffect(() => {
     (async () => {
       try {
-        const [storedTheme, storedLang] = await Promise.all([
+        const [storedTheme, storedThemeMode, storedLang] = await Promise.all([
           AsyncStorage.getItem(THEME_KEY),
+          AsyncStorage.getItem(THEME_MODE_KEY),
           AsyncStorage.getItem(LANG_KEY),
         ]);
         if (storedTheme) setThemeColorState(storedTheme);
+        if (storedThemeMode === 'dark' || storedThemeMode === 'light') {
+          setThemeModeState(storedThemeMode);
+        }
         if (storedLang) {
           setLanguageState(storedLang);
         } else {
@@ -91,6 +99,16 @@ export function SettingsProvider({ children }) {
     }
   };
 
+  const setThemeMode = async (value) => {
+    try {
+      const next = value === 'dark' ? 'dark' : 'light';
+      setThemeModeState(next);
+      await AsyncStorage.setItem(THEME_MODE_KEY, next);
+    } catch {
+      // ignorar error de persistencia
+    }
+  };
+
   const setLanguage = async (value) => {
     try {
       setLanguageState(value);
@@ -102,7 +120,7 @@ export function SettingsProvider({ children }) {
 
   return (
     <SettingsContext.Provider
-      value={{ themeColor, language, setThemeColor, setLanguage }}
+      value={{ themeColor, themeMode, language, setThemeColor, setThemeMode, setLanguage }}
     >
       {children}
     </SettingsContext.Provider>

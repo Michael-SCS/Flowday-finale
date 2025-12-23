@@ -2,13 +2,38 @@ import 'react-native-gesture-handler'; // 🔥 SIEMPRE PRIMERO
 import 'react-native-get-random-values';
 
 import React, { useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import AuthGate from './src/navigation/AuthGate';
-import { SettingsProvider } from './src/utils/settingsContext';
+import { SettingsProvider, useSettings, getAccentColor } from './src/utils/settingsContext';
 import { requestNotificationPermissions } from './src/utils/notifications';
+
+function AppInner() {
+  const { themeColor, themeMode } = useSettings();
+  const accent = getAccentColor(themeColor);
+
+  const baseTheme = themeMode === 'dark' ? DarkTheme : DefaultTheme;
+
+  const navigationTheme = {
+    ...baseTheme,
+    colors: {
+      ...baseTheme.colors,
+      primary: accent,
+      background: themeMode === 'dark' ? '#020617' : '#ffffff',
+      card: themeMode === 'dark' ? '#020617' : '#ffffff',
+      border: themeMode === 'dark' ? '#1e293b' : baseTheme.colors.border,
+      text: themeMode === 'dark' ? '#e5e7eb' : baseTheme.colors.text,
+    },
+  };
+
+  return (
+    <NavigationContainer theme={navigationTheme}>
+      <AuthGate />
+    </NavigationContainer>
+  );
+}
 
 export default function App() {
   useEffect(() => {
@@ -18,11 +43,9 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <NavigationContainer>
-          <SettingsProvider>
-            <AuthGate />
-          </SettingsProvider>
-        </NavigationContainer>
+        <SettingsProvider>
+          <AppInner />
+        </SettingsProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

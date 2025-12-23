@@ -14,11 +14,12 @@ import { loadActivities as loadUserActivities } from '../utils/localActivities';
 import { clearPomodoroStats } from '../utils/pomodoroStats';
 
 export default function ProfileScreen() {
-  const { themeColor, language, setThemeColor, setLanguage } = useSettings();
+  const { themeColor, themeMode, language, setThemeColor, setThemeMode, setLanguage } = useSettings();
   const { t } = useI18n();
   const { openTour } = useTour();
   const { isPro } = useProStatus();
   const accent = getAccentColor(themeColor);
+  const isDark = themeMode === 'dark';
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
@@ -232,8 +233,8 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, isDark && { backgroundColor: '#020617' }]}>
+      <View style={[styles.container, isDark && { backgroundColor: '#020617' }]}>
         {/* HEADER CON BANNER Y AVATAR */}
         <View style={styles.headerSection}>
           <View style={styles.bannerContainer}>
@@ -242,7 +243,12 @@ export default function ProfileScreen() {
               style={styles.bannerImage}
               resizeMode="cover"
             />
-            <View style={styles.bannerOverlay} />
+            <View
+              style={[
+                styles.bannerOverlay,
+                themeMode === 'dark' && { backgroundColor: 'rgba(2,6,23,0.75)' },
+              ]}
+            />
             <Pressable
               style={[styles.settingsIconButton, { backgroundColor: accent }]}
               onPress={() => setShowSettingsModal(true)}
@@ -267,7 +273,7 @@ export default function ProfileScreen() {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={accent} size="large" />
-            <Text style={styles.loadingText}>{t('profile.loading')}</Text>
+            <Text style={[styles.loadingText, isDark && { color: '#e5e7eb' }]}>{t('profile.loading')}</Text>
           </View>
         ) : (
           <ScrollView 
@@ -275,10 +281,10 @@ export default function ProfileScreen() {
             showsVerticalScrollIndicator={false}
           >
             {error && (
-              <View style={styles.errorCard}>
+              <View style={[styles.errorCard, isDark && { backgroundColor: '#0b1120', borderColor: '#7f1d1d' }]}>
                 <Ionicons name="alert-circle" size={48} color="#ef4444" />
-                <Text style={styles.errorTitle}>Oops!</Text>
-                <Text style={styles.errorText}>{error}</Text>
+                <Text style={[styles.errorTitle, isDark && { color: '#fecaca' }]}>Oops!</Text>
+                <Text style={[styles.errorText, isDark && { color: '#fecaca' }]}>{error}</Text>
                 <Pressable
                   style={[styles.retryButton, { backgroundColor: accent }]}
                   onPress={loadProfile}
@@ -292,10 +298,10 @@ export default function ProfileScreen() {
             {profile && !error && (
               <>
                 {/* CARD PRINCIPAL DEL PERFIL */}
-                <View style={styles.mainProfileCard}>
+                <View style={[styles.mainProfileCard, isDark && { backgroundColor: '#020617' }]}>
                   <View style={styles.profileInfo}>
                     <View style={styles.nameRow}>
-                      <Text style={styles.profileName}>
+                      <Text style={[styles.profileName, isDark && { color: '#e5e7eb' }]}>
                         {profile.nombre || 'Tu nombre'}
                         {profile.apellido && ` ${profile.apellido}`}
                       </Text>
@@ -309,7 +315,7 @@ export default function ProfileScreen() {
                     
                     <View style={styles.emailRow}>
                       <Ionicons name="mail" size={16} color="#64748b" />
-                      <Text style={styles.emailText}>{profile.email}</Text>
+                      <Text style={[styles.emailText, isDark && { color: '#cbd5e1' }]}>{profile.email}</Text>
                     </View>
 
                     <View style={styles.badgesRow}>
@@ -339,22 +345,22 @@ export default function ProfileScreen() {
                     </View>
                   </View>
 
-                  <View style={styles.hintBox}>
+                  <View style={[styles.hintBox, isDark && { borderTopColor: '#1e293b' }]}>
                     <Ionicons name="information-circle" size={18} color="#94a3b8" />
-                    <Text style={styles.hintText}>{t('profile.profileHint')}</Text>
+                    <Text style={[styles.hintText, isDark && { color: '#94a3b8' }]}>{t('profile.profileHint')}</Text>
                   </View>
                 </View>
 
                 {/* ESTADÍSTICAS PRO */}
                 {isPro === true && (
-                  <View style={styles.statsCard}>
+                  <View style={[styles.statsCard, isDark && { backgroundColor: '#020617' }]}>
                     <View style={styles.statsHeader}>
                       <View style={[styles.statsIconBox, { backgroundColor: `${accent}20` }]}>
                         <Ionicons name="trending-up" size={22} color={accent} />
                       </View>
                       <View style={styles.statsHeaderText}>
-                        <Text style={styles.statsTitle}>{t('profile.proStatsTitle')}</Text>
-                        <Text style={styles.statsSubtitle}>Últimos 7 días</Text>
+                        <Text style={[styles.statsTitle, isDark && { color: '#e5e7eb' }]}>{t('profile.proStatsTitle')}</Text>
+                        <Text style={[styles.statsSubtitle, isDark && { color: '#94a3b8' }]}>Últimos 7 días</Text>
                       </View>
                     </View>
 
@@ -365,12 +371,12 @@ export default function ProfileScreen() {
                     ) : !stats || stats.weekTotal === 0 ? (
                       <View style={styles.emptyStats}>
                         <Ionicons name="bar-chart-outline" size={32} color="#cbd5e1" />
-                        <Text style={styles.emptyStatsText}>{t('profile.proStatsEmpty')}</Text>
+                        <Text style={[styles.emptyStatsText, isDark && { color: '#94a3b8' }]}>{t('profile.proStatsEmpty')}</Text>
                       </View>
                     ) : (
                       <View style={styles.statsGrid}>
                         <View style={[styles.statBox, { backgroundColor: `${accent}08` }]}>
-                          <Text style={styles.statLabel}>{t('profile.proStatsWeekLabel')}</Text>
+                          <Text style={[styles.statLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.proStatsWeekLabel')}</Text>
                           <Text style={[styles.statValue, { color: accent }]}>
                             {stats.weekCompleted}/{stats.weekTotal}
                           </Text>
@@ -389,7 +395,7 @@ export default function ProfileScreen() {
 
                         {stats.bestDay && (
                           <View style={[styles.statBox, { backgroundColor: `${accent}08` }]}>
-                            <Text style={styles.statLabel}>{t('profile.proStatsBestDayLabel')}</Text>
+                            <Text style={[styles.statLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.proStatsBestDayLabel')}</Text>
                             <Text style={[styles.statValue, { color: accent }]}>
                               {stats.bestDay.completed}/{stats.bestDay.total}
                             </Text>
@@ -413,7 +419,7 @@ export default function ProfileScreen() {
 
                 {/* BOTÓN CERRAR SESIÓN */}
                 <Pressable
-                  style={[styles.logoutButton, { borderColor: accent }]}
+                  style={[styles.logoutButton, { borderColor: accent }, isDark && { backgroundColor: '#020617' }]}
                   onPress={handleLogout}
                 >
                   <Ionicons name="log-out-outline" size={22} color={accent} />
@@ -432,14 +438,14 @@ export default function ProfileScreen() {
           onRequestClose={() => setShowPolicyModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, isDark && { backgroundColor: '#020617' }]}>
               <View style={styles.modalHeader}>
                 <View style={styles.modalHandle} />
                 <View style={styles.modalTitleRow}>
                   <View style={[styles.modalIconCircle, { backgroundColor: `${accent}20` }]}>
                     <Ionicons name="shield-checkmark" size={24} color={accent} />
                   </View>
-                  <Text style={styles.modalTitle}>{t('profile.privacyPolicy')}</Text>
+                  <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>{t('profile.privacyPolicy')}</Text>
                 </View>
                 <Pressable 
                   onPress={() => setShowPolicyModal(false)}
@@ -455,7 +461,7 @@ export default function ProfileScreen() {
                 showsVerticalScrollIndicator
               >
                 <View style={styles.policySection}>
-                  <Text style={styles.modalText}>{t('profile.privacyIntro')}</Text>
+                  <Text style={[styles.modalText, isDark && { color: '#cbd5e1' }]}>{t('profile.privacyIntro')}</Text>
                 </View>
 
                 <View style={styles.policySection}>
@@ -463,29 +469,29 @@ export default function ProfileScreen() {
                     <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
                       <Ionicons name="shield" size={18} color={accent} />
                     </View>
-                    <Text style={styles.policySubtitle}>
+                    <Text style={[styles.policySubtitle, isDark && { color: '#e5e7eb' }]}>
                       {t('profile.privacyUseOfDataTitle')}
                     </Text>
                   </View>
-                  <Text style={styles.modalText}>
+                  <Text style={[styles.modalText, isDark && { color: '#cbd5e1' }] }>
                     {t('profile.privacyUseOfDataText')}
                   </Text>
                   <View style={styles.bulletList}>
                     <View style={styles.bulletItem}>
                       <View style={[styles.bulletDot, { backgroundColor: accent }]} />
-                      <Text style={styles.bulletText}>
+                      <Text style={[styles.bulletText, isDark && { color: '#cbd5e1' }] }>
                         {t('profile.privacyUseOfDataBullet1')}
                       </Text>
                     </View>
                     <View style={styles.bulletItem}>
                       <View style={[styles.bulletDot, { backgroundColor: accent }]} />
-                      <Text style={styles.bulletText}>
+                      <Text style={[styles.bulletText, isDark && { color: '#cbd5e1' }] }>
                         {t('profile.privacyUseOfDataBullet2')}
                       </Text>
                     </View>
                     <View style={styles.bulletItem}>
                       <View style={[styles.bulletDot, { backgroundColor: accent }]} />
-                      <Text style={styles.bulletText}>
+                      <Text style={[styles.bulletText, isDark && { color: '#cbd5e1' }] }>
                         {t('profile.privacyUseOfDataBullet3')}
                       </Text>
                     </View>
@@ -497,11 +503,11 @@ export default function ProfileScreen() {
                     <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
                       <Ionicons name="people" size={18} color={accent} />
                     </View>
-                    <Text style={styles.policySubtitle}>
+                    <Text style={[styles.policySubtitle, isDark && { color: '#e5e7eb' }]}>
                       {t('profile.privacySharingTitle')}
                     </Text>
                   </View>
-                  <Text style={styles.modalText}>
+                  <Text style={[styles.modalText, isDark && { color: '#cbd5e1' }] }>
                     {t('profile.privacySharingText')}
                   </Text>
                 </View>
@@ -511,11 +517,11 @@ export default function ProfileScreen() {
                     <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
                       <Ionicons name="warning" size={18} color={accent} />
                     </View>
-                    <Text style={styles.policySubtitle}>
+                    <Text style={[styles.policySubtitle, isDark && { color: '#e5e7eb' }]}>
                       {t('profile.privacyLiabilityTitle')}
                     </Text>
                   </View>
-                  <Text style={styles.modalText}>
+                  <Text style={[styles.modalText, isDark && { color: '#cbd5e1' }] }>
                     {t('profile.privacyLiabilityText')}
                   </Text>
                 </View>
@@ -525,11 +531,11 @@ export default function ProfileScreen() {
                     <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
                       <Ionicons name="medical" size={18} color={accent} />
                     </View>
-                    <Text style={styles.policySubtitle}>
+                    <Text style={[styles.policySubtitle, isDark && { color: '#e5e7eb' }]}>
                       {t('profile.privacyNotAdviceTitle')}
                     </Text>
                   </View>
-                  <Text style={styles.modalText}>
+                  <Text style={[styles.modalText, isDark && { color: '#cbd5e1' }] }>
                     {t('profile.privacyNotAdviceText')}
                   </Text>
                 </View>
@@ -539,11 +545,11 @@ export default function ProfileScreen() {
                     <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
                       <Ionicons name="hand-right" size={18} color={accent} />
                     </View>
-                    <Text style={styles.policySubtitle}>
+                    <Text style={[styles.policySubtitle, isDark && { color: '#e5e7eb' }]}>
                       {t('profile.privacyRightsTitle')}
                     </Text>
                   </View>
-                  <Text style={styles.modalText}>
+                  <Text style={[styles.modalText, isDark && { color: '#cbd5e1' }] }>
                     {t('profile.privacyRightsText')}
                   </Text>
                 </View>
@@ -586,7 +592,7 @@ export default function ProfileScreen() {
                 </View>
               </ScrollView>
 
-              <View style={styles.modalFooter}>
+              <View style={[styles.modalFooter, isDark && { backgroundColor: '#020617', borderTopColor: '#1e293b' }]}>
                 <Pressable
                   style={[styles.modalAcceptButton, { backgroundColor: accent }]}
                   onPress={() => setShowPolicyModal(false)}
@@ -607,14 +613,14 @@ export default function ProfileScreen() {
           onRequestClose={() => setShowSettingsModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, isDark && { backgroundColor: '#020617' }]}>
               <View style={styles.modalHeader}>
                 <View style={styles.modalHandle} />
                 <View style={styles.modalTitleRow}>
                   <View style={[styles.modalIconCircle, { backgroundColor: `${accent}20` }]}>
                     <Ionicons name="settings" size={24} color={accent} />
                   </View>
-                  <Text style={styles.modalTitle}>{t('profile.settingsModalTitle')}</Text>
+                  <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>{t('profile.settingsModalTitle')}</Text>
                 </View>
                 <Pressable
                   onPress={() => setShowSettingsModal(false)}
@@ -631,21 +637,21 @@ export default function ProfileScreen() {
                   showsVerticalScrollIndicator
                 >
                   {/* INFORMACIÓN PERSONAL */}
-                  <View style={styles.settingsCard}>
+                  <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
                     <View style={styles.settingsCardHeader}>
                       <View style={[styles.settingsCardIcon, { backgroundColor: `${accent}20` }]}>
                         <Ionicons name="person" size={20} color={accent} />
                       </View>
-                      <Text style={styles.settingsCardTitle}>{t('profile.personalInfo')}</Text>
+                      <Text style={[styles.settingsCardTitle, isDark && { color: '#e5e7eb' }]}>{t('profile.personalInfo')}</Text>
                     </View>
 
                     <View style={styles.inputGroup}>
                       <View style={styles.inputField}>
-                        <Text style={styles.inputLabel}>{t('profile.firstName')}</Text>
-                        <View style={styles.inputContainer}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.firstName')}</Text>
+                        <View style={[styles.inputContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
                           <Ionicons name="person-outline" size={18} color="#9ca3af" />
                           <TextInput
-                            style={styles.textInput}
+                            style={[styles.textInput, isDark && { color: '#e5e7eb' }]}
                             value={nombre}
                             onChangeText={setNombre}
                             placeholder={t('profile.firstName')}
@@ -655,11 +661,11 @@ export default function ProfileScreen() {
                       </View>
 
                       <View style={styles.inputField}>
-                        <Text style={styles.inputLabel}>{t('profile.lastName')}</Text>
-                        <View style={styles.inputContainer}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.lastName')}</Text>
+                        <View style={[styles.inputContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
                           <Ionicons name="person-outline" size={18} color="#9ca3af" />
                           <TextInput
-                            style={styles.textInput}
+                            style={[styles.textInput, isDark && { color: '#e5e7eb' }]}
                             value={apellido}
                             onChangeText={setApellido}
                             placeholder={t('profile.lastName')}
@@ -669,19 +675,19 @@ export default function ProfileScreen() {
                       </View>
 
                       <View style={styles.inputField}>
-                        <Text style={styles.inputLabel}>{t('profile.email')}</Text>
-                        <View style={styles.readOnlyContainer}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.email')}</Text>
+                        <View style={[styles.readOnlyContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
                           <Ionicons name="mail" size={18} color="#6b7280" />
-                          <Text style={styles.readOnlyText}>{profile?.email}</Text>
+                          <Text style={[styles.readOnlyText, isDark && { color: '#cbd5e1' }]}>{profile?.email}</Text>
                         </View>
                       </View>
 
                       <View style={styles.inputField}>
-                        <Text style={styles.inputLabel}>{t('profile.age')}</Text>
-                        <View style={styles.inputContainer}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.age')}</Text>
+                        <View style={[styles.inputContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
                           <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
                           <TextInput
-                            style={styles.textInput}
+                            style={[styles.textInput, isDark && { color: '#e5e7eb' }]}
                             value={edad}
                             onChangeText={setEdad}
                             placeholder={t('profile.age')}
@@ -692,14 +698,18 @@ export default function ProfileScreen() {
                       </View>
 
                       <View style={styles.inputField}>
-                        <Text style={styles.inputLabel}>{t('profile.gender')}</Text>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.gender')}</Text>
                         <Pressable
-                          style={styles.genderSelector}
+                          style={[styles.genderSelector, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
                           onPress={() => setShowGenderModal(true)}
                         >
                           <View style={styles.genderSelectorContent}>
-                            <Ionicons name="people-outline" size={18} color={genero ? '#111827' : '#9ca3af'} />
-                            <Text style={genero ? styles.genderValue : styles.genderPlaceholder}>
+                            <Ionicons name="people-outline" size={18} color={genero ? (isDark ? '#e5e7eb' : '#111827') : '#9ca3af'} />
+                            <Text
+                              style={genero
+                                ? [styles.genderValue, isDark && { color: '#e5e7eb' }]
+                                : [styles.genderPlaceholder, isDark && { color: '#6b7280' }]}
+                            >
                               {genero || t('profile.genderPlaceholder')}
                             </Text>
                           </View>
@@ -711,23 +721,61 @@ export default function ProfileScreen() {
                     {successMessage && (
                       <View style={styles.successBanner}>
                         <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-                        <Text style={styles.successText}>{successMessage}</Text>
+                        <Text style={[styles.successText, isDark && { color: '#bbf7d0' }]}>{successMessage}</Text>
                       </View>
                     )}
                   </View>
 
                   {/* PERSONALIZACIÓN */}
-                  <View style={styles.settingsCard}>
+                  <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
                     <View style={styles.settingsCardHeader}>
                       <View style={[styles.settingsCardIcon, { backgroundColor: `${accent}20` }]}>
                         <Ionicons name="color-palette" size={20} color={accent} />
                       </View>
-                      <Text style={styles.settingsCardTitle}>{t('profile.customization')}</Text>
+                      <Text style={[styles.settingsCardTitle, isDark && { color: '#e5e7eb' }]}>{t('profile.customization')}</Text>
                     </View>
 
                     <View style={styles.inputGroup}>
                       <View style={styles.inputField}>
-                        <Text style={styles.inputLabel}>{t('profile.interfaceColor')}</Text>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.appearanceMode')}</Text>
+                        <View style={styles.languageGrid}>
+                          {[
+                            { key: 'light', label: t('profile.appearanceLight'), icon: 'sunny-outline' },
+                            { key: 'dark', label: t('profile.appearanceDark'), icon: 'moon-outline' },
+                          ].map((opt) => {
+                            const isActive = opt.key === themeMode;
+                            return (
+                              <Pressable
+                                key={opt.key}
+                                style={[
+                                  styles.languageOption,
+                                  isActive && [styles.languageOptionActive, { borderColor: accent }],
+                                  isDark && { backgroundColor: '#020617', borderColor: '#1e293b' },
+                                ]}
+                                onPress={() => setThemeMode(opt.key)}
+                              >
+                                <Ionicons
+                                  name={opt.icon}
+                                  size={18}
+                                  color={isActive ? accent : isDark ? '#e5e7eb' : '#64748b'}
+                                />
+                                <Text
+                                  style={[
+                                    styles.languageLabel,
+                                    isActive && { color: accent, fontWeight: '700' },
+                                    isDark && !isActive && { color: '#cbd5e1' },
+                                  ]}
+                                >
+                                  {opt.label}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+
+                      <View style={styles.inputField}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.interfaceColor')}</Text>
                         <View style={styles.colorGrid}>
                           {[
                             { key: 'blue', label: t('profile.colorBlue'), color: '#38BDF8' },
@@ -743,11 +791,12 @@ export default function ProfileScreen() {
                                 style={[
                                   styles.colorOption,
                                   isActive && [styles.colorOptionActive, { borderColor: opt.color }],
+                                  isDark && { backgroundColor: '#020617', borderColor: '#1e293b' },
                                 ]}
                                 onPress={() => setThemeColor(opt.key)}
                               >
                                 <View style={[styles.colorCircle, { backgroundColor: opt.color }]} />
-                                <Text style={[styles.colorLabel, isActive && { color: opt.color, fontWeight: '700' }]}>
+                                <Text style={[styles.colorLabel, isActive && { color: opt.color, fontWeight: '700' }, isDark && !isActive && { color: '#cbd5e1' }]}>
                                   {opt.label}
                                 </Text>
                               </Pressable>
@@ -757,7 +806,7 @@ export default function ProfileScreen() {
                       </View>
 
                       <View style={styles.inputField}>
-                        <Text style={styles.inputLabel}>{t('profile.appLanguage')}</Text>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.appLanguage')}</Text>
                         <View style={styles.languageGrid}>
                           {[
                             { key: 'es', label: t('profile.languageEs'), flag: '🇪🇸' },
@@ -772,6 +821,7 @@ export default function ProfileScreen() {
                                 style={[
                                   styles.languageOption,
                                   isActive && [styles.languageOptionActive, { borderColor: accent }],
+                                  isDark && { backgroundColor: '#020617', borderColor: '#1e293b' },
                                 ]}
                                 onPress={async () => {
                                   setLanguageValue(opt.key);
@@ -783,7 +833,7 @@ export default function ProfileScreen() {
                                 }}
                               >
                                 <Text style={styles.languageFlag}>{opt.flag}</Text>
-                                <Text style={[styles.languageLabel, isActive && { color: accent, fontWeight: '700' }]}>
+                                <Text style={[styles.languageLabel, isActive && { color: accent, fontWeight: '700' }, isDark && !isActive && { color: '#cbd5e1' }]}>
                                   {opt.label}
                                 </Text>
                               </Pressable>
@@ -795,7 +845,7 @@ export default function ProfileScreen() {
                   </View>
 
                   {/* POLÍTICA DE PRIVACIDAD */}
-                  <View style={styles.settingsCard}>
+                  <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
                     <Pressable
                       style={styles.policyLink}
                       onPress={() => setShowPolicyModal(true)}
@@ -816,7 +866,7 @@ export default function ProfileScreen() {
                 </ScrollView>
 
                 {/* BOTÓN GUARDAR FLOTANTE */}
-                <View style={styles.floatingButtonContainer}>
+                <View style={[styles.floatingButtonContainer, isDark && { backgroundColor: '#020617', borderTopColor: '#1e293b' }] }>
                   <Pressable
                     style={[
                       styles.saveButton,
@@ -849,14 +899,14 @@ export default function ProfileScreen() {
             onPress={() => setShowGenderModal(false)}
           >
             <Pressable
-              style={styles.genderModal}
+              style={[styles.genderModal, isDark && { backgroundColor: '#020617' }]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.genderModalHeader}>
                 <View style={[styles.genderModalIcon, { backgroundColor: `${accent}20` }]}>
                   <Ionicons name="people" size={24} color={accent} />
                 </View>
-                <Text style={styles.genderModalTitle}>
+                <Text style={[styles.genderModalTitle, isDark && { color: '#e5e7eb' }]}>
                   {t('register.genderModalTitle') || 'Selecciona tu género'}
                 </Text>
               </View>
@@ -876,6 +926,7 @@ export default function ProfileScreen() {
                   >
                     <Text style={[
                       styles.genderOptionText,
+                      isDark && { color: '#cbd5e1' },
                       genero === option && [styles.genderOptionTextActive, { color: accent }]
                     ]}>
                       {option}
