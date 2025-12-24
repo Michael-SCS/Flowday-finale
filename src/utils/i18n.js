@@ -65,8 +65,7 @@ const translations = {
       appLanguage: 'Idioma de la aplicación',
       privacyPolicy: 'Política de privacidad',
       logout: 'Cerrar sesión',
-      profileHint:
-        'Usa la tuerquita de arriba para editar tus datos y personalizar la app.',
+      profileHint: '',
       updated: 'Perfil actualizado correctamente.',
       loading: 'Cargando perfil...',
       retry: 'Reintentar',
@@ -120,6 +119,7 @@ const translations = {
         'Al continuar usando la aplicación declaras haber leído y comprendido esta política de privacidad y aceptas el tratamiento de tus datos y las limitaciones de responsabilidad aquí descritas.',
       tourPreview: 'Ver recorrido con la mascota (temporal)',
       proStatsTitle: 'Resumen PRO (próximamente)',
+      proStatsSubtitle: 'Últimos 7 días',
       proStatsWeekLabel: 'Tu última semana',
       proStatsBestDayLabel: 'Día más productivo reciente',
       proStatsLoading: 'Calculando tus estadísticas...',
@@ -205,6 +205,7 @@ const translations = {
       deleteThisAndNext: 'Eliminar esta y las siguientes',
       cancel: 'Cancelar',
       edit: 'Editar',
+      delete: 'Eliminar',
       changeHabit: 'Cambiar hábito',
       timeConflictTitle: 'Horario no disponible',
       timeConflictMessage:
@@ -248,6 +249,8 @@ const translations = {
       durationCustom: 'Personalizado',
       durationCustomPlaceholder: 'Minutos',
       endTimeLabel: 'Hora fin',
+      colorLabel: 'Color de la tarjeta',
+      selected: 'Seleccionado',
     },
     habitList: {
       title: 'Agregar hábito',
@@ -394,6 +397,7 @@ const translations = {
         'By continuing to use the app, you declare that you have read and understood this privacy policy and that you accept the processing of your data and the limitations of liability described here.',
       tourPreview: 'Preview mascot tour (temporary)',
       proStatsTitle: 'PRO summary (coming soon)',
+      proStatsSubtitle: 'Last 7 days',
       proStatsWeekLabel: 'Your last week',
       proStatsBestDayLabel: 'Most productive recent day',
       proStatsLoading: 'Calculating your stats...',
@@ -479,6 +483,7 @@ const translations = {
       deleteThisAndNext: 'Delete this and following ones',
       cancel: 'Cancel',
       edit: 'Edit',
+      delete: 'Delete',
       changeHabit: 'Change habit',
       timeConflictTitle: 'Time not available',
       timeConflictMessage:
@@ -522,6 +527,8 @@ const translations = {
       durationCustom: 'Custom',
       durationCustomPlaceholder: 'Minutes',
       endTimeLabel: 'End time',
+      colorLabel: 'Card color',
+      selected: 'Selected',
     },
     habitList: {
       title: 'Add habit',

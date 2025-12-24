@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabase';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n, translate } from '../utils/i18n';
@@ -239,7 +239,7 @@ export default function ProfileScreen() {
         <View style={styles.headerSection}>
           <View style={styles.bannerContainer}>
             <Image
-              source={require('../../assets/Banner.png')}
+              source={isDark ? require('../../assets/Banner_negro.png') : require('../../assets/Banner_blanco.png')}
               style={styles.bannerImage}
               resizeMode="cover"
             />
@@ -307,7 +307,7 @@ export default function ProfileScreen() {
                       </Text>
                       {isPro === true && (
                         <View style={[styles.proBadge, { backgroundColor: `${accent}15`, borderColor: `${accent}40` }]}> 
-                          <Ionicons name="crown" size={14} color={accent} />
+                          <MaterialCommunityIcons name="crown-outline" size={14} color={accent} />
                           <Text style={[styles.proBadgeText, { color: accent }]}>PRO</Text>
                         </View>
                       )}
@@ -326,9 +326,9 @@ export default function ProfileScreen() {
                         </View>
                       )}
                       {genero && (
-                        <View style={[styles.infoBadge, { backgroundColor: `${accent}15`, borderColor: `${accent}30` }]}>
+                        <View style={[styles.infoBadge, { backgroundColor: `${accent}15`, borderColor: `${accent}30` }]}> 
                           <Ionicons name="person-outline" size={14} color={accent} />
-                          <Text style={[styles.badgeText, { color: accent }]}>{genero}</Text>
+                          <Text style={[styles.badgeText, { color: accent }]}>{genero.charAt(0).toUpperCase() + genero.slice(1)}</Text>
                         </View>
                       )}
                     </View>
@@ -336,7 +336,7 @@ export default function ProfileScreen() {
                     <View style={styles.preferencesRow}>
                       <View style={[styles.preferenceChip, { backgroundColor: `${accent}10` }]}>
                         <Ionicons name="color-palette" size={14} color={accent} />
-                        <Text style={[styles.preferenceText, { color: accent }]}>{themeColor}</Text>
+                        <Text style={[styles.preferenceText, { color: accent }]}>{t(`profile.color${themeColor.charAt(0).toUpperCase() + themeColor.slice(1)}`) || themeColor}</Text>
                       </View>
                       <View style={[styles.preferenceChip, { backgroundColor: `${accent}10` }]}>
                         <Ionicons name="language" size={14} color={accent} />
