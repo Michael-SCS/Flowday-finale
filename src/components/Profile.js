@@ -37,14 +37,8 @@ export default function ProfileScreen() {
   const [edad, setEdad] = useState('');
   const [genero, setGenero] = useState('');
   const [languageValue, setLanguageValue] = useState(language || 'es');
-  const genderOptions = [
-    'Masculino',
-    'Femenino',
-    'No binario',
-    'Género fluido',
-    'Prefiero no decirlo',
-    'Otro',
-  ];
+  const genderKeys = ['male', 'female', 'nonBinary', 'genderFluid', 'preferNotSay', 'other'];
+  const genderOptions = genderKeys.map((k) => t(`profile.genderOptions.${k}`));
 
   const loadProfile = async () => {
     try {

@@ -69,26 +69,10 @@ export default function Register({ navigation }) {
     }
   }, []);
 
+  const genderKeys = ['male', 'female', 'nonBinary', 'genderFluid', 'preferNotSay', 'other'];
   const genderOptions = useMemo(() => {
-    if (language === 'en') {
-      return [
-        'Male',
-        'Female',
-        'Non-binary',
-        'Gender fluid',
-        'Prefer not to say',
-        'Other',
-      ];
-    }
-    return [
-      'Masculino',
-      'Femenino',
-      'No binario',
-      'Género fluido',
-      'Prefiero no decirlo',
-      'Otro',
-    ];
-  }, [language]);
+    return genderKeys.map((k) => t(`profile.genderOptions.${k}`));
+  }, [t]);
 
   async function handleRegister() {
     setError('');

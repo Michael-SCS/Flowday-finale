@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../utils/supabase';
+import { useI18n } from '../../utils/i18n';
 
 export default function RegisterForm({ navigation }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -59,51 +62,62 @@ export default function RegisterForm({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
-      <Animated.Image source={mascotImages[mascotIndex]} style={[styles.mascot, { opacity, transform: [{ scale: mascotScale }] }]} resizeMode="contain" />
+    <KeyboardAwareScrollView
+      contentContainerStyle={styles.scrollContent}
+      enableOnAndroid={true}
+      extraScrollHeight={Platform.OS === 'ios' ? 20 : 60}
+      keyboardShouldPersistTaps="handled"
+      enableAutomaticScroll={true}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.innerWrapper}>
+          <Animated.Image source={mascotImages[mascotIndex]} style={[styles.mascot, { opacity, transform: [{ scale: mascotScale }] }]} resizeMode="contain" />
 
-      <Animated.View style={[styles.card, { opacity: cardOpacity, transform: [{ translateY: cardTranslate }] }] }>
-        <Text style={styles.welcome}>🌱 Bienvenido a Fluu{"\n\n"}Estás a punto de empezar un espacio creado para ayudarte a organizar tus días, crear hábitos y avanzar a tu propio ritmo.{"\n"}Aquí no se trata de hacerlo perfecto, sino de hacerlo posible.{"\n\n"}Regístrate y comencemos paso a paso ✨</Text>
+        <Animated.View style={[styles.card, { opacity: cardOpacity, transform: [{ translateY: cardTranslate }] }] }>
+          <Text style={styles.welcome}>{t('register.welcome')}</Text>
 
-        <Text style={styles.title}>Email y password</Text>
+          <Text style={styles.title}>{t('register.step1Title')}</Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputRow}>
-            <Ionicons name="mail-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
-            <TextInput autoCapitalize="none" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
+          <View style={styles.field}>
+            <Text style={styles.label}>{t('auth.emailLabel')}</Text>
+            <View style={styles.inputRow}>
+              <Ionicons name="mail-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
+              <TextInput autoCapitalize="none" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
+            </View>
           </View>
-        </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputRow}>
-            <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
-            <TextInput secureTextEntry={!showPassword} value={password} onChangeText={setPassword} style={styles.input} />
-            <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={styles.eyeButton}>
-              <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color="#6b7280" />
+          <View style={styles.field}>
+            <Text style={styles.label}>{t('auth.passwordLabel')}</Text>
+            <View style={styles.inputRow}>
+              <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
+              <TextInput secureTextEntry={!showPassword} value={password} onChangeText={setPassword} style={styles.input} />
+              <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={styles.eyeButton}>
+                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+            <TouchableOpacity
+              style={styles.btn}
+              onPress={handleRegister}
+              disabled={loading}
+              onPressIn={() => Animated.spring(buttonScale, { toValue: 0.96, useNativeDriver: true }).start()}
+              onPressOut={() => Animated.spring(buttonScale, { toValue: 1, useNativeDriver: true }).start()}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t('register.submit')}</Text>}
             </TouchableOpacity>
-          </View>
-        </View>
-
-        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-          <TouchableOpacity
-            style={styles.btn}
-            onPress={handleRegister}
-            disabled={loading}
-            onPressIn={() => Animated.spring(buttonScale, { toValue: 0.96, useNativeDriver: true }).start()}
-            onPressOut={() => Animated.spring(buttonScale, { toValue: 1, useNativeDriver: true }).start()}
-          >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Crear</Text>}
-          </TouchableOpacity>
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
-    </View>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' },
+  container: { flex: 1, padding: 0, backgroundColor: '#f8fafc' },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   mascot: { width: 160, height: 160, marginBottom: 8 },
   card: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 18, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 6 },
   welcome: { fontSize: 14, textAlign: 'center', color: '#374151', marginBottom: 12, lineHeight: 20 },
@@ -115,4 +129,5 @@ const styles = StyleSheet.create({
   eyeButton: { padding: 6 },
   btn: { backgroundColor: '#2563eb', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 6 },
   btnText: { color: '#fff', fontWeight: '700' },
+  innerWrapper: { width: '100%', alignItems: 'center' },
 });

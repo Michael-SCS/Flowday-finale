@@ -4,6 +4,7 @@ import OnboardingSlides from '../components/onboarding/OnboardingSlides';
 import RegisterForm from '../components/onboarding/RegisterForm';
 import ProfileForm from '../components/onboarding/ProfileForm';
 import PersonalizationForm from '../components/onboarding/PersonalizationForm';
+import AppSettings from '../components/onboarding/AppSettings';
 import OnboardingFinal from '../components/onboarding/OnboardingFinal';
 
 const Stack = createNativeStackNavigator();
@@ -14,6 +15,7 @@ export default function OnboardingNavigator() {
       <Stack.Screen name="Slides" component={OnboardingSlides} />
       <Stack.Screen name="Register" component={RegisterForm} />
       <Stack.Screen name="Profile" component={ProfileForm} />
+      <Stack.Screen name="AppSettings" component={AppSettings} />
       <Stack.Screen name="Personalization" component={PersonalizationForm} />
       <Stack.Screen name="Final" component={OnboardingFinal} />
     </Stack.Navigator>

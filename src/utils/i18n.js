@@ -17,6 +17,7 @@ const translations = {
       title: 'Crear cuenta',
       step1Title: 'Información básica',
       step2Title: 'Datos de acceso',
+      welcome: '🌱 Bienvenido a Fluu\n\nEstás a punto de empezar un espacio creado para ayudarte a organizar tus días, crear hábitos y avanzar a tu propio ritmo.\nAquí no se trata de hacerlo perfecto, sino de hacerlo posible.\n\nRegístrate y comencemos paso a paso ✨',
       next: 'Siguiente',
       back: 'Atrás',
       submit: 'Registrarme',
@@ -45,6 +46,34 @@ const translations = {
         'Estos Términos y Condiciones regulan el uso de esta aplicación. Al crear una cuenta te comprometes a utilizar la app solo con fines personales y de forma legal y respetuosa. La información mostrada tiene carácter informativo y de organización personal; no constituye asesoramiento médico, psicológico, nutricional, financiero, jurídico ni de otro tipo profesional. La app se ofrece “tal cual” y no podemos garantizar que esté siempre disponible o libre de errores. No nos hacemos responsables por decisiones que tomes basadas en la información de la app ni por daños indirectos o pérdidas de datos. Podemos actualizar la app y estas condiciones; cuando haya cambios relevantes procuraremos avisarte dentro de la propia aplicación.',
       privacyContent:
         'Para funcionar, la app recopila datos básicos como tu nombre, correo electrónico, idioma y algunos datos opcionales de perfil. No solicitamos datos bancarios ni especialmente sensibles. Usamos estos datos únicamente para crear tu cuenta, autenticarte, mostrar tu información de perfil y personalizar algunas funciones. Tus datos se almacenan en servicios de terceros especializados y no se comparten con terceros con fines comerciales. Puedes solicitar la actualización o eliminación de tu perfil desde la app o contactando al soporte. Al registrarte confirmas que has leído esta información y aceptas el tratamiento de tus datos según lo descrito.',
+    },
+    onboarding: {
+      slide1: {
+        title: 'Bienvenido a Flowday',
+        subtitle: 'Organiza tu día y crea hábitos sostenibles.',
+      },
+      slide2: {
+        title: 'Sencillo y amigable',
+        subtitle: 'Crea tareas, checklists y rastrea tu progreso.',
+      },
+      slide3: {
+        title: 'Personalízalo',
+        subtitle: 'Responde unas preguntas y te armamos un plan inicial.',
+      },
+      continue: 'Continuar',
+    },
+    
+    personalization: {
+      title: 'Personalización',
+      sleepProblems: 'Problemas para dormir',
+      concentrationProblems: 'Problemas de concentración',
+      stressLevel: 'Nivel de estrés',
+      mainGoal: 'Objetivo principal',
+      goalSleep: 'Dormir mejor',
+      goalProductivity: 'Productividad',
+      goalWellbeing: 'Bienestar',
+      goalOrganization: 'Organización',
+      finish: 'Finalizar',
     },
     profile: {
       settingsModalTitle: 'Ajustes de perfil y app',
@@ -87,6 +116,14 @@ const translations = {
       languageEn: 'Inglés',
       languagePt: 'Portugués',
       languageFr: 'Francés',
+      genderOptions: {
+        male: 'Masculino',
+        female: 'Femenino',
+        nonBinary: 'No binario',
+        genderFluid: 'Género fluido',
+        preferNotSay: 'Prefiero no decirlo',
+        other: 'Otro',
+      },
       privacyIntro:
         'Esta aplicación recopila y almacena únicamente la información mínima necesaria para ofrecerte una experiencia personalizada, como tu nombre, correo electrónico y algunos datos opcionales de perfil. No solicitamos información bancaria ni datos especialmente sensibles.',
       privacyUseOfDataTitle: 'Uso de datos',
@@ -276,6 +313,7 @@ const translations = {
       presetCustom: 'Personalizado',
     },
   },
+    
   en: {
     auth: {
       loginTitle: 'Sign in',
@@ -291,6 +329,8 @@ const translations = {
       title: 'Create account',
       step1Title: 'Step 1 of 2: Basic info',
       step2Title: 'Step 2 of 2: Account',
+      welcome:
+        '🌱 Welcome to Fluu\n\nYou are about to start a space created to help you organize your days, build habits and move forward at your own pace.\nThis is not about doing it perfectly, but about making it possible.\n\nSign up and let’s begin step by step ✨',
       next: 'Next',
       back: 'Back',
       submit: 'Sign up',
@@ -319,6 +359,33 @@ const translations = {
         'These Terms and Conditions govern the use of this app. By creating an account you agree to use the app only for personal purposes and in a lawful and respectful way. The information shown is for informational and personal organization purposes only; it is not medical, psychological, nutritional, financial, legal or any other type of professional advice. The app is provided “as is” and we cannot guarantee that it will always be available or error-free. We are not responsible for decisions you make based on the information in the app or for indirect damages or data loss. We may update the app and these terms; when there are relevant changes we will try to notify you within the app.',
       privacyContent:
         'To work, the app collects basic data such as your name, email address, language and some optional profile data. We do not request banking or highly sensitive data. We use this data only to create your account, authenticate you, display your profile information and personalize some features. Your data is stored in specialized third-party services and is not shared with third parties for commercial purposes. You can request the update or deletion of your profile from within the app or by contacting support. By signing up you confirm that you have read this information and accept the processing of your data as described.',
+    },
+    onboarding: {
+      slide1: {
+        title: 'Welcome to Flowday',
+        subtitle: 'Organize your day and build sustainable habits.',
+      },
+      slide2: {
+        title: 'Simple and friendly',
+        subtitle: 'Create tasks, checklists and track your progress.',
+      },
+      slide3: {
+        title: 'Make it yours',
+        subtitle: "Answer a few questions and we'll build an initial plan for you.",
+      },
+      continue: 'Continue',
+    },
+    personalization: {
+      title: 'Personalization',
+      sleepProblems: 'Sleep problems',
+      concentrationProblems: 'Concentration problems',
+      stressLevel: 'Stress level',
+      mainGoal: 'Main goal',
+      goalSleep: 'Sleep better',
+      goalProductivity: 'Productivity',
+      goalWellbeing: 'Well-being',
+      goalOrganization: 'Organization',
+      finish: 'Finish',
     },
     profile: {
       settingsModalTitle: 'Profile & app settings',
@@ -364,6 +431,14 @@ const translations = {
       languageEn: 'English',
       languagePt: 'Portuguese',
       languageFr: 'French',
+      genderOptions: {
+        male: 'Male',
+        female: 'Female',
+        nonBinary: 'Non-binary',
+        genderFluid: 'Gender fluid',
+        preferNotSay: 'Prefer not to say',
+        other: 'Other',
+      },
       privacyIntro:
         'This app collects and stores only the minimum information needed to offer you a personalized experience, such as your name, email address and some optional profile data. We do not request banking information or other highly sensitive data.',
       privacyUseOfDataTitle: 'Use of data',
@@ -569,6 +644,8 @@ const translations = {
       title: 'Criar conta',
       step1Title: 'Informação básica',
       step2Title: 'Dados de acesso',
+      welcome:
+        '🌱 Bem-vindo ao Fluu\n\nVocê está prestes a iniciar um espaço criado para ajudá-lo a organizar seus dias, criar hábitos e avançar no seu próprio ritmo.\nNão se trata de fazer tudo perfeito, mas de tornar possível.\n\nRegistre-se e vamos começar passo a passo ✨',
       next: 'Próximo',
       back: 'Voltar',
       submit: 'Registrar',
@@ -599,6 +676,21 @@ const translations = {
         'Estes Termos e Condições regulam o uso deste aplicativo. Ao criar uma conta, você se compromete a utilizar o app apenas para fins pessoais e de maneira legal e respeitosa. As informações exibidas têm caráter informativo e de organização pessoal; elas não constituem aconselhamento médico, psicológico, nutricional, financeiro, jurídico ou de outro tipo profissional. O app é oferecido “no estado em que se encontra” e não podemos garantir que estará sempre disponível ou livre de erros. Não nos responsabilizamos por decisões que você tome com base nas informações do app nem por danos indiretos ou perda de dados. Podemos atualizar o app e estas condições; quando houver mudanças relevantes, buscaremos avisar dentro do próprio aplicativo.',
       privacyContent:
         'Para funcionar, o app coleta dados básicos como seu nome, e-mail, idioma e alguns dados opcionais de perfil. Não solicitamos dados bancários nem especialmente sensíveis. Usamos esses dados apenas para criar sua conta, autenticar você, exibir suas informações de perfil e personalizar alguns recursos. Seus dados são armazenados em serviços de terceiros especializados e não são compartilhados com terceiros para fins comerciais. Você pode solicitar a atualização ou exclusão do seu perfil pelo app ou entrando em contato com o suporte. Ao se registrar, você confirma que leu estas informações e aceita o tratamento dos seus dados conforme descrito.',
+    },
+    onboarding: {
+      slide1: {
+        title: 'Bem-vindo ao Flowday',
+        subtitle: 'Organize seu dia e crie hábitos sustentáveis.',
+      },
+      slide2: {
+        title: 'Simples e amigável',
+        subtitle: 'Crie tarefas, checklists e acompanhe seu progresso.',
+      },
+      slide3: {
+        title: 'Personalize',
+        subtitle: 'Responda algumas perguntas e montaremos un plano inicial para você.',
+      },
+      continue: 'Continuar',
     },
     profile: {
       settingsModalTitle: 'Ajustes de perfil e app',
@@ -644,6 +736,14 @@ const translations = {
       languageEn: 'Inglês',
       languagePt: 'Português',
       languageFr: 'Francês',
+      genderOptions: {
+        male: 'Masculino',
+        female: 'Feminino',
+        nonBinary: 'Não binário',
+        genderFluid: 'Gênero fluido',
+        preferNotSay: 'Prefiro não dizer',
+        other: 'Outro',
+      },
       privacyIntro:
         'Este aplicativo coleta e armazena apenas as informações mínimas necessárias para oferecer uma experiência personalizada, como seu nome, e-mail e alguns dados opcionais de perfil. Não solicitamos informações bancárias nem outros dados altamente sensíveis.',
       privacyUseOfDataTitle: 'Uso dos dados',
@@ -845,6 +945,8 @@ const translations = {
       title: "Créer un compte",
       step1Title: 'Étape 1 sur 2 : Infos de base',
       step2Title: 'Étape 2 sur 2 : Compte',
+      welcome:
+        "🌱 Bienvenue sur Fluu\n\nVous êtes sur le point de commencer un espace conçu pour vous aider à organiser vos journées, créer des habitudes et avancer à votre rythme.\nIl ne s'agit pas de le faire parfaitement, mais de le rendre possible.\n\nInscrivez-vous et commençons pas à pas ✨",
       next: 'Suivant',
       back: 'Retour',
       submit: "S'inscrire",
@@ -876,6 +978,21 @@ const translations = {
         "Ces Conditions générales régissent l’utilisation de cette application. En créant un compte, vous vous engagez à utiliser l’app uniquement à des fins personnelles et de manière légale et respectueuse. Les informations affichées ont un but informatif et d’organisation personnelle ; elles ne constituent pas un conseil médical, psychologique, nutritionnel, financier, juridique ou tout autre conseil professionnel. L’application est fournie \"en l’état\" et nous ne pouvons pas garantir qu’elle sera toujours disponible ou exempte d’erreurs. Nous ne sommes pas responsables des décisions que vous prenez sur la base des informations de l’app ni des dommages indirects ou pertes de données. Nous pouvons mettre à jour l’app et ces conditions ; en cas de changements importants, nous essaierons de vous en informer dans l’application.",
       privacyContent:
         "Pour fonctionner, l’application collecte des données de base telles que votre nom, votre adresse e-mail, votre langue et certaines informations de profil facultatives. Nous ne demandons pas de données bancaires ni d’autres données hautement sensibles. Nous utilisons ces données uniquement pour créer votre compte, vous authentifier, afficher vos informations de profil et personnaliser certaines fonctionnalités. Vos données sont stockées dans des services tiers spécialisés et ne sont pas partagées avec des tiers à des fins commerciales. Vous pouvez demander la mise à jour ou la suppression de votre profil depuis l’app ou en contactant le support. En vous inscrivant, vous confirmez avoir lu ces informations et accepter le traitement de vos données tel que décrit.",
+    },
+    onboarding: {
+      slide1: {
+        title: 'Bienvenue sur Flowday',
+        subtitle: 'Organisez votre journée et construisez des habitudes durables.',
+      },
+      slide2: {
+        title: 'Simple et convivial',
+        subtitle: 'Créez des tâches, checklists et suivez votre progression.',
+      },
+      slide3: {
+        title: 'Personnalisez-le',
+        subtitle: "Répondez à quelques questions et nous vous préparerons un plan initial.",
+      },
+      continue: 'Continuer',
     },
     profile: {
       settingsModalTitle: "Paramètres du profil et de l'app",
@@ -921,6 +1038,14 @@ const translations = {
       languageEn: 'Anglais',
       languagePt: 'Portugais',
       languageFr: 'Français',
+        genderOptions: {
+          male: 'Masculin',
+          female: 'Féminin',
+          nonBinary: 'Non binaire',
+          genderFluid: 'Genre fluide',
+          preferNotSay: 'Préfère ne pas dire',
+          other: 'Autre',
+        },
       privacyIntro:
         "Cette application collecte et stocke uniquement les informations minimales nécessaires pour vous offrir une expérience personnalisée, comme votre nom, votre adresse e-mail et certaines données de profil facultatives. Nous ne demandons pas d'informations bancaires ni d'autres données hautement sensibles.",
       privacyUseOfDataTitle: 'Utilisation des données',
@@ -1111,7 +1236,7 @@ const translations = {
 };
 
 export function translate(path, language) {
-  const langKey = translations[language] ? language : 'es';
+  const langKey = translations[language] ? language : 'en';
   const parts = path.split('.');
   let current = translations[langKey];
   for (const p of parts) {

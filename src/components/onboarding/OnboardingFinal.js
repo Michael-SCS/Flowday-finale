@@ -7,11 +7,30 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function OnboardingFinal({ navigation }) {
   const [loading, setLoading] = useState(true);
 
+  const safeResetToApp = () => {
+    try {
+      const parent = navigation.getParent && navigation.getParent();
+      if (parent && typeof parent.reset === 'function') {
+        parent.reset({ index: 0, routes: [{ name: 'Calendario' }] });
+        return;
+      }
+    } catch (e) {
+      // ignore and fallback
+    }
+
+    // Fallback: try resetting within this stack to avoid unhandled RESET action
+    try {
+      navigation.reset({ index: 0, routes: [{ name: 'Slides' }] });
+    } catch (e) {
+      navigation.popToTop && navigation.popToTop();
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
-        const user = supabase.auth.user();
-        if (!user) throw new Error('Usuario no autenticado');
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) throw new Error('Usuario no autenticado');
 
         const { error } = await supabase.from('user_onboarding').upsert({
           user_id: user.id,
@@ -29,10 +48,7 @@ export default function OnboardingFinal({ navigation }) {
 
         await generateInitialHabits(user.id);
 
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        });
+        safeResetToApp();
       } catch (err) {
         console.log(err);
         alert(err.message || String(err));
@@ -55,7 +71,7 @@ export default function OnboardingFinal({ navigation }) {
     <View style={styles.container}>
       <Text style={styles.title}>¡Listo!</Text>
       <Text style={{ textAlign:'center', marginBottom:20 }}>Tu cuenta está configurada. Te llevamos a la app.</Text>
-      <TouchableOpacity style={styles.btn} onPress={() => navigation.reset({ index:0, routes:[{ name: 'Home' }] })}>
+      <TouchableOpacity style={styles.btn} onPress={() => safeResetToApp()}>
         <Text style={{ color:'#fff', fontWeight:'700' }}>Ir al inicio</Text>
       </TouchableOpacity>
     </View>

@@ -5,7 +5,8 @@ import { loadHabitTemplates } from '../utils/habitCache';
 import AppNavigator from './AppNavigator';
 import AuthNavigator from './AuthNavigator';
 import OnboardingNavigator from './OnboardingNavigator';
-import { useSettings } from '../utils/settingsContext';
+import { useSettings, mapLocaleToLang } from '../utils/settingsContext';
+import * as Localization from 'expo-localization';
 
 export default function AuthGate() {
   const [session, setSession] = useState(null);
@@ -14,7 +15,7 @@ export default function AuthGate() {
   const [onboardingCompleted, setOnboardingCompleted] = useState(null);
   const [deviceOnboardingChecked, setDeviceOnboardingChecked] = useState(false);
   const [deviceOnboardingNeeded, setDeviceOnboardingNeeded] = useState(false);
-  const { language } = useSettings();
+  const { language, setLanguageTemp } = useSettings();
 
   useEffect(() => {
     // Sesión inicial (persistida)
@@ -121,10 +122,21 @@ export default function AuthGate() {
     };
   }, [session]);
 
-  if (loading) return null;
-
   // No autenticado => flujo de auth (login/register)
   // Si es la primera vez en este dispositivo mostramos el onboarding antes de auth
+  useEffect(() => {
+    if (deviceOnboardingChecked && deviceOnboardingNeeded) {
+      try {
+        const sys = mapLocaleToLang(Localization.locale || Localization.locales?.[0]);
+        setLanguageTemp && setLanguageTemp(sys);
+      } catch {
+        // ignore
+      }
+    }
+  }, [deviceOnboardingChecked, deviceOnboardingNeeded]);
+
+  if (loading) return null;
+
   if (deviceOnboardingChecked && deviceOnboardingNeeded) return <OnboardingNavigator />;
 
   if (!session) return <AuthNavigator />;

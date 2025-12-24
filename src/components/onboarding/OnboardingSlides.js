@@ -1,25 +1,26 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, ImageBackground, TouchableOpacity } from 'react-native';
+import { useI18n } from '../../utils/i18n';
 
 const { width, height } = Dimensions.get('window');
 
 const slides = [
   {
     key: '1',
-    title: 'Bienvenido a Flowday',
-    subtitle: 'Organiza tu día y crea hábitos sostenibles.',
+    titleKey: 'onboarding.slide1.title',
+    subtitleKey: 'onboarding.slide1.subtitle',
     image: require('../../../assets/onboarding/onboarding_1.png'),
   },
   {
     key: '2',
-    title: 'Sencillo y amigable',
-    subtitle: 'Crea tareas, checklists y rastrea tu progreso.',
+    titleKey: 'onboarding.slide2.title',
+    subtitleKey: 'onboarding.slide2.subtitle',
     image: require('../../../assets/onboarding/onboarding_2.png'),
   },
   {
     key: '3',
-    title: 'Personalízalo',
-    subtitle: 'Responde unas preguntas y te armamos un plan inicial.',
+    titleKey: 'onboarding.slide3.title',
+    subtitleKey: 'onboarding.slide3.subtitle',
     image: require('../../../assets/onboarding/onboarding_3.png'),
   },
 ];
@@ -28,6 +29,7 @@ export default function OnboardingSlides({ navigation }) {
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatRef = useRef(null);
   const [index, setIndex] = useState(0);
+  const { t } = useI18n();
 
   const renderItem = ({ item }) => (
     <View style={styles.slide}>
@@ -68,11 +70,12 @@ export default function OnboardingSlides({ navigation }) {
             if (index < slides.length - 1) {
               flatRef.current.scrollToIndex({ index: index + 1, animated: true });
             } else {
-              navigation.navigate('Register');
+              // After the last slide, ask for language/theme before registration
+              navigation.navigate('AppSettings', { from: 'slides' });
             }
           }}
         >
-          <Text style={styles.continueText}>Continuar</Text>
+          <Text style={styles.continueText}>Continue</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -100,4 +103,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   continueText: { color: '#fff', fontWeight: '700' },
+  
 });
