@@ -39,6 +39,33 @@ const FREQUENCIES = [
   { key: 'yearly', icon: 'time' },
 ];
 
+const COLOR_OPTIONS = [
+  '#38BDF8', // blue
+  '#FB7185', // pink
+  '#FACC15', // yellow
+  '#A855F7', // purple
+  '#14B8A6', // teal
+  '#10B981', // green
+  '#FB923C', // orange
+  '#EF4444', // red
+];
+
+function getContrastColorLocal(hex) {
+  try {
+    if (!hex || typeof hex !== 'string') return '#ffffff';
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map((ch) => ch + ch).join('');
+    const r = parseInt(c.substr(0, 2), 16);
+    const g = parseInt(c.substr(2, 2), 16);
+    const b = parseInt(c.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    // Prefer a darker check for better visibility in modals; lower the threshold
+    return luminance > 0.35 ? '#111827' : '#ffffff';
+  } catch {
+    return '#ffffff';
+  }
+}
+
 /* ======================
    COMPONENTE
 ====================== */
@@ -53,7 +80,8 @@ export default function HabitFormModal({
   onChangeHabit,
 }) {
   const { t } = useI18n();
-  const { language } = useSettings();
+  const { language, themeMode } = useSettings();
+  const isDark = themeMode === 'dark';
   const baseDate = useMemo(() => {
     if (typeof selectedDate === 'string') {
       const [y, m, d] = selectedDate.split('-').map(Number);
@@ -74,6 +102,8 @@ export default function HabitFormModal({
   const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState(null);
   const [durationPickerValue, setDurationPickerValue] = useState('');
+
+  const [selectedColor, setSelectedColor] = useState('#38BDF8');
 
   useEffect(() => {
     if (editingActivity && initialSchedule) {
@@ -118,8 +148,12 @@ export default function HabitFormModal({
     }
     setDescription(editingActivity?.description || '');
     setFormData(editingActivity?.data || {});
+    // Inicializar color desde la actividad editada o desde la plantilla
+    const initialColor = editingActivity?.data?.color || habit?.color || '#38BDF8';
+    setSelectedColor(initialColor);
     setActivePicker(null);
   }, [habit, baseDate, editingActivity, initialSchedule]);
+
 
   const config = useMemo(() => {
     if (!habit?.config) return null;
@@ -149,7 +183,7 @@ export default function HabitFormModal({
       case 'number':
         return (
           <TextInput
-            style={styles.input}
+            style={[styles.input, isDark && styles.inputDark]}
             placeholder={field.label}
             placeholderTextColor="#9ca3af"
             keyboardType={field.type === 'number' ? 'numeric' : 'default'}
@@ -195,29 +229,29 @@ export default function HabitFormModal({
             {items.length > 0 && (
               <View style={styles.marketHeaderRow}>
                 <View style={{ flex: 2 }}>
-                  <Text style={styles.marketHeaderText}>
+                  <Text style={[styles.marketHeaderText, isDark && { color: '#e5e7eb' }]}>
                     {t('habitForm.marketProductPlaceholder')}
                   </Text>
                 </View>
                 <View style={{ width: 60 }}>
-                  <Text style={styles.marketHeaderText}>
+                  <Text style={[styles.marketHeaderText, isDark && { color: '#e5e7eb' }]}>
                     {t('habitForm.marketQtyPlaceholder')}
                   </Text>
                 </View>
                 <View style={{ width: 70 }}>
-                  <Text style={styles.marketHeaderText}>
+                  <Text style={[styles.marketHeaderText, isDark && { color: '#e5e7eb' }]}>
                     {t('habitForm.marketPricePlaceholder')}
                   </Text>
                 </View>
               </View>
             )}
             {items.map((item, i) => (
-              <View key={i} style={styles.marketRow}>
+              <View key={i} style={[styles.marketRow, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
                 <View style={styles.marketNum}>
                   <Text style={styles.marketNumTxt}>{i + 1}</Text>
                 </View>
                 <TextInput
-                  style={[styles.input, styles.marketInput, { flex: 2 }]}
+                  style={[styles.input, isDark && styles.inputDark, styles.marketInput, { flex: 2 }]}
                   value={item.name}
                   onChangeText={(v) => {
                     const copy = [...items];
@@ -226,7 +260,7 @@ export default function HabitFormModal({
                   }}
                 />
                 <TextInput
-                  style={[styles.input, styles.marketInput, { width: 60 }]}
+                  style={[styles.input, isDark && styles.inputDark, styles.marketInput, { width: 60 }]}
                   keyboardType="numeric"
                   value={item.qty}
                   onChangeText={(v) => {
@@ -236,7 +270,7 @@ export default function HabitFormModal({
                   }}
                 />
                 <TextInput
-                  style={[styles.input, styles.marketInput, { width: 70 }]}
+                  style={[styles.input, isDark && styles.inputDark, styles.marketInput, { width: 70 }]}
                   keyboardType="numeric"
                   value={item.price}
                   onChangeText={(v) => {
@@ -280,24 +314,24 @@ export default function HabitFormModal({
             {vitamins.length > 0 && (
               <View style={styles.marketHeaderRow}>
                 <View style={{ flex: 2 }}>
-                  <Text style={styles.marketHeaderText}>
+                  <Text style={[styles.marketHeaderText, isDark && { color: '#e5e7eb' }]}>
                     {t('habitForm.vitaminsNamePlaceholder')}
                   </Text>
                 </View>
                 <View style={{ width: 70 }}>
-                  <Text style={styles.marketHeaderText}>
+                  <Text style={[styles.marketHeaderText, isDark && { color: '#e5e7eb' }]}>
                     {t('habitForm.vitaminsQtyPlaceholder')}
                   </Text>
                 </View>
               </View>
             )}
             {vitamins.map((item, i) => (
-              <View key={i} style={styles.marketRow}>
+              <View key={i} style={[styles.marketRow, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
                 <View style={styles.marketNum}>
                   <Text style={styles.marketNumTxt}>{i + 1}</Text>
                 </View>
                 <TextInput
-                  style={[styles.input, styles.marketInput, { flex: 2 }]}
+                  style={[styles.input, isDark && styles.inputDark, styles.marketInput, { flex: 2 }]}
                   value={item.name}
                   onChangeText={(v) => {
                     const copy = [...vitamins];
@@ -306,7 +340,7 @@ export default function HabitFormModal({
                   }}
                 />
                 <TextInput
-                  style={[styles.input, styles.marketInput, { width: 70 }]}
+                  style={[styles.input, isDark && styles.inputDark, styles.marketInput, { width: 70 }]}
                   keyboardType="numeric"
                   value={item.qty}
                   onChangeText={(v) => {
@@ -383,7 +417,10 @@ export default function HabitFormModal({
     onSave({
       habit,
       description,
-      data: formData,
+      data: {
+        ...formData,
+        color: selectedColor,
+      },
       editingActivityId: editingActivity?.id || null,
       schedule: {
         startDate: startDate.toISOString().split('T')[0],
@@ -404,27 +441,26 @@ export default function HabitFormModal({
     >
       <Pressable style={styles.backdrop} onPress={onClose} />
 
-      <View style={styles.sheet}>
+      <View style={[styles.sheet, isDark && { backgroundColor: '#020617' }]}>
         {/* HEADER SIMPLE */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image source={{ uri: habit.icon }} style={styles.icon} />
-            <View>
-              <Text style={styles.title}>{habit.title}</Text>
-              {habit.category && (
-                <Text style={styles.category}>{habit.category}</Text>
+              {onChangeHabit && (
+                <Pressable onPress={onChangeHabit} style={{ marginRight: 8 }}>
+                  <Ionicons name="arrow-back" size={20} color="#2563eb" />
+                </Pressable>
               )}
+              <Image source={{ uri: habit.icon }} style={styles.icon} />
+              <View>
+                <Text style={[styles.title, isDark && { color: '#e5e7eb' }]}>{habit.title}</Text>
+                {habit.category && (
+                  <Text style={[styles.category, isDark && { color: '#9ca3af' }]}>{habit.category}</Text>
+                )}
+              </View>
             </View>
-          </View>
           <View style={styles.headerRight}>
-            {onChangeHabit && (
-              <Pressable style={styles.changeHabitBtn} onPress={onChangeHabit}>
-                <Ionicons name="swap-horizontal" size={18} color="#2563eb" />
-                <Text style={styles.changeHabitTxt}>{t('calendar.changeHabit')}</Text>
-              </Pressable>
-            )}
             <Pressable onPress={onClose}>
-              <Ionicons name="close" size={28} color="#111" />
+              <Ionicons name="close" size={28} color={isDark ? '#e5e7eb' : '#111'} />
             </Pressable>
           </View>
         </View>
@@ -435,15 +471,15 @@ export default function HabitFormModal({
         >
           {/* PERIODO */}
           <View style={styles.section}>
-            <Text style={styles.label}>{t('habitForm.periodLabel')}</Text>
+            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.periodLabel')}</Text>
 
             <Pressable
-              style={styles.box}
+              style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
               onPress={() => setActivePicker('start')}
             >
-              <Text style={styles.boxLabel}>{t('habitForm.startLabel')}</Text>
+              <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.startLabel')}</Text>
               <View style={styles.boxRight}>
-                <Text style={styles.boxValue}>
+                <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>                  
                   {startDate.toLocaleDateString(
                     language === 'en' ? 'en-US' : 'es-ES',
                     {
@@ -453,7 +489,7 @@ export default function HabitFormModal({
                     }
                   )}
                 </Text>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
               </View>
             </Pressable>
 
@@ -466,19 +502,19 @@ export default function HabitFormModal({
                 size={22}
                 color="#38BDF8"
               />
-              <Text style={styles.checkTxt}>
+              <Text style={[styles.checkTxt, isDark && { color: '#e5e7eb' }]}>
                 {t('habitForm.hasEndDateQuestion')}
               </Text>
             </Pressable>
 
             {hasEndDate && (
               <Pressable
-                style={styles.box}
+                style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
                 onPress={() => setActivePicker('end')}
               >
-                <Text style={styles.boxLabel}>{t('habitForm.endLabel')}</Text>
+                <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.endLabel')}</Text>
                 <View style={styles.boxRight}>
-                  <Text style={styles.boxValue}>
+                  <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
                     {endDate.toLocaleDateString(
                       language === 'en' ? 'en-US' : 'es-ES',
                       {
@@ -488,7 +524,7 @@ export default function HabitFormModal({
                       }
                     )}
                   </Text>
-                  <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                  <Ionicons name="chevron-forward" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
                 </View>
               </Pressable>
             )}
@@ -507,8 +543,8 @@ export default function HabitFormModal({
                         : 'es-ES'
                       : undefined
                   }
-                  themeVariant="light"
-                  textColor={Platform.OS === 'ios' ? '#111827' : undefined}
+                  themeVariant={isDark ? 'dark' : 'light'}
+                  textColor={Platform.OS === 'ios' ? (isDark ? '#e5e7eb' : '#111827') : undefined}
                   onChange={(_, date) => {
                     if (!date) {
                       setActivePicker(null);
@@ -545,22 +581,22 @@ export default function HabitFormModal({
 
           {/* HORARIO */}
           <View style={styles.section}>
-            <Text style={styles.label}>{t('habitForm.timeLabel')}</Text>
+            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
 
             <Pressable
-              style={styles.box}
+              style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
               onPress={() => setTimePickerVisible(true)}
             >
-              <Text style={styles.boxLabel}>{t('habitForm.timeLabel')}</Text>
+              <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
               <View style={styles.boxRight}>
-                <Text style={styles.boxValue}>
+                <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
                   {time
                     ? `${String(time.getHours()).padStart(2, '0')}:${String(
                         time.getMinutes()
                       ).padStart(2, '0')}`
                     : t('habitForm.timeNotSet')}
                 </Text>
-                <Ionicons name="time-outline" size={18} color="#9ca3af" />
+                <Ionicons name="time-outline" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
               </View>
             </Pressable>
 
@@ -577,8 +613,8 @@ export default function HabitFormModal({
                         : 'es-ES'
                       : undefined
                   }
-                  themeVariant="light"
-                  textColor={Platform.OS === 'ios' ? '#111827' : undefined}
+                  themeVariant={isDark ? 'dark' : 'light'}
+                  textColor={Platform.OS === 'ios' ? (isDark ? '#e5e7eb' : '#111827') : undefined}
                   onChange={(_, date) => {
                     if (!date) {
                       if (Platform.OS === 'android') setTimePickerVisible(false);
@@ -593,8 +629,8 @@ export default function HabitFormModal({
 
             {/* DURACIÓN */}
             <View style={styles.durationSection}>
-              <Text style={styles.label}>{t('habitForm.durationLabel')}</Text>
-              <View style={styles.durationDropdownContainer}>
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.durationLabel')}</Text>
+              <View style={[styles.durationDropdownContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
                 <Picker
                   selectedValue={durationPickerValue}
                   onValueChange={(value) => {
@@ -610,7 +646,7 @@ export default function HabitFormModal({
                       }
                     }
                   }}
-                  dropdownIconColor="#6b7280"
+                  dropdownIconColor={isDark ? '#9ca3af' : '#6b7280'}
                   mode={Platform.OS === 'ios' ? 'dialog' : 'dropdown'}
                 >
                   <Picker.Item
@@ -630,11 +666,11 @@ export default function HabitFormModal({
 
               {durationPickerValue === 'custom' && (
                 <View style={styles.durationCustomWrapper}>
-                  <Text style={styles.durationCustomLabel}>
-                    {t('habitForm.durationCustom')}
-                  </Text>
+                  <Text style={[styles.durationCustomLabel, isDark && { color: '#e5e7eb' }]}>
+                      {t('habitForm.durationCustom')}
+                    </Text>
                   <TextInput
-                    style={styles.durationInput}
+                    style={[styles.durationInput, isDark && styles.inputDark]}
                     keyboardType="numeric"
                     placeholder={t('habitForm.durationCustomPlaceholder')}
                     placeholderTextColor="#9ca3af"
@@ -659,9 +695,9 @@ export default function HabitFormModal({
 
             {/* HORA FIN */}
             <View style={styles.endTimeRow}>
-              <Text style={styles.boxLabel}>{t('habitForm.endTimeLabel')}</Text>
+              <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.endTimeLabel')}</Text>
               <View style={styles.boxRight}>
-                <Text style={styles.boxValue}>
+                <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
                   {time && durationMinutes && durationMinutes > 0
                     ? (() => {
                         const startTotal = time.getHours() * 60 + time.getMinutes();
@@ -681,7 +717,7 @@ export default function HabitFormModal({
 
           {/* FRECUENCIA */}
           <View style={styles.section}>
-            <Text style={styles.label}>{t('habitForm.frequencyLabel')}</Text>
+            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.frequencyLabel')}</Text>
 
             <View style={styles.freqGrid}>
               {FREQUENCIES.map((f) => (
@@ -706,7 +742,7 @@ export default function HabitFormModal({
 
             {frequency === 'weekly' && (
               <>
-                <Text style={styles.sublabel}>
+                <Text style={[styles.sublabel, isDark && { color: '#9ca3af' }]}>
                   {t('habitForm.weeklySelectDays')}
                 </Text>
                 <View style={styles.daysRow}>
@@ -737,7 +773,7 @@ export default function HabitFormModal({
           {/* CAMPOS PERSONALIZADOS */}
           {config?.fields?.map((field) => (
             <View key={field.key} style={styles.section}>
-              <Text style={styles.label}>
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
                 {field.type === 'market' ? '🛒' : field.type === 'checklist' ? '✅' : '✏️'}{' '}
                 {field.label}
               </Text>
@@ -745,11 +781,35 @@ export default function HabitFormModal({
             </View>
           ))}
 
+          {/* COLOR */}
+          <View style={styles.section}>
+            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.colorLabel') || 'Color'}</Text>
+            <View style={{ marginTop: 8 }}>
+              <View style={styles.colorGrid}>
+                {COLOR_OPTIONS.map((c) => (
+                  <Pressable
+                    key={c}
+                    onPress={() => setSelectedColor(c)}
+                    style={[
+                      styles.colorSwatch,
+                      selectedColor === c && styles.colorSwatchSelected,
+                      { backgroundColor: c },
+                    ]}
+                  >
+                    {selectedColor === c && (
+                      <Ionicons name="checkmark" size={14} color={getContrastColorLocal(c)} />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </View>
+
           {/* NOTAS */}
           <View style={styles.section}>
-            <Text style={styles.label}>{t('habitForm.notesLabel')}</Text>
+            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.notesLabel')}</Text>
             <TextInput
-              style={[styles.input, styles.textarea]}
+              style={[styles.input, isDark && styles.inputDark, styles.textarea]}
               placeholder={t('habitForm.notesPlaceholder')}
               placeholderTextColor="#9ca3af"
               multiline
@@ -803,6 +863,23 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
+  },
+  colorGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  colorSwatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorSwatchSelected: {
+    borderColor: '#111827',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -989,6 +1066,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
+    color: '#111',
+  },
+  inputDark: {
+    backgroundColor: '#020617',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#e5e7eb',
+  },
+  durationCustomWrapper: {
+    marginTop: 8,
+  },
+  durationCustomLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 6,
+  },
+  durationInput: {
+    backgroundColor: '#fafafa',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 10,
     color: '#111',
   },
   marketInput: {

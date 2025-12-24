@@ -21,12 +21,13 @@ const TOUR_STORAGE_KEY = 'fluu_hasSeenMascotTour';
 
 export default function TabNavigator() {
   const insets = useSafeAreaInsets();
-  const { themeColor } = useSettings();
+  const { themeColor, themeMode } = useSettings();
   const { t } = useI18n();
   const accent = getAccentColor(themeColor);
   const navigation = useNavigation();
   const [showTour, setShowTour] = useState(false);
   const { isPro } = useProStatus();
+  const isDark = themeMode === 'dark';
 
   const tourValue = useMemo(
     () => ({
@@ -63,11 +64,13 @@ export default function TabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: accent,
-        tabBarInactiveTintColor: '#94A3B8',
+        tabBarInactiveTintColor: isDark ? '#64748b' : '#94A3B8',
         tabBarStyle: {
           height: 60 + insets.bottom,   // 🔥 CLAVE
           paddingBottom: insets.bottom, // 🔥 CLAVE
           paddingTop: 6,
+          backgroundColor: isDark ? '#020617' : '#ffffff',
+          borderTopColor: isDark ? '#1e293b' : '#e2e8f0',
         },
       }}
     >

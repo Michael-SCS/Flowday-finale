@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../utils/supabase';
 import { loadHabitTemplates } from '../utils/habitCache';
 import AppNavigator from './AppNavigator';
 import AuthNavigator from './AuthNavigator';
+import OnboardingNavigator from './OnboardingNavigator';
 import { useSettings } from '../utils/settingsContext';
 
 export default function AuthGate() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(null);
+  const [deviceOnboardingChecked, setDeviceOnboardingChecked] = useState(false);
+  const [deviceOnboardingNeeded, setDeviceOnboardingNeeded] = useState(false);
   const { language } = useSettings();
 
   useEffect(() => {
@@ -27,6 +33,32 @@ export default function AuthGate() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Revisar si en este dispositivo ya se mostró el onboarding
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem('device_onboarding_shown');
+        if (!mounted) return;
+        if (v === 'true') {
+          setDeviceOnboardingNeeded(false);
+        } else {
+          setDeviceOnboardingNeeded(true);
+        }
+        setDeviceOnboardingChecked(true);
+      } catch {
+        if (mounted) {
+          setDeviceOnboardingNeeded(false);
+          setDeviceOnboardingChecked(true);
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Precargar hábitos una vez que haya sesión, para que el modal sea fluido
   useEffect(() => {
     if (!session) return;
@@ -36,7 +68,75 @@ export default function AuthGate() {
     });
   }, [session, language]);
 
+  // Consultar estado de onboarding cuando haya sesión
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!session) {
+        if (mounted) {
+          setOnboardingChecked(false);
+          setOnboardingCompleted(null);
+        }
+        return;
+      }
+
+      try {
+        const user = session.user || (await supabase.auth.getUser()).data.user;
+        if (!user) {
+          if (mounted) {
+            setOnboardingChecked(false);
+            setOnboardingCompleted(null);
+          }
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('user_onboarding')
+          .select('onboarding_completed')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          // si falla la consulta, no bloqueamos: asumimos completado
+          if (mounted) {
+            setOnboardingCompleted(true);
+            setOnboardingChecked(true);
+          }
+        } else {
+          if (mounted) {
+            setOnboardingCompleted(!!(data && data.onboarding_completed));
+            setOnboardingChecked(true);
+          }
+        }
+      } catch {
+        if (mounted) {
+          setOnboardingCompleted(true);
+          setOnboardingChecked(true);
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [session]);
+
   if (loading) return null;
 
-  return session ? <AppNavigator /> : <AuthNavigator />;
+  // No autenticado => flujo de auth (login/register)
+  // Si es la primera vez en este dispositivo mostramos el onboarding antes de auth
+  if (deviceOnboardingChecked && deviceOnboardingNeeded) return <OnboardingNavigator />;
+
+  if (!session) return <AuthNavigator />;
+
+  // Esperando resultado de onboarding check
+  if (!onboardingChecked || onboardingCompleted === null) return null;
+
+  // Si no ha completado onboarding, mostrar OnboardingNavigator una sola vez
+  if (!onboardingCompleted) {
+    return <OnboardingNavigator />;
+  }
+
+  // Caso normal: app principal
+  return <AppNavigator />;
 }

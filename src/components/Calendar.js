@@ -12,6 +12,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -43,6 +44,22 @@ function getTodayLocal() {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function getContrastColor(hex) {
+  try {
+    if (!hex || typeof hex !== 'string') return '#ffffff';
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map((ch) => ch + ch).join('');
+    const r = parseInt(c.substr(0, 2), 16);
+    const g = parseInt(c.substr(2, 2), 16);
+    const b = parseInt(c.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    // Lower threshold so more colors get a dark foreground for better readability
+    return luminance > 0.35 ? '#111827' : '#ffffff';
+  } catch {
+    return '#ffffff';
+  }
 }
 
 const today = getTodayLocal();
@@ -238,9 +255,10 @@ LocaleConfig.defaultLocale = 'es';
 ========================= */
 
 export default function Calendar() {
-  const { themeColor, language } = useSettings();
+  const { themeColor, themeMode, language } = useSettings();
   const { t } = useI18n();
   const accent = getAccentColor(themeColor);
+  const isDark = themeMode === 'dark';
   const [selectedDate, setSelectedDate] = useState(today);
   const [activities, setActivities] = useState({});
   const [habits, setHabits] = useState([]);
@@ -256,12 +274,87 @@ export default function Calendar() {
   const [marketModalData, setMarketModalData] = useState(null);
   const [vitaminsModalVisible, setVitaminsModalVisible] = useState(false);
   const [vitaminsModalData, setVitaminsModalData] = useState(null);
+
+  const themedCalendar = useMemo(() => {
+    const base = {
+      ...calendarTheme,
+      selectedDayBackgroundColor: accent,
+      todayTextColor: accent,
+      dotColor: accent,
+      indicatorColor: accent,
+      selectedDotColor: '#ffffff',
+    };
+
+    if (!isDark) return base;
+
+    return {
+      ...base,
+      calendarBackground: '#020617',
+      dayTextColor: '#e5e7eb',
+      textDisabledColor: '#4b5563',
+      arrowColor: '#e5e7eb',
+      monthTextColor: '#e5e7eb',
+      todayBackgroundColor: '#1e293b',
+      'stylesheet.calendar.header': {
+        ...calendarTheme['stylesheet.calendar.header'],
+        monthText: {
+          ...calendarTheme['stylesheet.calendar.header'].monthText,
+          color: '#e5e7eb',
+        },
+        dayHeader: {
+          ...calendarTheme['stylesheet.calendar.header'].dayHeader,
+          color: '#9ca3af',
+        },
+        week: {
+          ...calendarTheme['stylesheet.calendar.header'].week,
+        },
+      },
+      'stylesheet.day.basic': {
+        ...calendarTheme['stylesheet.day.basic'],
+        text: {
+          ...calendarTheme['stylesheet.day.basic'].text,
+          color: '#e5e7eb',
+        },
+        today: {
+          ...calendarTheme['stylesheet.day.basic'].today,
+          backgroundColor: '#1e293b',
+        },
+        todayText: {
+          ...calendarTheme['stylesheet.day.basic'].todayText,
+          color: accent,
+        },
+        selected: {
+          ...calendarTheme['stylesheet.day.basic'].selected,
+          backgroundColor: accent,
+        },
+        selectedText: {
+          ...calendarTheme['stylesheet.day.basic'].selectedText,
+          color: '#ffffff',
+        },
+        disabledText: {
+          ...calendarTheme['stylesheet.day.basic'].disabledText,
+          color: '#4b5563',
+        },
+      },
+    };
+  }, [isDark, accent]);
   const [checklistModalVisible, setChecklistModalVisible] = useState(false);
   const [checklistModalData, setChecklistModalData] = useState(null);
   const [congratsVisible, setCongratsVisible] = useState(false);
   const [congratsDate, setCongratsDate] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const swipeableRefs = React.useRef({});
+
+  // Estado para funciones inteligentes
+  const [overloadPromptShownForDates, setOverloadPromptShownForDates] = useState({});
+  const [overloadModalVisible, setOverloadModalVisible] = useState(false);
+  const [moveTasksModalVisible, setMoveTasksModalVisible] = useState(false);
+  const [moveTasksDate, setMoveTasksDate] = useState(null);
+  const [moveTasksSelection, setMoveTasksSelection] = useState({});
+  const [weeklyPlannerPromptShownForWeek, setWeeklyPlannerPromptShownForWeek] = useState({});
+  const [weeklyPlannerVisible, setWeeklyPlannerVisible] = useState(false);
+  const [weeklyPriorityText, setWeeklyPriorityText] = useState('');
+  const [weeklyHardHabitId, setWeeklyHardHabitId] = useState(null);
 
   /* =========================
      LOAD DATA
@@ -294,6 +387,42 @@ export default function Calendar() {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
   }, []);
+
+  // Detectar domingo y mostrar prompt de planificación semanal (una vez por semana)
+  useEffect(() => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const current = new Date(y, m - 1, d);
+    const isSunday = current.getDay() === 0; // 0 = domingo
+
+    if (!isSunday) return;
+
+    // Identificador simple de semana: año + semanaISO
+    const oneJan = new Date(current.getFullYear(), 0, 1);
+    const dayOfYear = Math.floor(
+      (current.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000)
+    ) + 1;
+    const weekNumber = Math.ceil((current.getDay() + dayOfYear) / 7);
+    const weekKey = `${current.getFullYear()}-${weekNumber}`;
+
+    if (weeklyPlannerPromptShownForWeek[weekKey]) return;
+
+    setWeeklyPlannerPromptShownForWeek((prev) => ({ ...prev, [weekKey]: true }));
+
+    Alert.alert(
+      t('calendar.weeklyPlannerPromptTitle'),
+      t('calendar.weeklyPlannerPromptMessage'),
+      [
+        {
+          text: t('calendar.weeklyPlannerSkip'),
+          style: 'cancel',
+        },
+        {
+          text: t('calendar.weeklyPlannerStart'),
+          onPress: () => setWeeklyPlannerVisible(true),
+        },
+      ]
+    );
+  }, [selectedDate, weeklyPlannerPromptShownForWeek, t]);
 
   async function loadActivities() {
     try {
@@ -1032,6 +1161,18 @@ export default function Calendar() {
     return habits.find((h) => h.id === activity.habit_id);
   }
 
+  // Devuelve el título a mostrar según el idioma actual de la app.
+  // Si la actividad viene de una plantilla de hábito, usamos el título
+  // traducido de la plantilla; si no, usamos el título guardado.
+  function getDisplayTitle(activity) {
+    if (!activity) return '';
+    const habitTemplate = getHabitTemplateForActivity(activity);
+    if (habitTemplate && habitTemplate.title) {
+      return habitTemplate.title;
+    }
+    return activity.title || '';
+  }
+
   function parseHabitConfig(habit) {
     if (!habit?.config) return null;
     if (typeof habit.config === 'object') return habit.config;
@@ -1102,6 +1243,160 @@ export default function Calendar() {
     };
   }
 
+  // Detectar día sobrecargado (muchas actividades)
+  const OVERLOAD_THRESHOLD = 8;
+
+  useEffect(() => {
+    const dayActs = activities[selectedDate] || [];
+    if (!dayActs || dayActs.length < OVERLOAD_THRESHOLD) return;
+
+    if (overloadPromptShownForDates[selectedDate]) return;
+
+    setOverloadPromptShownForDates((prev) => ({ ...prev, [selectedDate]: true }));
+    setOverloadModalVisible(true);
+  }, [activities, selectedDate, overloadPromptShownForDates, t]);
+
+  function toggleMoveTaskSelection(activityId) {
+    setMoveTasksSelection((prev) => ({
+      ...prev,
+      [activityId]: !prev[activityId],
+    }));
+  }
+
+  function confirmMoveSelectedTasks() {
+    if (!moveTasksDate) {
+      setMoveTasksModalVisible(false);
+      return;
+    }
+
+    const currentDayActs = activities[moveTasksDate] || [];
+    const toMove = currentDayActs.filter((a) => moveTasksSelection[a.id]);
+    if (toMove.length === 0) {
+      setMoveTasksModalVisible(false);
+      return;
+    }
+
+    const [y, m, d] = moveTasksDate.split('-').map(Number);
+    const base = new Date(y, m - 1, d);
+    const next = new Date(base.getTime());
+    next.setDate(base.getDate() + 1);
+    const nextKey = formatLocalDate(next);
+
+    const updated = { ...activities };
+    updated[moveTasksDate] = currentDayActs.filter((a) => !moveTasksSelection[a.id]);
+    if (updated[moveTasksDate].length === 0) {
+      delete updated[moveTasksDate];
+    }
+
+    if (!updated[nextKey]) updated[nextKey] = [];
+    toMove.forEach((act) => {
+      updated[nextKey].push({ ...act, date: nextKey });
+    });
+
+    saveActivities(updated);
+    setMoveTasksModalVisible(false);
+    setMoveTasksDate(null);
+    setMoveTasksSelection({});
+  }
+
+  // =========================
+  // PLANIFICACIÓN SEMANAL GUIADA (MVP)
+  // =========================
+
+  function getUpcomingWeekDates(fromDateStr) {
+    const [y, m, d] = fromDateStr.split('-').map(Number);
+    const base = new Date(y, m - 1, d);
+    const result = [];
+    for (let i = 1; i <= 7; i += 1) {
+      const d2 = new Date(base.getTime());
+      d2.setDate(base.getDate() + i);
+      result.push(formatLocalDate(d2));
+    }
+    return result;
+  }
+
+  function autoPlanWeek() {
+    const hardHabitId = weeklyHardHabitId;
+    if (!hardHabitId) {
+      setWeeklyPlannerVisible(false);
+      return;
+    }
+
+    const weekDates = getUpcomingWeekDates(selectedDate);
+    const updated = { ...activities };
+
+    // Map con carga actual por día
+    const loadByDate = {};
+    weekDates.forEach((d) => {
+      loadByDate[d] = (updated[d] || []).length;
+    });
+
+    // Plan inteligente: crear hasta 3 ocurrencias del hábito, preferencia por días más libres
+    const occurrencesToCreate = 3;
+    const candidates = weekDates.map((d) => ({ date: d, load: loadByDate[d] }));
+    // Orden inicial por carga ascendente
+    candidates.sort((a, b) => a.load - b.load);
+
+    const picked = [];
+    const habitTemplate = habits.find((h) => h.id === hardHabitId);
+    if (!habitTemplate) {
+      setWeeklyPlannerVisible(false);
+      return;
+    }
+
+    for (let i = 0; i < occurrencesToCreate; i += 1) {
+      // Buscar el candidato con menor carga que no sea vecino de una fecha ya elegida
+      let foundIndex = candidates.findIndex((c) => {
+        // evitar días ya elegidos
+        if (picked.includes(c.date)) return false;
+        // evitar consecutivos con los ya elegidos cuando sea posible
+        for (const p of picked) {
+          const pd = parseLocalDate(p);
+          const cd = parseLocalDate(c.date);
+          if (Math.abs((cd - pd) / (1000 * 60 * 60 * 24)) <= 1) return false;
+        }
+        return true;
+      });
+
+      // Si ninguno cumple la condición non-consecutive, tomamos el menor por carga
+      if (foundIndex === -1) {
+        foundIndex = candidates.findIndex((c) => !picked.includes(c.date));
+      }
+
+      if (foundIndex === -1) break;
+
+      const target = candidates[foundIndex];
+
+      if (!updated[target.date]) updated[target.date] = [];
+
+      const newActivity = {
+        id: uuidv4(),
+        habit_id: habitTemplate.id,
+        title: habitTemplate.title,
+        icon: habitTemplate.icon,
+        description: weeklyPriorityText || habitTemplate.description || null,
+        time: null,
+        durationMinutes: null,
+        endTime: null,
+        data: {},
+        date: target.date,
+        completed: false,
+      };
+
+      updated[target.date].push(newActivity);
+      // Marcar como elegida y aumentar la carga para próximas iteraciones
+      picked.push(target.date);
+      candidates[foundIndex].load += 1;
+      // reordenar candidatos por carga
+      candidates.sort((a, b) => a.load - b.load);
+    }
+
+    saveActivities(updated);
+    setWeeklyPlannerVisible(false);
+    setWeeklyPriorityText('');
+    setWeeklyHardHabitId(null);
+  }
+
   /* =========================
      UI
   ========================= */
@@ -1129,9 +1424,11 @@ export default function Calendar() {
           },
         };
       } else {
+        // Si alguna actividad del día tiene color personalizado, lo usamos
+        const dayColor = (dayActs.find((a) => a.data && a.data.color) || {}).data?.color || accent;
         acc[d] = {
           marked: true,
-          dotColor: accent,
+          dotColor: dayColor,
         };
       }
     }
@@ -1172,7 +1469,7 @@ export default function Calendar() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, isDark && { backgroundColor: '#020617' }]}>
       <CalendarProvider
         date={selectedDate}
         onDateChanged={setSelectedDate}
@@ -1184,17 +1481,10 @@ export default function Calendar() {
           firstDay={1}
           markedDates={markedDates}
           markingType="custom"
-          theme={{
-            ...calendarTheme,
-            selectedDayBackgroundColor: accent,
-            todayTextColor: accent,
-            dotColor: accent,
-            indicatorColor: accent,
-            selectedDotColor: '#ffffff',
-          }}
+          theme={themedCalendar}
         />
 
-        <View style={styles.content}>
+        <View style={[styles.content, isDark && { backgroundColor: '#020617' }]}>
             {activities[selectedDate]?.length ? (
               [...(activities[selectedDate] || [])]
                 .sort((a, b) => {
@@ -1242,6 +1532,8 @@ export default function Calendar() {
                     activityWithDate.data[vitaminsKey].length > 0
                   );
 
+                const displayTitle = getDisplayTitle(activityWithDate);
+
                 const timeRangeText = (() => {
                   if (!activityWithDate.time) return null;
                   if (activityWithDate.endTime && activityWithDate.endTime !== activityWithDate.time) {
@@ -1282,6 +1574,30 @@ export default function Calendar() {
                 }
 
                 const isCompleted = !!activityWithDate.completed;
+                const cardColor = activityWithDate?.data?.color || accent;
+                const cardTextColor = getContrastColor(cardColor);
+                const hasCustomColor = !!activityWithDate?.data?.color;
+                const titleTextColor = isCompleted
+                  ? undefined
+                  : hasCustomColor
+                  ? cardTextColor
+                  : isDark
+                  ? '#e5e7eb'
+                  : undefined;
+                const subtitleTextColor = isCompleted
+                  ? undefined
+                  : hasCustomColor
+                  ? cardTextColor
+                  : isDark
+                  ? '#9ca3af'
+                  : undefined;
+                const descTextColor = isCompleted
+                  ? undefined
+                  : hasCustomColor
+                  ? cardTextColor
+                  : isDark
+                  ? '#e5e7eb'
+                  : undefined;
 
                 return (
                   <Swipeable
@@ -1289,33 +1605,32 @@ export default function Calendar() {
                     ref={(ref) => {
                       if (ref) swipeableRefs.current[activity.id] = ref;
                     }}
-                    renderLeftActions={() => (
-                      <Pressable
-                        style={styles.swipeActionsLeft}
-                        onPress={() => confirmDelete(activityWithDate)}
-                      >
-                        <View style={styles.swipeDelete}>
-                          <Ionicons name="trash-outline" size={24} color="#fff" />
-                          <Text style={styles.swipeText}>Eliminar</Text>
-                        </View>
-                      </Pressable>
-                    )}
                     renderRightActions={() => (
-                      <Pressable
-                        style={styles.swipeActionsRight}
-                        onPress={() => editActivity(activityWithDate)}
-                      >
-                        <View style={styles.swipeEdit}>
-                          <Ionicons name="create-outline" size={24} color="#fff" />
-                          <Text style={styles.swipeText}>{t('calendar.edit')}</Text>
-                        </View>
-                      </Pressable>
+                      <View style={[styles.swipeActionsRight, { flexDirection: 'row' }]}>
+                        <Pressable onPress={() => editActivity(activityWithDate)}>
+                          <View style={styles.swipeEdit}>
+                            <Ionicons name="create-outline" size={20} color="#fff" />
+                            <Text style={styles.swipeText}>{t('calendar.edit')}</Text>
+                          </View>
+                        </Pressable>
+
+                        <Pressable onPress={() => confirmDelete(activityWithDate)}>
+                          <View style={styles.swipeDelete}>
+                            <Ionicons name="trash-outline" size={20} color="#fff" />
+                            <Text style={styles.swipeText}>{t('calendar.delete') || t('calendar.deleteActivityTitle') || 'Eliminar'}</Text>
+                          </View>
+                        </Pressable>
+                      </View>
                     )}
                     overshootLeft={false}
                     overshootRight={false}
                   >
                     <Pressable
-                      style={[styles.card, isCompleted && styles.cardCompleted]}
+                      style={[
+                        styles.card,
+                        isCompleted && styles.cardCompleted,
+                        !isCompleted && { backgroundColor: cardColor, borderColor: cardColor },
+                      ]}
                       onPress={() => {
                         if (hasMarket) {
                           setMarketModalData({
@@ -1361,9 +1676,10 @@ export default function Calendar() {
                               style={[
                                 styles.cardTitle,
                                 isCompleted && styles.cardTitleCompleted,
+                                titleTextColor && { color: titleTextColor },
                               ]}
                             >
-                              {activity.title}
+                              {displayTitle}
                             </Text>
                             {timeRangeText && (
                               <View style={styles.cardTimeRow}>
@@ -1376,6 +1692,7 @@ export default function Calendar() {
                                   style={[
                                     styles.cardTimeText,
                                     isCompleted && styles.cardSubtitleCompleted,
+                                    subtitleTextColor && { color: subtitleTextColor },
                                   ]}
                                 >
                                   {timeRangeText}
@@ -1387,6 +1704,7 @@ export default function Calendar() {
                                 style={[
                                   styles.cardSubtitle,
                                   isCompleted && styles.cardSubtitleCompleted,
+                                  subtitleTextColor && { color: subtitleTextColor },
                                 ]}
                               >
                                 {friendlySubtitle}
@@ -1405,13 +1723,13 @@ export default function Calendar() {
                                     : 'checkmark-circle-outline'
                                 }
                                 size={22}
-                                color={isCompleted ? '#22c55e' : '#9ca3af'}
+                                color={isCompleted ? '#16a34a' : '#6b7280'}
                               />
                             </Pressable>
                           {hasMarket && (
                             <View style={styles.cardBadge}>
                               <Ionicons name="list" size={12} color={accent} />
-                              <Text style={styles.cardBadgeText}>Lista</Text>
+                              <Text style={[styles.cardBadgeText, !isCompleted && { color: cardTextColor }]}>Lista</Text>
                             </View>
                           )}
                           </View>
@@ -1422,7 +1740,7 @@ export default function Calendar() {
                       {activity.description && (
                         <View style={styles.descriptionContainer}>
                           <Ionicons name="document-text-outline" size={16} color="#9ca3af" />
-                          <Text style={styles.cardDesc}>{activity.description}</Text>
+                          <Text style={[styles.cardDesc, descTextColor && { color: descTextColor }]}>{activity.description}</Text>
                         </View>
                       )}
 
@@ -1444,6 +1762,278 @@ export default function Calendar() {
             <View style={{ height: 100 }} />
         </View>
       </CalendarProvider>
+
+      {/* MODAL: Mover tareas a otro día (día sobrecargado) */}
+      <Modal
+        transparent
+        visible={moveTasksModalVisible && !!moveTasksDate}
+        animationType="slide"
+        onRequestClose={() => setMoveTasksModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setMoveTasksModalVisible(false)}
+          />
+          <Pressable
+            style={styles.modal}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalTitleContainer}>
+                <Ionicons name="swap-vertical" size={24} color={accent} />
+                <Text style={styles.modalTitle}>{t('calendar.overloadDialogTitle')}</Text>
+              </View>
+              <Pressable
+                onPress={() => setMoveTasksModalVisible(false)}
+                style={styles.modalClose}
+              >
+                <Ionicons name="close-circle" size={28} color="#6b7280" />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: '80%' }}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+                <Text style={{ fontSize: 15, color: '#4b5563', marginBottom: 12 }}>
+                  {t('calendar.overloadDialogMessage')}
+                </Text>
+                {(activities[moveTasksDate] || []).map((act) => (
+                  <Pressable
+                    key={act.id}
+                    onPress={() => toggleMoveTaskSelection(act.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 8,
+                    }}
+                  >
+                    <Ionicons
+                      name={moveTasksSelection[act.id] ? 'checkbox' : 'square-outline'}
+                      size={22}
+                      color={moveTasksSelection[act.id] ? accent : '#9ca3af'}
+                    />
+                    <View style={{ marginLeft: 10, flex: 1 }}>
+                      <Text style={{ fontSize: 15, color: '#111827' }}>
+                        {getDisplayTitle({ ...act, date: moveTasksDate })}
+                      </Text>
+                      {act.time && (
+                        <Text style={{ fontSize: 13, color: '#6b7280' }}>
+                          {act.time}
+                        </Text>
+                      )}
+                    </View>
+                  </Pressable>
+                ))}
+
+                <Pressable
+                  style={{
+                    marginTop: 16,
+                    paddingVertical: 12,
+                    borderRadius: 9999,
+                    backgroundColor: accent,
+                    alignItems: 'center',
+                  }}
+                  onPress={confirmMoveSelectedTasks}
+                >
+                  <Text style={{ color: '#ffffff', fontWeight: '600' }}>
+                    {t('calendar.overloadDialogPrimary')}
+                  </Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </Pressable>
+        </View>
+      </Modal>
+
+      {/* OVERLOAD PROMPT (custom modal) */}
+      <Modal
+        transparent
+        visible={overloadModalVisible}
+        animationType="fade"
+        onRequestClose={() => setOverloadModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setOverloadModalVisible(false)} />
+          <View style={[styles.modal, { padding: 22, maxWidth: 520 }]}>
+            <View style={[styles.modalHeader, { borderBottomWidth: 0, paddingBottom: 8 }]}>
+              <View style={styles.modalTitleContainer}>
+                <Ionicons name="alert-circle" size={28} color={accent} />
+                <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>{t('calendar.overloadDialogTitle')}</Text>
+              </View>
+              <Pressable onPress={() => setOverloadModalVisible(false)} style={styles.modalClose}>
+                <Ionicons name="close-circle" size={28} color={isDark ? '#9ca3af' : '#6b7280'} />
+              </Pressable>
+            </View>
+
+            <View style={{ paddingHorizontal: 6, paddingTop: 8 }}>
+              <Text style={{ fontSize: 15, color: isDark ? '#9ca3af' : '#374151', marginBottom: 14 }}>
+                {t('calendar.overloadDialogMessage')}
+              </Text>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+                <Pressable
+                  onPress={() => setOverloadModalVisible(false)}
+                  style={[styles.secondaryButton, { paddingHorizontal: 16, paddingVertical: 10 }]}
+                >
+                  <Text style={{ color: isDark ? '#e5e7eb' : '#374151' }}>{t('calendar.overloadDialogSecondary')}</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    // Prefill selection: prioritize moving tasks without a time first
+                    const initialSelection = {};
+                    (activities[selectedDate] || []).forEach((act) => {
+                      initialSelection[act.id] = act.time == null;
+                    });
+                    setMoveTasksSelection(initialSelection);
+                    setMoveTasksDate(selectedDate);
+                    setOverloadModalVisible(false);
+                    setMoveTasksModalVisible(true);
+                  }}
+                  style={[styles.primaryButton, { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: accent }]}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>{t('calendar.overloadDialogPrimary')}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL: Planificación semanal guiada (domingo) */}
+      <Modal
+        transparent
+        visible={weeklyPlannerVisible}
+        animationType="slide"
+        onRequestClose={() => setWeeklyPlannerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setWeeklyPlannerVisible(false)}
+          />
+          <Pressable
+            style={styles.modal}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalTitleContainer}>
+                <Ionicons name="sparkles" size={24} color={accent} />
+                <Text style={styles.modalTitle}>
+                  {t('calendar.weeklyPlannerModalTitle')}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setWeeklyPlannerVisible(false)}
+                style={styles.modalClose}
+              >
+                <Ionicons name="close-circle" size={28} color="#6b7280" />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: '80%' }}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: isDark ? '#e5e7eb' : '#111827' }}>
+                  {t('calendar.weeklyPlannerPriorityLabel')}
+                </Text>
+                <TextInput
+                  style={{
+                    marginTop: 8,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: isDark ? '#1e293b' : '#e5e7eb',
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    minHeight: 80,
+                    textAlignVertical: 'top',
+                    backgroundColor: isDark ? '#020617' : '#f9fafb',
+                    color: isDark ? '#e5e7eb' : '#111827',
+                  }}
+                  multiline
+                  placeholder={t('calendar.weeklyPlannerPriorityLabel')}
+                  placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
+                  value={weeklyPriorityText}
+                  onChangeText={setWeeklyPriorityText}
+                />
+
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginTop: 20,
+                    marginBottom: 8,
+                  }}
+                >
+                  {t('calendar.weeklyPlannerHardHabitLabel')}
+                </Text>
+
+                {(habits || []).map((habit) => (
+                  <Pressable
+                    key={habit.id}
+                    onPress={() => setWeeklyHardHabitId(habit.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 8,
+                    }}
+                  >
+                    <Ionicons
+                      name={
+                        weeklyHardHabitId === habit.id
+                          ? 'radio-button-on'
+                          : 'radio-button-off'
+                      }
+                      size={22}
+                      color={weeklyHardHabitId === habit.id ? accent : '#9ca3af'}
+                    />
+                    <View style={{ marginLeft: 10, flex: 1 }}>
+                      <Text style={{ fontSize: 15, color: isDark ? '#e5e7eb' : '#111827' }}>
+                        {habit.title}
+                      </Text>
+                      {habit.description ? (
+                        <Text
+                          style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280' }}
+                          numberOfLines={2}
+                        >
+                          {habit.description}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                ))}
+
+                <Pressable
+                  style={{
+                    marginTop: 20,
+                    paddingVertical: 12,
+                    borderRadius: 9999,
+                    backgroundColor: accent,
+                    alignItems: 'center',
+                  }}
+                  onPress={autoPlanWeek}
+                >
+                  <Text style={{ color: '#ffffff', fontWeight: '600' }}>
+                    {t('calendar.weeklyPlannerConfirm')}
+                  </Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </Pressable>
+        </View>
+      </Modal>
 
       {/* MARKET LIST MODAL */}
       <Modal
@@ -1487,7 +2077,7 @@ export default function Calendar() {
                 >
                   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
-                      {marketModalData.activity.title}
+                      {getDisplayTitle(marketModalData.activity)}
                     </Text>
                     <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
                       {formatDate(marketModalData.activity.date, language)}
@@ -1591,7 +2181,7 @@ export default function Calendar() {
                 >
                   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
-                      {vitaminsModalData.activity.title}
+                      {getDisplayTitle(vitaminsModalData.activity)}
                     </Text>
                     <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
                       {formatDate(vitaminsModalData.activity.date, language)}
@@ -1695,7 +2285,7 @@ export default function Calendar() {
                 >
                   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
-                      {checklistModalData.activity.title}
+                      {getDisplayTitle(checklistModalData.activity)}
                     </Text>
                     <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
                       {formatDate(checklistModalData.activity.date, language)}
@@ -1792,17 +2382,17 @@ export default function Calendar() {
             style={StyleSheet.absoluteFill}
             onPress={() => setShowHabitModal(false)}
           />
-          <View style={styles.modal}>
-              <View style={styles.modalHeader}>
-              <View style={styles.modalHandle} />
+          <View style={[styles.modal, isDark && { backgroundColor: '#020617' }]}>
+              <View style={[styles.modalHeader, isDark && { borderBottomColor: '#1e293b' }]}>
+              <View style={[styles.modalHandle, isDark && { backgroundColor: '#374151' }]} />
               <View style={styles.modalTitleContainer}>
                 <Ionicons name="sparkles" size={24} color={accent} />
-                <Text style={styles.modalTitle}>
+                <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}> 
                   {t('calendar.selectHabitTitle')}
                 </Text>
               </View>
               <Pressable onPress={() => setShowHabitModal(false)} style={styles.modalClose}>
-                <Ionicons name="close-circle" size={28} color="#6b7280" />
+                <Ionicons name="close-circle" size={28} color={isDark ? '#9ca3af' : '#6b7280'} />
               </Pressable>
             </View>
             {habitsLoading ? (
@@ -1856,7 +2446,7 @@ export default function Calendar() {
                   return (
                   <View key={category} style={styles.categorySection}>
                     <View style={styles.categoryHeader}>
-                      <View style={styles.categoryIconContainer}>
+                      <View style={[styles.categoryIconContainer, isDark && { backgroundColor: '#1f2937' }]}>
                         <Ionicons
                           name={
                             category === 'Cuida de ti' ? 'heart' :
@@ -1876,14 +2466,14 @@ export default function Calendar() {
                           color={accent}
                         />
                       </View>
-                      <Text style={styles.categoryTitle}>{displayCategory}</Text>
+                      <Text style={[styles.categoryTitle, isDark && { color: '#e5e7eb' }]}>{displayCategory}</Text>
                     </View>
 
                     <View style={styles.habitsGrid}>
                       {categoryHabits.map((habit) => (
                         <Pressable
                           key={habit.id}
-                          style={styles.habitItem}
+                          style={[styles.habitItem, isDark && { backgroundColor: '#0b1120' }]}
                           onPress={() => {
                             setSelectedHabit(habit);
                             if (!isChangingHabit) {
@@ -1909,12 +2499,12 @@ export default function Calendar() {
                               </View>
                             )}
                             <View style={styles.habitTextContainer}>
-                              <Text style={styles.habitTitle} numberOfLines={2}>
+                              <Text style={[styles.habitTitle, isDark && { color: '#e5e7eb' }]} numberOfLines={2}>
                                 {habit.title}
                               </Text>
                               {habit.description ? (
                                 <Text
-                                  style={styles.habitDescription}
+                                  style={[styles.habitDescription, isDark && { color: '#9ca3af' }]}
                                   numberOfLines={3}
                                 >
                                   {habit.description}
@@ -2154,21 +2744,21 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#0b1120',
     padding: 20,
     borderRadius: 18,
     marginBottom: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
     elevation: 3,
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    borderColor: '#1e293b',
   },
   cardCompleted: {
-    backgroundColor: '#dcfce7',
-    borderColor: '#bbf7d0',
+    backgroundColor: '#14532d',
+    borderColor: '#22c55e',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -2191,7 +2781,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#ffe4e6',
+    backgroundColor: '#020617',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2204,18 +2794,18 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#111827',
+    color: '#fff',
     flex: 1,
     letterSpacing: -0.3,
   },
   cardTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: '#166534',
+    color: '#fff',
   },
   cardSubtitle: {
     marginTop: 2,
     fontSize: 13,
-    color: '#6b7280',
+    color: '#cbd5e1',
   },
   cardSubtitleCompleted: {
     color: '#16a34a',
@@ -2228,7 +2818,7 @@ const styles = StyleSheet.create({
   },
   cardTimeText: {
     fontSize: 12,
-    color: '#f97316',
+    color: '#fed7aa',
     fontWeight: '600',
   },
   cardRightActions: {
@@ -2243,13 +2833,13 @@ const styles = StyleSheet.create({
   cardBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffe4e6',
+    backgroundColor: '#020617',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 10,
     gap: 4,
     borderWidth: 1,
-    borderColor: '#fecdd3',
+    borderColor: '#1e293b',
   },
   cardBadgeText: {
     fontSize: 11,
@@ -2265,13 +2855,13 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 14,
     borderTopWidth: 1.5,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: '#1e293b',
     gap: 10,
   },
   cardDesc: {
     flex: 1,
     fontSize: 14,
-    color: '#4b5563',
+    color: '#e5e7eb',
     lineHeight: 21,
     fontWeight: '500',
   },
@@ -2376,35 +2966,39 @@ const styles = StyleSheet.create({
   swipeActionsLeft: {
     justifyContent: 'center',
     marginBottom: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
   },
   swipeActionsRight: {
     justifyContent: 'center',
     marginBottom: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
   },
   swipeDelete: {
     backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'center',
-    width: 80,
-    height: '100%',
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginLeft: 8,
     gap: 4,
   },
   swipeEdit: {
     backgroundColor: '#3b82f6',
     justifyContent: 'center',
     alignItems: 'center',
-    width: 80,
-    height: '100%',
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginLeft: 8,
     gap: 4,
   },
   swipeText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 
   // FAB
@@ -2469,6 +3063,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     top: 16,
+  },
+  secondaryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+  },
+  primaryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: '#38BDF8',
   },
 
   // Category Section

@@ -33,13 +33,16 @@ const INITIAL_PRESET = PRESETS[2]; // 25 / 5
 
 const RING_RADIUS = 110;
 const RING_STROKE = 6;
+// use inner radius so stroke is fully inside the viewBox and won't be clipped
+const RING_INNER_RADIUS = RING_RADIUS - RING_STROKE / 2;
 const RING_DIAMETER = RING_RADIUS * 2;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_INNER_RADIUS;
 
 export default function PomodoroScreen() {
   const { t } = useI18n();
-  const { themeColor } = useSettings();
+  const { themeColor, themeMode } = useSettings();
   const accent = getAccentColor(themeColor);
+  const isDark = themeMode === 'dark';
   // Configuración
   const [selectedPresetId, setSelectedPresetId] = useState(INITIAL_PRESET.id);
   const [useCustom, setUseCustom] = useState(false);
@@ -293,11 +296,9 @@ export default function PomodoroScreen() {
   /* =========================
      UI
   ========================= */
-
-
   return (
-  <SafeAreaView style={styles.safeArea}>
-    <View style={styles.container}>
+  <SafeAreaView style={[styles.safeArea, isDark && { backgroundColor: '#020617' }]}>
+    <View style={[styles.container, isDark && { backgroundColor: '#020617' }]}>
     {/* HEADER */}
     {!fullScreenMode && (
       <View style={styles.header}>
@@ -309,14 +310,14 @@ export default function PomodoroScreen() {
       >
         <Ionicons name="timer" size={28} color="#fff" />
       </View>
-      <Text style={styles.title}>{t('pomodoro.title')}</Text>
+      <Text style={[styles.title, isDark && { color: '#e5e7eb' }]}>{t('pomodoro.title')}</Text>
       </View>
     )}
 
     {fullScreenMode ? (
         <View style={styles.fullScreenContent}>
-            <View style={styles.timerCard}>
-            <View style={[styles.timerCircle, { shadowColor: accent }]}>
+            <View style={[styles.timerCard, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b', shadowColor: '#000' }]}>
+            <View style={[styles.timerCircle, { shadowColor: accent }, isDark && { backgroundColor: '#020617', borderColor: '#1f2937' }]}>
               <Svg
                 style={styles.progressSvg}
                 width={RING_DIAMETER}
@@ -326,7 +327,7 @@ export default function PomodoroScreen() {
                 <Circle
                   cx={RING_RADIUS}
                   cy={RING_RADIUS}
-                  r={RING_RADIUS}
+                  r={RING_INNER_RADIUS}
                   stroke="#e5e7eb"
                   strokeWidth={RING_STROKE}
                   fill="none"
@@ -334,7 +335,7 @@ export default function PomodoroScreen() {
                 <Circle
                   cx={RING_RADIUS}
                   cy={RING_RADIUS}
-                  r={RING_RADIUS}
+                  r={RING_INNER_RADIUS}
                   stroke={phaseColor}
                   strokeWidth={RING_STROKE}
                   fill="none"
@@ -344,7 +345,7 @@ export default function PomodoroScreen() {
                   transform={`rotate(-90 ${RING_RADIUS} ${RING_RADIUS})`}
                 />
               </Svg>
-              <View style={styles.timerInner}>
+              <View style={[styles.timerInner, isDark && { backgroundColor: '#020617' }]}>
                 {countdownActive ? (
                   <>
                     <Text style={[styles.countdownText, { color: accent }]}>{countdownValue}</Text>
@@ -352,7 +353,7 @@ export default function PomodoroScreen() {
                   </>
                 ) : (
                   <>
-                    <Text style={styles.timerText}>
+                    <Text style={[styles.timerText, isDark && { color: '#e5e7eb' }]}>
                       {minutes}:{secs.toString().padStart(2, '0')}
                     </Text>
                     <View style={styles.phaseContainer}>
@@ -367,8 +368,8 @@ export default function PomodoroScreen() {
                           : t('pomodoro.breakLabel')}
                       </Text>
                     </View>
-                    <View style={styles.sessionBadge}>
-                      <Text style={[styles.sessionText, { color: accent }]}>
+                    <View style={[styles.sessionBadge, isDark && { backgroundColor: '#071021' }]}>
+                      <Text style={[styles.sessionText, { color: accent }, isDark && { color: accent }]}>
                         {t('pomodoro.sessions')} {currentSession} / {totalSessions}
                       </Text>
                     </View>
@@ -382,6 +383,7 @@ export default function PomodoroScreen() {
             style={[
               styles.fullScreenStopButton,
               { backgroundColor: accent, shadowColor: accent },
+              isDark && { shadowColor: '#000' },
             ]}
             onPress={handleStop}
           >
@@ -391,8 +393,8 @@ export default function PomodoroScreen() {
         </View>
       ) : (
       <View style={styles.mainContent}>
-            <View style={styles.timerCard}>
-            <View style={[styles.timerCircle, { shadowColor: accent }]}>
+        <View style={[styles.timerCard, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b', shadowColor: '#000' }]}>
+        <View style={[styles.timerCircle, { shadowColor: accent }, isDark && { backgroundColor: '#020617', borderColor: '#1f2937' }]}>
               <Svg
                 style={styles.progressSvg}
                 width={RING_DIAMETER}
@@ -402,7 +404,7 @@ export default function PomodoroScreen() {
                 <Circle
                   cx={RING_RADIUS}
                   cy={RING_RADIUS}
-                  r={RING_RADIUS}
+                  r={RING_INNER_RADIUS}
                   stroke="#e5e7eb"
                   strokeWidth={RING_STROKE}
                   fill="none"
@@ -410,7 +412,7 @@ export default function PomodoroScreen() {
                 <Circle
                   cx={RING_RADIUS}
                   cy={RING_RADIUS}
-                  r={RING_RADIUS}
+                  r={RING_INNER_RADIUS}
                   stroke={phaseColor}
                   strokeWidth={RING_STROKE}
                   fill="none"
@@ -420,8 +422,8 @@ export default function PomodoroScreen() {
                   transform={`rotate(-90 ${RING_RADIUS} ${RING_RADIUS})`}
                 />
               </Svg>
-              <View style={styles.timerInner}>
-                <Text style={styles.timerText}>
+              <View style={[styles.timerInner, isDark && { backgroundColor: '#020617' }]}>
+                    <Text style={[styles.timerText, isDark && { color: '#e5e7eb' }]}>
                   {minutes}:{secs.toString().padStart(2, '0')}
                 </Text>
                 <View style={styles.phaseContainer}>
@@ -436,8 +438,8 @@ export default function PomodoroScreen() {
                       : t('pomodoro.breakLabel')}
                   </Text>
                 </View>
-                <View style={styles.sessionBadge}>
-                  <Text style={[styles.sessionText, { color: accent }]}>
+                    <View style={[styles.sessionBadge, isDark && { backgroundColor: '#071021' }]}>
+                      <Text style={[styles.sessionText, { color: accent }, isDark && { color: accent }]}>
                     {t('pomodoro.sessions')} {currentSession} / {totalSessions}
                   </Text>
                 </View>
@@ -493,21 +495,21 @@ export default function PomodoroScreen() {
             onPress={() => setShowSettingsModal(false)}
           >
             <Pressable 
-              style={styles.modalContent}
+              style={[styles.modalContent, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
               onPress={(e) => e.stopPropagation()}
             >
             {/* HEADER MODAL */}
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, isDark && { borderBottomColor: '#1e293b' }]}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleContainer}>
                 <Ionicons name="settings" size={24} color={accent} />
-                <Text style={styles.modalTitle}>{t('pomodoro.settingsTitle') || 'Configuración'}</Text>
+                <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>{t('pomodoro.settingsTitle') || 'Configuración'}</Text>
               </View>
               <Pressable 
                 onPress={() => setShowSettingsModal(false)}
                 style={styles.modalClose}
               >
-                <Ionicons name="close-circle" size={28} color="#6b7280" />
+                <Ionicons name="close-circle" size={28} color={isDark ? '#9ca3af' : '#6b7280'} />
               </Pressable>
             </View>
 
@@ -519,7 +521,7 @@ export default function PomodoroScreen() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="flash" size={20} color={accent} />
-                  <Text style={styles.sectionTitle}>{t('pomodoro.quickSettings')}</Text>
+                  <Text style={[styles.sectionTitle, isDark && { color: '#e5e7eb' }]}>{t('pomodoro.quickSettings')}</Text>
                 </View>
 
                 <View style={styles.presetsGrid}>
@@ -530,6 +532,7 @@ export default function PomodoroScreen() {
                       key={preset.id}
                       style={[
                         styles.presetButton,
+                        isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' },
                         isActive && styles.presetButtonActive,
                         isActive && { backgroundColor: accent, borderColor: accent },
                       ]}
@@ -540,6 +543,7 @@ export default function PomodoroScreen() {
                           styles.presetButtonText,
                           isActive && styles.presetButtonTextActive,
                           !isActive && { color: accent },
+                          isDark && !isActive && { color: '#e5e7eb' },
                         ]}
                       >
                         {preset.label}
@@ -551,6 +555,7 @@ export default function PomodoroScreen() {
                 <Pressable
                   style={[
                     styles.presetButton,
+                    isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' },
                     useCustom && styles.presetButtonActive,
                     useCustom && { backgroundColor: accent, borderColor: accent },
                   ]}
@@ -559,13 +564,14 @@ export default function PomodoroScreen() {
                   <Ionicons 
                     name="create" 
                     size={16} 
-                    color={useCustom ? '#fff' : accent} 
+                    color={useCustom ? '#fff' : (isDark ? '#e5e7eb' : accent)} 
                   />
                   <Text
                     style={[
                       styles.presetButtonText,
                       useCustom && styles.presetButtonTextActive,
                       !useCustom && { color: accent },
+                      isDark && !useCustom && { color: '#e5e7eb' },
                     ]}
                   >
                     {t('pomodoro.presetCustom')}
@@ -576,9 +582,9 @@ export default function PomodoroScreen() {
                 {useCustom && (
                   <View style={styles.customRow}>
                     <View style={styles.customField}>
-                      <Text style={styles.label}>{t('pomodoro.workMinutesLabel') || 'Trabajo (min)'}</Text>
+                      <Text style={[styles.label, isDark && { color: '#9ca3af' }]}>{t('pomodoro.workMinutesLabel') || 'Trabajo (min)'}</Text>
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, isDark && { backgroundColor: '#020617', borderColor: '#1e293b', color: '#e5e7eb' }]}
                         keyboardType="numeric"
                         placeholder="25"
                         placeholderTextColor="#9ca3af"
@@ -587,9 +593,9 @@ export default function PomodoroScreen() {
                       />
                     </View>
                     <View style={styles.customField}>
-                      <Text style={styles.label}>{t('pomodoro.restMinutesLabel') || 'Descanso (min)'}</Text>
+                      <Text style={[styles.label, isDark && { color: '#9ca3af' }]}>{t('pomodoro.restMinutesLabel') || 'Descanso (min)'}</Text>
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, isDark && { backgroundColor: '#020617', borderColor: '#1e293b', color: '#e5e7eb' }]}
                         keyboardType="numeric"
                         placeholder="5"
                         placeholderTextColor="#9ca3af"
@@ -605,20 +611,20 @@ export default function PomodoroScreen() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="repeat" size={20} color={accent} />
-                  <Text style={styles.sectionTitle}>{t('pomodoro.sessions')}</Text>
+                  <Text style={[styles.sectionTitle, isDark && { color: '#e5e7eb' }]}>{t('pomodoro.sessions')}</Text>
                 </View>
 
-                <View style={styles.sessionsCard}>
+                <View style={[styles.sessionsCard, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' }]}>
                   <View style={styles.sessionsInfo}>
-                    <Text style={styles.sessionsMainText}>
+                    <Text style={[styles.sessionsMainText, isDark && { color: '#e5e7eb' }]}>
                       {totalSessions} {t('pomodoro.sessions')}
                     </Text>
-                    <Text style={styles.sessionsSubText}>
+                    <Text style={[styles.sessionsSubText, isDark && { color: '#9ca3af' }]}>
                       {workMinutes} {t('pomodoro.workMinutes')} • {restMinutes} {t('pomodoro.restMinutes')}
                     </Text>
                     <View style={styles.totalBadge}>
                       <Ionicons name="time" size={14} color={accent} />
-                      <Text style={[styles.totalText, { color: accent }]}>
+                      <Text style={[styles.totalText, { color: accent }, isDark && { color: '#e5e7eb' }]}> 
                         {t('pomodoro.total')} {totalPlanMinutes} min
                       </Text>
                     </View>
@@ -626,16 +632,16 @@ export default function PomodoroScreen() {
 
                   <View style={styles.sessionsControls}>
                     <Pressable
-                      style={styles.sessionsButton}
+                      style={[styles.sessionsButton, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
                       onPress={() => handleChangeSessions(-1)}
                     >
                       <Ionicons name="remove" size={20} color={accent} />
                     </Pressable>
                     <View style={styles.sessionsCountContainer}>
-                      <Text style={styles.sessionsCount}>{totalSessions}</Text>
+                      <Text style={[styles.sessionsCount, isDark && { color: '#e5e7eb' }]}>{totalSessions}</Text>
                     </View>
                     <Pressable
-                      style={styles.sessionsButton}
+                      style={[styles.sessionsButton, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
                       onPress={() => handleChangeSessions(1)}
                     >
                       <Ionicons name="add" size={20} color={accent} />
@@ -732,8 +738,9 @@ const styles = StyleSheet.create({
     width: 230,
     height: 230,
     borderRadius: 115,
-    borderWidth: 8,
-    borderColor: '#e5e7eb',
+    // remove border here to avoid overlapping with the SVG stroke
+    borderWidth: 0,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
