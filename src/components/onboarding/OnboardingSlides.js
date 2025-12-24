@@ -90,6 +90,14 @@ const styles = StyleSheet.create({
   dots: { display: 'none' },
   dot: { display: 'none' },
   dotActive: { display: 'none' },
-  continueBtn: { backgroundColor: '#2563eb', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 999 },
+  continueBtn: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 36,
+    paddingVertical: 12,
+    borderRadius: 999,
+    minWidth: 260,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   continueText: { color: '#fff', fontWeight: '700' },
 });
