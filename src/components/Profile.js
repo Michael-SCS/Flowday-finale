@@ -217,20 +217,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      try {
-        await clearHabitCache();
-        await clearLocalHabits();
-        await clearActivities();
-        await clearPomodoroStats();
-      } catch {
-      }
-
-      await supabase.auth.signOut();
-    } catch {
-    }
-  };
+  // Logout has been disabled: users cannot sign out from the app.
 
   return (
     <SafeAreaView style={[styles.safeArea, isDark && { backgroundColor: '#020617' }]}>
@@ -261,7 +248,7 @@ export default function ProfileScreen() {
             <View style={[styles.avatarContainer, { borderColor: accent, shadowColor: accent }]}>
               <View style={[styles.avatarCircle, { backgroundColor: accent }]}>
                 <Image
-                  source={require('../../assets/mascota_saludando.png')}
+                  source={require('../../assets/icon.png')}
                   style={styles.avatarImage}
                   resizeMode="contain"
                 />
@@ -417,14 +404,7 @@ export default function ProfileScreen() {
                   </View>
                 )}
 
-                {/* BOTÓN CERRAR SESIÓN */}
-                <Pressable
-                  style={[styles.logoutButton, { borderColor: accent }, isDark && { backgroundColor: '#020617' }]}
-                  onPress={handleLogout}
-                >
-                  <Ionicons name="log-out-outline" size={22} color={accent} />
-                  <Text style={[styles.logoutText, { color: accent }]}>{t('profile.logout')}</Text>
-                </Pressable>
+                {/* BOTÓN CERRAR SESIÓN: eliminado -- los usuarios no pueden cerrar sesión */}
               </>
             )}
           </ScrollView>

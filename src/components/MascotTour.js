@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettings } from '../utils/settingsContext';
-import imgMascotaSaludando from '../../assets/mascota_saludando.png';
+import imgIcon from '../../assets/icon.png';
 import imgMascotaCalendario from '../../assets/mascota_calendario.png';
 import imgMascotaPomodoro from '../../assets/mascota_pomodoro.png';
 import imgMascotaFinal from '../../assets/mascota_final.png';
@@ -22,7 +22,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           text:
             'I will walk you through the main parts of the app so you can start organizing your days. It will only take a few seconds.',
           tab: 'Calendario',
-          image: imgMascotaSaludando,
+          image: imgIcon,
         },
         {
           key: 'calendarMain',
@@ -65,7 +65,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           text:
             'Te voy a acompañar en un recorrido rápido para que sepas dónde está todo. Solo tomará unos segundos.',
           tab: 'Calendario',
-          image: imgMascotaSaludando,
+          image: imgIcon,
         },
         {
           key: 'calendarMain',

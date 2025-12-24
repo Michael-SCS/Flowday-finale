@@ -134,10 +134,17 @@ export default function Register({ navigation }) {
         <View style={styles.card}>
           {/* LOGO / MASCOTA */}
           <Image
-            source={require('../../assets/mascota_saludando.png')}
+            source={require('../../assets/login.png')}
             style={styles.logo}
             resizeMode="contain"
           />
+
+          <View style={styles.loginPromptRow}>
+            <Text style={styles.loginPromptText}>¿Ya tienes una cuenta? </Text>
+            <Pressable onPress={() => navigation.goBack()}>
+              <Text style={styles.loginPromptLink}>Ingresa</Text>
+            </Pressable>
+          </View>
 
           <Text style={styles.mascotWelcome}>
             {language === 'es' && 'Kuro te da la bienvenida a Fluu 🐾'}
@@ -526,6 +533,22 @@ const styles = StyleSheet.create({
     width: 130,
     height: 130,
     marginBottom: 4,
+  },
+  loginPromptRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  loginPromptText: {
+    color: '#6b7280',
+    fontSize: 13,
+  },
+  loginPromptLink: {
+    color: '#38BDF8',
+    fontSize: 13,
+    fontWeight: '700',
   },
   mascotWelcome: {
     fontSize: 14,
