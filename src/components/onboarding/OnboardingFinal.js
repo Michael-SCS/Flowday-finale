@@ -20,7 +20,7 @@ export default function OnboardingFinal({ navigation }) {
 
     // Fallback: try resetting within this stack to avoid unhandled RESET action
     try {
-      navigation.reset({ index: 0, routes: [{ name: 'Slides' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'Calendario' }] });
     } catch (e) {
       navigation.popToTop && navigation.popToTop();
     }
@@ -48,7 +48,13 @@ export default function OnboardingFinal({ navigation }) {
 
         await generateInitialHabits(user.id);
 
-        safeResetToApp();
+        // Asegurarnos de resetear la navegación al tab principal (Calendario)
+        try {
+          navigation.reset({ index: 0, routes: [{ name: 'Calendario' }] });
+        } catch (e) {
+          // fallback al comportamiento seguro
+          safeResetToApp();
+        }
       } catch (err) {
         console.log(err);
         alert(err.message || String(err));

@@ -6,6 +6,7 @@ import imgIcon from '../../assets/icon.png';
 import imgMascotaCalendario from '../../assets/mascota_calendario.png';
 import imgMascotaPomodoro from '../../assets/mascota_pomodoro.png';
 import imgMascotaFinal from '../../assets/mascota_final.png';
+import imgLogin from '../../assets/login.png';
 
 const STORAGE_KEY = 'fluu_hasSeenMascotTour';
 
@@ -18,11 +19,11 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
     ? [
         {
           key: 'welcome',
-          title: "Hi! I'm your Fluu buddy",
+          title: '',
           text:
             'I will walk you through the main parts of the app so you can start organizing your days. It will only take a few seconds.',
           tab: 'Calendario',
-          image: imgIcon,
+          image: imgLogin,
         },
         {
           key: 'calendarMain',
@@ -61,11 +62,11 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
     : [
         {
           key: 'welcome',
-          title: '¡Hola! Soy tu compañerito de Fluu',
+          title: '',
           text:
             'Te voy a acompañar en un recorrido rápido para que sepas dónde está todo. Solo tomará unos segundos.',
           tab: 'Calendario',
-          image: imgIcon,
+          image: imgLogin,
         },
         {
           key: 'calendarMain',

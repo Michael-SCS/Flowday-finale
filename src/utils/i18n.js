@@ -406,8 +406,7 @@ const translations = {
       appLanguage: 'App language',
       privacyPolicy: 'Privacy policy',
       logout: 'Log out',
-      profileHint:
-        'Use the gear icon above to edit your data and personalize the app.',
+      profileHint: '',
       updated: 'Profile updated successfully.',
       loading: 'Loading profile...',
       retry: 'Try again',
@@ -711,8 +710,7 @@ const translations = {
       appLanguage: 'Idioma do app',
       privacyPolicy: 'Política de privacidade',
       logout: 'Sair',
-      profileHint:
-        'Use o ícone de engrenagem acima para editar seus dados e personalizar o app.',
+      profileHint: '',
       updated: 'Perfil atualizado com sucesso.',
       loading: 'Carregando perfil...',
       retry: 'Tentar novamente',
@@ -1013,8 +1011,7 @@ const translations = {
       appLanguage: "Langue de l'application",
       privacyPolicy: 'Politique de confidentialité',
       logout: 'Se déconnecter',
-      profileHint:
-        "Utilisez l'icône engrenage en haut pour modifier vos données et personnaliser l'app.",
+      profileHint: '',
       updated: 'Profil mis à jour avec succès.',
       loading: 'Chargement du profil...',
       retry: 'Réessayer',

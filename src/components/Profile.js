@@ -242,7 +242,7 @@ export default function ProfileScreen() {
             <View style={[styles.avatarContainer, { borderColor: accent, shadowColor: accent }]}>
               <View style={[styles.avatarCircle, { backgroundColor: accent }]}>
                 <Image
-                  source={require('../../assets/icon.png')}
+                      source={require('../../assets/login.png')}
                   style={styles.avatarImage}
                   resizeMode="contain"
                 />

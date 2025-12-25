@@ -3,87 +3,97 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Pressable, Image, ScrollView } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useI18n } from '../utils/i18n';
+import { useSettings, getAccentColor } from '../utils/settingsContext';
 
 export default function PremiumUpsellScreen() {
   const { t } = useI18n();
-  const accent = '#FACC15';
+  const { themeColor, themeMode } = useSettings();
+  const accent = getAccentColor(themeColor);
+  const isDark = themeMode === 'dark';
   const [selectedPlan, setSelectedPlan] = useState('annual');
 
+  const bg = isDark ? '#020617' : '#f8fafc';
+  const textColor = isDark ? '#e5e7eb' : '#0f172a';
+  const muted = isDark ? '#94a3b8' : '#64748b';
+  const cardBg = isDark ? '#0b1220' : '#ffffff';
+  const borderColor = isDark ? '#1e293b' : '#e2e8f0';
+  const planEmphasisBg = isDark ? '#111827' : '#fffbeb';
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: bg }] }>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { backgroundColor: bg }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerIconWrapper}>
-          <View style={[styles.headerIconCircle, { borderColor: accent }]}> 
+          <View style={[styles.headerIconCircle, { borderColor: accent, backgroundColor: cardBg }]}> 
             <MaterialCommunityIcons name="crown-outline" size={36} color={accent} />
           </View>
         </View>
 
-        <Text style={styles.title}>{t('premium.title')}</Text>
-        <Text style={styles.subtitle}>{t('premium.subtitle')}</Text>
-        <Text style={styles.sectionTitle}>{t('premium.featuresTitle')}</Text>
+        <Text style={[styles.title, { color: textColor }]}>{t('premium.title')}</Text>
+        <Text style={[styles.subtitle, { color: muted }]}>{t('premium.subtitle')}</Text>
+        <Text style={[styles.sectionTitle, { color: textColor }]}>{t('premium.featuresTitle')}</Text>
 
         {/* Bloque: Estadísticas avanzadas */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor }] }>
           <View style={styles.cardHeaderRow}>
             <View style={[styles.cardIconCircle, { backgroundColor: `${accent}15` }]}>
               <Ionicons name="stats-chart" size={20} color={accent} />
             </View>
-            <Text style={styles.cardTitle}>{t('premium.statsTitle')}</Text>
+            <Text style={[styles.cardTitle, { color: isDark ? '#ffffff' : '#0f172a' }]}>{t('premium.statsTitle')}</Text>
           </View>
-          <Text style={styles.cardText}>{t('premium.statsDescription')}</Text>
+          <Text style={[styles.cardText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{t('premium.statsDescription')}</Text>
         </View>
 
         {/* Bloque: Hábitos inteligentes */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor }] }>
           <View style={styles.cardHeaderRow}>
             <View style={[styles.cardIconCircle, { backgroundColor: `${accent}15` }]}>
               <Ionicons name="bulb-outline" size={20} color={accent} />
             </View>
-            <Text style={styles.cardTitle}>{t('premium.smartHabitsTitle')}</Text>
+            <Text style={[styles.cardTitle, { color: isDark ? '#ffffff' : '#0f172a' }]}>{t('premium.smartHabitsTitle')}</Text>
           </View>
-          <Text style={styles.cardText}>{t('premium.smartHabitsDescription')}</Text>
+          <Text style={[styles.cardText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{t('premium.smartHabitsDescription')}</Text>
         </View>
 
         {/* Bloque: Profundidad y enfoque */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor }] }>
           <View style={styles.cardHeaderRow}>
             <View style={[styles.cardIconCircle, { backgroundColor: `${accent}15` }]}>
               <Ionicons name="timer-outline" size={20} color={accent} />
             </View>
-            <Text style={styles.cardTitle}>{t('premium.focusTitle')}</Text>
+            <Text style={[styles.cardTitle, { color: isDark ? '#ffffff' : '#0f172a' }]}>{t('premium.focusTitle')}</Text>
           </View>
-          <Text style={styles.cardText}>{t('premium.focusDescription')}</Text>
+          <Text style={[styles.cardText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{t('premium.focusDescription')}</Text>
         </View>
 
         {/* Bloque: Calendario + reflexión diaria */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor }] }>
           <View style={styles.cardHeaderRow}>
             <View style={[styles.cardIconCircle, { backgroundColor: `${accent}15` }]}>
               <Ionicons name="calendar-outline" size={20} color={accent} />
             </View>
-            <Text style={styles.cardTitle}>{t('premium.calendarTitle')}</Text>
+            <Text style={[styles.cardTitle, { color: isDark ? '#ffffff' : '#0f172a' }]}>{t('premium.calendarTitle')}</Text>
           </View>
-          <Text style={styles.cardText}>{t('premium.calendarDescription')}</Text>
+          <Text style={[styles.cardText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{t('premium.calendarDescription')}</Text>
         </View>
 
         {/* Bloque: Plan semanal guiado + días llenos */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor }] }>
           <View style={styles.cardHeaderRow}>
             <View style={[styles.cardIconCircle, { backgroundColor: `${accent}15` }]}>
               <Ionicons name="sparkles-outline" size={20} color={accent} />
             </View>
-            <Text style={styles.cardTitle}>{t('premium.weeklyPlannerTitle')}</Text>
+            <Text style={[styles.cardTitle, { color: isDark ? '#ffffff' : '#0f172a' }]}>{t('premium.weeklyPlannerTitle')}</Text>
           </View>
-          <Text style={styles.cardText}>{t('premium.weeklyPlannerDescription')}</Text>
+          <Text style={[styles.cardText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{t('premium.weeklyPlannerDescription')}</Text>
 
-          <View style={styles.inlineDivider} />
+          <View style={[styles.inlineDivider, { backgroundColor: borderColor }]} />
 
           <View style={styles.inlineRow}>
             <Ionicons name="warning-outline" size={18} color={accent} />
-            <Text style={styles.cardText}>{t('premium.overloadDescription')}</Text>
+            <Text style={[styles.cardText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{t('premium.overloadDescription')}</Text>
           </View>
         </View>
 
@@ -96,7 +106,7 @@ export default function PremiumUpsellScreen() {
         </View>
 
         {/* Sección de precios */}
-        <Text style={styles.sectionTitle}>{t('premium.plansTitle')}</Text>
+        <Text style={[styles.sectionTitle, { color: textColor }]}>{t('premium.plansTitle')}</Text>
 
         <View style={styles.plansRow}>
           {/* Plan mensual */}
@@ -105,10 +115,11 @@ export default function PremiumUpsellScreen() {
             style={[
               styles.planCard,
               selectedPlan === 'monthly' && styles.planCardSelected,
+              { backgroundColor: cardBg, borderColor },
             ]}
           >
             <View style={styles.planHeaderRow}>
-              <Text style={styles.planLabel}>{t('premium.monthlyLabel')}</Text>
+              <Text style={[styles.planLabel, { color: textColor }]}>{t('premium.monthlyLabel')}</Text>
               {selectedPlan === 'monthly' && (
                 <View style={styles.planSelectedPill}>
                   <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
@@ -116,8 +127,8 @@ export default function PremiumUpsellScreen() {
                 </View>
               )}
             </View>
-            <Text style={styles.planPrice}>{t('premium.monthlyPrice')}</Text>
-            <Text style={styles.planTagline}>{t('premium.monthlyTagline')}</Text>
+            <Text style={[styles.planPrice, { color: textColor }]}>{t('premium.monthlyPrice')}</Text>
+            <Text style={[styles.planTagline, { color: muted }]}>{t('premium.monthlyTagline')}</Text>
           </Pressable>
 
           {/* Plan anual */}
@@ -127,13 +138,14 @@ export default function PremiumUpsellScreen() {
               styles.planCard,
               styles.planCardEmphasis,
               selectedPlan === 'annual' && styles.planCardSelected,
+              { backgroundColor: planEmphasisBg, borderColor: accent },
             ]}
           >
             <View style={styles.planBadgeRow}>
               <Text style={styles.planBadgeText}>{t('premium.annualBadge')}</Text>
             </View>
             <View style={styles.planHeaderRow}>
-              <Text style={styles.planLabel}>{t('premium.annualLabel')}</Text>
+              <Text style={[styles.planLabel, { color: textColor }]}>{t('premium.annualLabel')}</Text>
               {selectedPlan === 'annual' && (
                 <View style={styles.planSelectedPill}>
                   <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
@@ -141,10 +153,10 @@ export default function PremiumUpsellScreen() {
                 </View>
               )}
             </View>
-            <Text style={styles.planPrice}>{t('premium.annualPrice')}</Text>
+            <Text style={[styles.planPrice, { color: textColor }]}>{t('premium.annualPrice')}</Text>
             <Text style={styles.planSavings}>{t('premium.annualSavings')}</Text>
-            <Text style={styles.planOneTime}>{t('premium.annualOneTime')}</Text>
-            <Text style={styles.planMessage}>{t('premium.annualMessage')}</Text>
+            <Text style={[styles.planOneTime, { color: muted }]}>{t('premium.annualOneTime')}</Text>
+            <Text style={[styles.planMessage, { color: muted }]}>{t('premium.annualMessage')}</Text>
           </Pressable>
         </View>
 
@@ -160,7 +172,7 @@ export default function PremiumUpsellScreen() {
             <Text style={styles.ctaText}>{t('premium.ctaPrimary')}</Text>
           </Pressable>
 
-          <Text style={styles.comingSoonText}>{t('premium.ctaSecondary')}</Text>
+          <Text style={[styles.comingSoonText, { color: muted }]}>{t('premium.ctaSecondary')}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -216,6 +228,12 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     marginBottom: 12,
     textAlign: 'left',
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 6,
   },
   card: {
     backgroundColor: '#ffffff',
