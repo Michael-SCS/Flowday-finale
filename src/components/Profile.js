@@ -18,6 +18,8 @@ export default function ProfileScreen() {
   const { t } = useI18n();
   const { openTour } = useTour();
   const { isPro } = useProStatus();
+  // Temporary flag to hide Pro features until they're offered
+  const showPro = false;
   const accent = getAccentColor(themeColor);
   const isDark = themeMode === 'dark';
   const [loading, setLoading] = useState(true);
@@ -98,7 +100,7 @@ export default function ProfileScreen() {
   }, []);
 
   useEffect(() => {
-    if (isPro !== true) return;
+    if (!showPro) return;
 
     let cancelled = false;
     const loadStats = async () => {
@@ -286,12 +288,12 @@ export default function ProfileScreen() {
                         {profile.nombre || 'Tu nombre'}
                         {profile.apellido && ` ${profile.apellido}`}
                       </Text>
-                      {isPro === true && (
-                        <View style={[styles.proBadge, { backgroundColor: `${accent}15`, borderColor: `${accent}40` }]}> 
-                          <MaterialCommunityIcons name="crown-outline" size={14} color={accent} />
-                          <Text style={[styles.proBadgeText, { color: accent }]}>PRO</Text>
-                        </View>
-                      )}
+                      {showPro && (
+                          <View style={[styles.proBadge, { backgroundColor: `${accent}15`, borderColor: `${accent}40` }]}> 
+                            <MaterialCommunityIcons name="crown-outline" size={14} color={accent} />
+                            <Text style={[styles.proBadgeText, { color: accent }]}>PRO</Text>
+                          </View>
+                        )}
                     </View>
                     
                     <View style={styles.emailRow}>
@@ -333,7 +335,7 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* ESTADÍSTICAS PRO */}
-                {isPro === true && (
+                {showPro && (
                   <View style={[styles.statsCard, isDark && { backgroundColor: '#020617' }]}>
                     <View style={styles.statsHeader}>
                       <View style={[styles.statsIconBox, { backgroundColor: `${accent}20` }]}>
