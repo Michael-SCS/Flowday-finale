@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../utils/supabase';
 import { useI18n } from '../../utils/i18n';
 
-export default function RegisterForm({ navigation }) {
+export default function RegisterForm({ navigation, route }) {
   const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,7 +53,7 @@ export default function RegisterForm({ navigation }) {
     try {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
-      navigation.replace('Profile');
+      navigation.replace('Profile', { fromSettings: route?.params?.fromSettings });
     } catch (err) {
       alert(err.message || String(err));
     } finally {

@@ -4,7 +4,7 @@ import { supabase } from '../../utils/supabase';
 import { useI18n } from '../../utils/i18n';
 import { useSettings } from '../../utils/settingsContext';
 
-export default function ProfileForm({ navigation }) {
+export default function ProfileForm({ navigation, route }) {
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [edad, setEdad] = useState('');
@@ -36,9 +36,10 @@ export default function ProfileForm({ navigation }) {
       genero,
     };
 
-    // If the language was already chosen by the user earlier, skip asking again
-    // and save the profile directly, then continue to Personalization.
-    if (languageSource === 'user') {
+    // If the language was already chosen by the user earlier (or we just
+    // came from AppSettings in the slides flow), skip asking again and
+    // save the profile directly, then continue to Personalization.
+    if (languageSource === 'user' || route?.params?.fromSettings) {
       setLoading(true);
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();

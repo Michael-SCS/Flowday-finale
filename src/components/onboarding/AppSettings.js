@@ -70,7 +70,7 @@ export default function AppSettings({ navigation, route }) {
       // If we arrived here directly from the slides (no profile yet),
       // just apply language/theme and go to Register.
       if (!route.params?.profile && route.params?.from === 'slides') {
-        navigation.replace('Register');
+        navigation.replace('Register', { fromSettings: true });
         return;
       }
 
