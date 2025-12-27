@@ -22,7 +22,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           title: '',
           text:
             'I will walk you through the main parts of the app so you can start organizing your days. It will only take a few seconds.',
-          tab: 'Calendario',
+          tab: 'Calendar',
           image: imgLogin,
         },
         {
@@ -30,7 +30,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           title: 'Calendar',
           text:
             'In Calendar you will see everything you have scheduled: your habits, tasks and important things for each day.',
-          tab: 'Calendario',
+          tab: 'Calendar',
           image: imgMascotaCalendario,
         },
         {
@@ -38,7 +38,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           title: 'Calendar + button',
           text:
             'Use the floating + button at the bottom right of Calendar to create new habits and activities in a simple way.',
-          tab: 'Calendario',
+          tab: 'Calendar',
           image: imgMascotaCalendario,
           imageStyle: 'button',
         },
@@ -65,7 +65,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           title: '',
           text:
             'Te voy a acompañar en un recorrido rápido para que sepas dónde está todo. Solo tomará unos segundos.',
-          tab: 'Calendario',
+          tab: 'Calendar',
           image: imgLogin,
         },
         {
@@ -73,7 +73,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           title: 'Calendario',
           text:
             'En el Calendario verás todo lo que has agendado: tus hábitos, tareas y cosas importantes para cada día.',
-          tab: 'Calendario',
+          tab: 'Calendar',
           image: imgMascotaCalendario,
         },
         {
@@ -81,7 +81,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
           title: 'Botón + del calendario',
           text:
             'Usa el botón flotante + que ves abajo a la derecha en el Calendario para agregar nuevos hábitos y actividades de forma sencilla.',
-          tab: 'Calendario',
+          tab: 'Calendar',
           image: imgMascotaCalendario,
           imageStyle: 'button',
         },
@@ -119,9 +119,9 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
       // ignore storage errors, tour will just aparecer otra vez
     }
 
-    // Al terminar el tour, vuelve siempre al Calendario
+    // Al terminar el tour, vuelve siempre al Calendar
     if (onRequestTabChange) {
-      onRequestTabChange('Calendario');
+      onRequestTabChange('Calendar');
     }
 
     if (onClose) onClose();

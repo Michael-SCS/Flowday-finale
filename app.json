@@ -3,7 +3,7 @@
     "name": "Fluu",
     "slug": "Flowday",
     "version": "1.0.1",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "notification": {
       "icon": "./assets/icon.png",

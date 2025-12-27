@@ -60,7 +60,7 @@ export default function TabNavigator() {
   return (
     <TourProvider value={tourValue}>
       <Tab.Navigator
-      initialRouteName="Calendario"
+      initialRouteName="Calendar"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: accent,
@@ -75,7 +75,7 @@ export default function TabNavigator() {
       }}
     >
       <Tab.Screen
-        name="Calendario"
+        name="Calendar"
         component={CalendarScreen}
         options={{
           tabBarLabel: t('calendar.title'),
@@ -96,18 +96,7 @@ export default function TabNavigator() {
         }}
       />
 
-      {isPro === false && (
-        <Tab.Screen
-          name="Premium"
-          component={PremiumUpsellScreen}
-          options={{
-            tabBarLabel: t('premium.title'),
-            tabBarIcon: ({ color, size }) => (
-              <MaterialCommunityIcons name="crown-outline" size={size} color="#FACC15" />
-            ),
-          }}
-        />
-      )}
+      {/* Premium tab hidden in navbar by request */}
 
       <Tab.Screen
         name="Perfil"

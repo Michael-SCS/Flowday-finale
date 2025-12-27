@@ -5,8 +5,11 @@ import { loadHabitTemplates } from '../utils/habitCache';
 import AppNavigator from './AppNavigator';
 import AuthNavigator from './AuthNavigator';
 import OnboardingNavigator from './OnboardingNavigator';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSettings, mapLocaleToLang } from '../utils/settingsContext';
 import * as Localization from 'expo-localization';
+
+const Stack = createNativeStackNavigator();
 
 export default function AuthGate() {
   const [session, setSession] = useState(null);
@@ -137,18 +140,24 @@ export default function AuthGate() {
 
   if (loading) return null;
 
-  if (deviceOnboardingChecked && deviceOnboardingNeeded) return <OnboardingNavigator />;
+  // Decide ruta inicial del Stack según estado
+  if (loading) return null;
 
-  if (!session) return <AuthNavigator />;
+  const decideInitial = () => {
+    if (deviceOnboardingChecked && deviceOnboardingNeeded) return 'Onboarding';
+    if (!session) return 'Auth';
+    if (!onboardingChecked || onboardingCompleted === null) return 'Auth';
+    if (!onboardingCompleted) return 'Onboarding';
+    return 'App';
+  };
 
-  // Esperando resultado de onboarding check
-  if (!onboardingChecked || onboardingCompleted === null) return null;
+  const initialRoute = decideInitial();
 
-  // Si no ha completado onboarding, mostrar OnboardingNavigator una sola vez
-  if (!onboardingCompleted) {
-    return <OnboardingNavigator />;
-  }
-
-  // Caso normal: app principal
-  return <AppNavigator />;
+  return (
+    <Stack.Navigator key={initialRoute} initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+      <Stack.Screen name="Auth" component={AuthNavigator} />
+      <Stack.Screen name="App" component={AppNavigator} />
+    </Stack.Navigator>
+  );
 }
