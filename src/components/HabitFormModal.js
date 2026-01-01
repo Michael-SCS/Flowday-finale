@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import MarketAddModal from './MarketAddModal';
 import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
 import { Picker } from '@react-native-picker/picker';
@@ -104,6 +105,8 @@ export default function HabitFormModal({
   const [durationPickerValue, setDurationPickerValue] = useState('');
 
   const [selectedColor, setSelectedColor] = useState('#38BDF8');
+  const [marketAddVisible, setMarketAddVisible] = useState(false);
+  const [marketAddFieldKey, setMarketAddFieldKey] = useState(null);
 
   useEffect(() => {
     if (editingActivity && initialSchedule) {
@@ -227,83 +230,89 @@ export default function HabitFormModal({
         return (
           <>
             {items.length > 0 && (
-              <View style={styles.marketHeaderRow}>
-                <View style={{ flex: 2 }}>
-                  <Text style={[styles.marketHeaderText, isDark && { color: '#e5e7eb' }]}>
-                    {t('habitForm.marketProductPlaceholder')}
-                  </Text>
-                </View>
-                <View style={{ width: 60 }}>
-                  <Text style={[styles.marketHeaderText, isDark && { color: '#e5e7eb' }]}>
-                    {t('habitForm.marketQtyPlaceholder')}
-                  </Text>
-                </View>
-                <View style={{ width: 70 }}>
-                  <Text style={[styles.marketHeaderText, isDark && { color: '#e5e7eb' }]}>
-                    {t('habitForm.marketPricePlaceholder')}
-                  </Text>
-                </View>
-              </View>
+              <Text style={[styles.sectionLabel, isDark && { color: '#e5e7eb', marginBottom: 8 }]}>
+                {t('habitForm.marketSectionTitle') || 'Productos'}
+              </Text>
             )}
+
             {items.map((item, i) => (
-              <View key={i} style={[styles.marketRow, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
-                <View style={styles.marketNum}>
-                  <Text style={styles.marketNumTxt}>{i + 1}</Text>
+              <View key={i} style={[styles.marketCard, isDark && styles.marketCardDark]}>
+                <View style={styles.marketCardHeader}>
+                  <Text style={[styles.marketCardIndex, isDark && { color: '#cbd5e1' }]}>{i + 1}</Text>
+                  <Pressable onPress={() => {
+                    const copy = items.filter((_, idx) => idx !== i);
+                    updateField(field.key, copy);
+                  }}>
+                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                  </Pressable>
                 </View>
+
                 <TextInput
-                  style={[styles.input, isDark && styles.inputDark, styles.marketInput, { flex: 2 }]}
+                  style={[styles.input, isDark && styles.inputDark, { marginBottom: 8 }]}
                   value={item.name}
                   onChangeText={(v) => {
                     const copy = [...items];
                     copy[i].name = v;
                     updateField(field.key, copy);
                   }}
+                  placeholder={t('habitForm.marketProductPlaceholder')}
+                  placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
                 />
-                <TextInput
-                  style={[styles.input, isDark && styles.inputDark, styles.marketInput, { width: 60 }]}
-                  keyboardType="numeric"
-                  value={item.qty}
-                  onChangeText={(v) => {
-                    const copy = [...items];
-                    copy[i].qty = v;
-                    updateField(field.key, copy);
-                  }}
-                />
-                <TextInput
-                  style={[styles.input, isDark && styles.inputDark, styles.marketInput, { width: 70 }]}
-                  keyboardType="numeric"
-                  value={item.price}
-                  onChangeText={(v) => {
-                    const copy = [...items];
-                    copy[i].price = v;
-                    updateField(field.key, copy);
-                  }}
-                />
-                <Pressable
-                  onPress={() => {
-                    const copy = items.filter((_, idx) => idx !== i);
-                    updateField(field.key, copy);
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                </Pressable>
+
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark, { flex: 1 }]}
+                    keyboardType="numeric"
+                    value={String(item.qty || '')}
+                    onChangeText={(v) => {
+                      const copy = [...items];
+                      copy[i].qty = v;
+                      updateField(field.key, copy);
+                    }}
+                    placeholder={t('habitForm.marketQtyPlaceholder')}
+                    placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                  />
+
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark, { width: 120 }]}
+                    keyboardType="numeric"
+                    value={String(item.price || '')}
+                    onChangeText={(v) => {
+                      const copy = [...items];
+                      copy[i].price = v;
+                      updateField(field.key, copy);
+                    }}
+                    placeholder={t('habitForm.marketPricePlaceholder')}
+                    placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                  />
+                </View>
               </View>
             ))}
 
             <Pressable
-              style={styles.addBtn}
-              onPress={() =>
-                updateField(field.key, [
-                  ...(items || []),
-                  { name: '', qty: '', price: '' },
-                ])
-              }
+              style={[styles.addBtn, { marginTop: 10 }]}
+              onPress={() => {
+                setMarketAddFieldKey(field.key);
+                setMarketAddVisible(true);
+              }}
             >
               <Ionicons name="add-circle" size={20} color="#38BDF8" />
               <Text style={styles.addTxt}>
                 {t('habitForm.marketAddButton')}
               </Text>
             </Pressable>
+
+            <MarketAddModal
+              visible={marketAddVisible}
+              onClose={() => setMarketAddVisible(false)}
+              onAdd={(newItem) => {
+                const copy = [...(items || [])];
+                // map to habit market item shape
+                copy.push({ name: newItem.product || newItem.name || '', qty: String(newItem.quantity || ''), price: String(newItem.price || '') });
+                updateField(field.key, copy);
+                setMarketAddVisible(false);
+              }}
+            />
           </>
         );
 
@@ -1069,9 +1078,9 @@ const styles = StyleSheet.create({
     color: '#111',
   },
   inputDark: {
-    backgroundColor: '#020617',
+    backgroundColor: '#071127',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#273142',
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
@@ -1158,6 +1167,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
     borderWidth: 1,
     borderColor: '#e5e7eb',
+  },
+  marketCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  marketCardDark: {
+    backgroundColor: '#071127',
+    borderColor: '#273142',
+  },
+  marketCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  marketCardIndex: {
+    fontWeight: '700',
+    color: '#111827',
   },
   marketNum: {
     width: 34,

@@ -1,14 +1,7 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import LoginScreen from '../components/Login';
-import RegisterScreen from '../components/Register';
-
-const Stack = createNativeStackNavigator();
+import React from 'react';
+import { View } from 'react-native';
 
 export default function AuthNavigator() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-    </Stack.Navigator>
-  );
+  // Register/login flows removed — render empty placeholder.
+  return <View style={{ flex: 1, backgroundColor: 'transparent' }} />;
 }

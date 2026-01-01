@@ -15,6 +15,17 @@ export default function ProfileForm({ navigation, route }) {
   const { t } = useI18n();
   const { languageSource, language } = useSettings();
 
+  // Función para capitalizar cada palabra
+  const capitalizeWords = (text) => {
+    return text
+      .split(' ')
+      .map(word => {
+        if (word.length === 0) return '';
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(' ');
+  };
+
   const validateForm = () => {
     const newErrors = {};
     if (!nombre.trim()) newErrors.nombre = 'El nombre es requerido';
@@ -36,9 +47,6 @@ export default function ProfileForm({ navigation, route }) {
       genero,
     };
 
-    // If the language was already chosen by the user earlier (or we just
-    // came from AppSettings in the slides flow), skip asking again and
-    // save the profile directly, then continue to Personalization.
     if (languageSource === 'user' || route?.params?.fromSettings) {
       setLoading(true);
       try {
@@ -58,7 +66,7 @@ export default function ProfileForm({ navigation, route }) {
         const { error } = await supabase.from('profiles').upsert(payload);
         if (error) throw error;
 
-        navigation.replace('Personalization');
+        navigation.replace('Final');
         return;
       } catch (err) {
         Alert.alert('Error', err.message || 'No se pudo guardar el perfil');
@@ -67,7 +75,6 @@ export default function ProfileForm({ navigation, route }) {
       }
     }
 
-    // Otherwise, ask for language/theme now
     navigation.navigate('AppSettings', {
       profile: profilePayload,
     });
@@ -81,57 +88,61 @@ export default function ProfileForm({ navigation, route }) {
         setErrors(prev => ({ ...prev, genero: null }));
       }}
     >
-      <Text style={[styles.genderIcon, genero === value && styles.genderIconActive]}>{icon}</Text>
+      <Text style={styles.genderIcon}>{icon}</Text>
       <Text style={[styles.genderText, genero === value && styles.genderTextActive]}>{label}</Text>
     </TouchableOpacity>
   );
-
-  
 
   const isFormValid = nombre.trim() && apellido.trim() && edad.trim() && genero;
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.cardWrapper}>
+            <Image
+              source={require('../../../assets/mascota_sentada.png')}
+              style={styles.mascot}
+              resizeMode="contain"
+            />
+            
             <View style={styles.card}>
               <Text style={styles.pageTitle}>{t('register.step1Helper')}</Text>
-              <Image
-                source={require('../../../assets/mascota_sentada.png')}
-                style={styles.mascot}
-                resizeMode="contain"
-              />
 
-              <View style={styles.row}>
-                <View style={styles.col}>
-                  <Text style={styles.label}>{t('profile.firstName')}</Text>
-                  <TextInput
-                    value={nombre}
-                    onChangeText={(text) => {
-                      setNombre(text);
-                      setErrors(prev => ({ ...prev, nombre: null }));
-                    }}
-                    style={[styles.input, errors.nombre && styles.inputError]}
-                    placeholder={t('profile.firstName')}
-                    placeholderTextColor="#94a3b8"
-                  />
-                  {errors.nombre && <Text style={styles.errorText}>{errors.nombre}</Text>}
-                </View>
-                <View style={[styles.col, { marginLeft: 12 }] }>
-                  <Text style={styles.label}>{t('profile.lastName')}</Text>
-                  <TextInput
-                    value={apellido}
-                    onChangeText={(text) => {
-                      setApellido(text);
-                      setErrors(prev => ({ ...prev, apellido: null }));
-                    }}
-                    style={[styles.input, errors.apellido && styles.inputError]}
-                    placeholder={t('profile.lastName')}
-                    placeholderTextColor="#94a3b8"
-                  />
-                  {errors.apellido && <Text style={styles.errorText}>{errors.apellido}</Text>}
-                </View>
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>{t('profile.firstName')}</Text>
+                <TextInput
+                  value={nombre}
+                  onChangeText={(text) => {
+                    setNombre(text);
+                    setErrors(prev => ({ ...prev, nombre: null }));
+                  }}
+                  style={[styles.input, errors.nombre && styles.inputError]}
+                  placeholder={t('profile.firstName')}
+                  placeholderTextColor="#94a3b8"
+                  autoCapitalize="words"
+                />
+                {errors.nombre && <Text style={styles.errorText}>{errors.nombre}</Text>}
+              </View>
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>{t('profile.lastName')}</Text>
+                <TextInput
+                  value={apellido}
+                  onChangeText={(text) => {
+                    setApellido(text);
+                    setErrors(prev => ({ ...prev, apellido: null }));
+                  }}
+                  style={[styles.input, errors.apellido && styles.inputError]}
+                  placeholder={t('profile.lastName')}
+                  placeholderTextColor="#94a3b8"
+                  autoCapitalize="words"
+                />
+                {errors.apellido && <Text style={styles.errorText}>{errors.apellido}</Text>}
               </View>
 
               <View style={styles.fieldContainer}>
@@ -153,14 +164,13 @@ export default function ProfileForm({ navigation, route }) {
 
               <View style={styles.fieldContainer}>
                 <Text style={styles.label}>{t('profile.gender')}</Text>
-                <View style={styles.genderRow}>
+                <View style={styles.genderColumn}>
                   <GenderButton value={t('profile.genderOptions.male')} label={t('profile.genderOptions.male')} icon="♂️" />
                   <GenderButton value={t('profile.genderOptions.female')} label={t('profile.genderOptions.female')} icon="♀️" />
                   <GenderButton value={t('profile.genderOptions.other')} label={t('profile.genderOptions.other')} icon="⚧" />
                 </View>
                 {errors.genero && <Text style={styles.errorText}>{errors.genero}</Text>}
               </View>
-
 
               <TouchableOpacity
                 style={[styles.btn, (!isFormValid || loading) && styles.btnDisabled]}
@@ -184,14 +194,15 @@ export default function ProfileForm({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    padding: 0, 
     backgroundColor: '#f8fafc', 
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    paddingBottom: 100,
   },
   cardWrapper: { 
     width: '100%', 
@@ -200,78 +211,68 @@ const styles = StyleSheet.create({
     position: 'relative' 
   },
   mascot: {
-    width: 150,
-    height: 150,
-    position: 'absolute',
-    top: -60,
-    alignSelf: 'center',
+    width: 120,
+    height: 120,
+    marginBottom: -30,
     zIndex: 1,
   },
   pageTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: '#111827',
     textAlign: 'center',
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 4,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 3,
     borderBottomColor: '#fde68a',
-    zIndex: 3,
   },
   card: {
     width: '100%',
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 22,
-    paddingTop: 120,
+    borderRadius: 20,
+    padding: 20,
+    paddingTop: 50,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  row: { 
-    flexDirection: 'row', 
-    marginBottom: 16 
-  },
-  col: { 
-    flex: 1 
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 8,
   },
   fieldContainer: {
-    marginBottom: 16
+    marginBottom: 14,
   },
   label: { 
     marginBottom: 6, 
     color: '#374151', 
     fontWeight: '600',
-    fontSize: 14
+    fontSize: 14,
   },
   input: { 
-    borderWidth: 1, 
+    borderWidth: 1.5, 
     borderColor: '#e6eef9', 
     borderRadius: 12, 
-    padding: 12, 
+    paddingHorizontal: 14,
+    paddingVertical: 12, 
     backgroundColor: '#f8fafc',
-    fontSize: 16,
-    color: '#1f2937'
+    fontSize: 15,
+    color: '#1f2937',
   },
   inputError: {
-    borderColor: '#ef4444'
+    borderColor: '#ef4444',
   },
   errorText: {
     color: '#ef4444',
-    fontSize: 12,
-    marginTop: 4
+    fontSize: 11,
+    marginTop: 4,
   },
-  genderRow: {
-    flexDirection: 'row',
-    gap: 8,
+  genderColumn: {
+    gap: 10,
   },
   genderBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#e6eef9',
@@ -282,35 +283,37 @@ const styles = StyleSheet.create({
     borderColor: '#16a34a',
   },
   genderIcon: {
-    fontSize: 18,
-    marginRight: 6,
-  },
-  genderIconActive: {
-    fontSize: 18,
+    fontSize: 22,
+    marginRight: 10,
   },
   genderText: {
     color: '#64748b',
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: 15,
   },
   genderTextActive: {
     color: '#16a34a',
   },
-  
   btn: { 
     backgroundColor: '#16a34a', 
-    padding: 14, 
-    borderRadius: 12, 
+    paddingVertical: 15, 
+    borderRadius: 14, 
     alignItems: 'center', 
-    marginTop: 8 
+    marginTop: 16,
+    shadowColor: '#16a34a',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   btnDisabled: {
     backgroundColor: '#94a3b8',
-    opacity: 0.6
+    opacity: 0.6,
+    shadowOpacity: 0,
   },
   btnText: { 
     color: '#fff', 
     fontWeight: '700',
-    fontSize: 16
+    fontSize: 16,
   },
 });

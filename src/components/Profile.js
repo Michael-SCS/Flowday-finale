@@ -328,10 +328,7 @@ export default function ProfileScreen() {
                     </View>
                   </View>
 
-                  <View style={[styles.hintBox, isDark && { borderTopColor: '#1e293b' }]}>
-                    <Ionicons name="information-circle" size={18} color="#94a3b8" />
-                    <Text style={[styles.hintText, isDark && { color: '#94a3b8' }]}>{t('profile.profileHint')}</Text>
-                  </View>
+                  {/* hint removed per request */}
                 </View>
 
                 {/* ESTADÍSTICAS PRO */}

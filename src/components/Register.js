@@ -123,12 +123,7 @@ export default function Register({ navigation }) {
             resizeMode="contain"
           />
 
-          <View style={styles.loginPromptRow}>
-            <Text style={styles.loginPromptText}>¿Ya tienes una cuenta? </Text>
-            <Pressable onPress={() => navigation.goBack()}>
-              <Text style={styles.loginPromptLink}>Ingresa</Text>
-            </Pressable>
-          </View>
+          {/* Removed login prompt: app no longer uses a Login screen */}
 
           <Text style={styles.mascotWelcome}>
             {language === 'es' && 'Kuro te da la bienvenida a Fluu 🐾'}

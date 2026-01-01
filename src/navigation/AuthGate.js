@@ -145,6 +145,8 @@ export default function AuthGate() {
 
   const decideInitial = () => {
     if (deviceOnboardingChecked && deviceOnboardingNeeded) return 'Onboarding';
+    // If this device already showed onboarding, prefer App (show calendar)
+    if (deviceOnboardingChecked && !deviceOnboardingNeeded) return 'App';
     if (!session) return 'Auth';
     if (!onboardingChecked || onboardingCompleted === null) return 'Auth';
     if (!onboardingCompleted) return 'Onboarding';

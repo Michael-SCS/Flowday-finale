@@ -10,8 +10,8 @@ export default function OnboardingFinal({ navigation }) {
   const safeResetToApp = () => {
     try {
       const parent = navigation.getParent && navigation.getParent();
-      if (parent && typeof parent.reset === 'function') {
-        parent.reset({ index: 0, routes: [{ name: 'Calendar' }] });
+        if (parent && typeof parent.reset === 'function') {
+        parent.reset({ index: 0, routes: [{ name: 'App', state: { index: 0, routes: [{ name: 'Calendar' }] } }] });
         return;
       }
     } catch (e) {
@@ -20,7 +20,7 @@ export default function OnboardingFinal({ navigation }) {
 
     // Fallback: try resetting within this stack to avoid unhandled RESET action
     try {
-      navigation.reset({ index: 0, routes: [{ name: 'Calendar' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'App', state: { index: 0, routes: [{ name: 'Calendar' }] } }] });
     } catch (e) {
       navigation.popToTop && navigation.popToTop();
     }
@@ -50,7 +50,7 @@ export default function OnboardingFinal({ navigation }) {
 
             // Ahora que AuthGate expone un Stack raíz con la pantalla 'App', resetear a 'App'
             try {
-              navigation.reset({ index: 0, routes: [{ name: 'App' }] });
+              navigation.reset({ index: 0, routes: [{ name: 'App', state: { index: 0, routes: [{ name: 'Calendar' }] } }] });
             } catch (e) {
               // fallback al comportamiento seguro (buscar parent que soporte reset)
               safeResetToApp();

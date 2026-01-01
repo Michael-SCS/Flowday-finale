@@ -11,6 +11,8 @@ export default function RegisterForm({ navigation, route }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  
   const mascotImages = [
     require('../../../assets/mascota_calendario.png'),
     require('../../../assets/mascota_pomodoro.png'),
@@ -48,6 +50,27 @@ export default function RegisterForm({ navigation, route }) {
     ]).start();
   }, []);
 
+  // Keyboard listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
+
   async function handleRegister() {
     setLoading(true);
     try {
@@ -65,50 +88,71 @@ export default function RegisterForm({ navigation, route }) {
     <KeyboardAwareScrollView
       contentContainerStyle={styles.scrollContent}
       enableOnAndroid={true}
-      extraScrollHeight={Platform.OS === 'ios' ? 20 : 60}
+      extraScrollHeight={20}
       keyboardShouldPersistTaps="handled"
       enableAutomaticScroll={true}
+      showsVerticalScrollIndicator={false}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.innerWrapper}>
-          <Animated.Image source={mascotImages[mascotIndex]} style={[styles.mascot, { opacity, transform: [{ scale: mascotScale }] }]} resizeMode="contain" />
+          {!keyboardVisible && (
+            <Animated.Image 
+              source={mascotImages[mascotIndex]} 
+              style={[styles.mascot, { opacity, transform: [{ scale: mascotScale }] }]} 
+              resizeMode="contain" 
+            />
+          )}
 
-        <Animated.View style={[styles.card, { opacity: cardOpacity, transform: [{ translateY: cardTranslate }] }] }>
-          <Text style={styles.welcome}>{t('register.welcome')}</Text>
+          <Animated.View style={[styles.card, { opacity: cardOpacity, transform: [{ translateY: cardTranslate }] }]}>
+            {!keyboardVisible && (
+              <>
+                <Text style={styles.welcome}>{t('register.welcome')}</Text>
+                <Text style={styles.title}>{t('register.step1Title')}</Text>
+              </>
+            )}
 
-          <Text style={styles.title}>{t('register.step1Title')}</Text>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>{t('auth.emailLabel')}</Text>
-            <View style={styles.inputRow}>
-              <Ionicons name="mail-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
-              <TextInput autoCapitalize="none" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
+            <View style={styles.field}>
+              <Text style={styles.label}>{t('auth.emailLabel')}</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="mail-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
+                <TextInput 
+                  autoCapitalize="none" 
+                  value={email} 
+                  onChangeText={setEmail} 
+                  style={styles.input} 
+                  keyboardType="email-address"
+                />
+              </View>
             </View>
-          </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>{t('auth.passwordLabel')}</Text>
-            <View style={styles.inputRow}>
-              <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
-              <TextInput secureTextEntry={!showPassword} value={password} onChangeText={setPassword} style={styles.input} />
-              <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={styles.eyeButton}>
-                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color="#6b7280" />
+            <View style={styles.field}>
+              <Text style={styles.label}>{t('auth.passwordLabel')}</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
+                <TextInput 
+                  secureTextEntry={!showPassword} 
+                  value={password} 
+                  onChangeText={setPassword} 
+                  style={styles.input}
+                />
+                <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={styles.eyeButton}>
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+              <TouchableOpacity
+                style={styles.btn}
+                onPress={handleRegister}
+                disabled={loading}
+                onPressIn={() => Animated.spring(buttonScale, { toValue: 0.96, useNativeDriver: true }).start()}
+                onPressOut={() => Animated.spring(buttonScale, { toValue: 1, useNativeDriver: true }).start()}
+              >
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t('register.submit')}</Text>}
               </TouchableOpacity>
-            </View>
-          </View>
-
-          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-            <TouchableOpacity
-              style={styles.btn}
-              onPress={handleRegister}
-              disabled={loading}
-              onPressIn={() => Animated.spring(buttonScale, { toValue: 0.96, useNativeDriver: true }).start()}
-              onPressOut={() => Animated.spring(buttonScale, { toValue: 1, useNativeDriver: true }).start()}
-            >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t('register.submit')}</Text>}
-            </TouchableOpacity>
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAwareScrollView>
@@ -117,17 +161,46 @@ export default function RegisterForm({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 0, backgroundColor: '#f8fafc' },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  scrollContent: { 
+    flexGrow: 1,
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 20,
+    paddingBottom: 120,
+  },
   mascot: { width: 160, height: 160, marginBottom: 8 },
-  card: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 18, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 6 },
+  card: { 
+    width: '100%', 
+    backgroundColor: '#fff', 
+    borderRadius: 16, 
+    padding: 18, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.06, 
+    shadowRadius: 12, 
+    elevation: 6 
+  },
   welcome: { fontSize: 14, textAlign: 'center', color: '#374151', marginBottom: 12, lineHeight: 20 },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
   field: { width: '100%', marginBottom: 12 },
   label: { alignSelf: 'flex-start', marginBottom: 6, color: '#374151', fontWeight: '600' },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e6eef9' },
+  inputRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#f8fafc', 
+    paddingHorizontal: 12, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: '#e6eef9' 
+  },
   input: { flex: 1, paddingVertical: 10 },
   eyeButton: { padding: 6 },
-  btn: { backgroundColor: '#2563eb', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 6 },
+  btn: { 
+    backgroundColor: '#2563eb', 
+    padding: 14, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginTop: 6 
+  },
   btnText: { color: '#fff', fontWeight: '700' },
   innerWrapper: { width: '100%', alignItems: 'center' },
 });

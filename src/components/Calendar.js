@@ -27,6 +27,7 @@ import { loadHabitTemplates } from '../utils/habitCache';
 import HabitFormModal from './HabitFormModal';
 import ChecklistTable from './ChecklistTable';
 import MarketTable from './MarketTable';
+import MarketAddModal from './MarketAddModal';
 import VitaminsTable from './VitaminsTable';
 import { v4 as uuidv4 } from 'uuid';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
@@ -259,6 +260,8 @@ export default function Calendar() {
   const { t } = useI18n();
   const accent = getAccentColor(themeColor);
   const isDark = themeMode === 'dark';
+  const [marketAddVisible, setMarketAddVisible] = useState(false);
+  const [marketAddContext, setMarketAddContext] = useState(null);
   const [selectedDate, setSelectedDate] = useState(today);
   const [activities, setActivities] = useState({});
   const [habits, setHabits] = useState([]);
@@ -875,6 +878,30 @@ export default function Calendar() {
           checked: !list[index].checked,
         };
       }
+
+      return {
+        ...act,
+        data: {
+          ...data,
+          [listType]: list,
+        },
+      };
+    });
+
+    saveActivities(updated);
+  }
+
+  function addMarketItem(activity, listType, item) {
+    const updated = { ...activities };
+
+    updated[activity.date] = updated[activity.date].map((act) => {
+      if (act.id !== activity.id) return act;
+
+      const data = { ...act.data };
+      const originalList = data[listType] || [];
+
+      const list = originalList.map((it) => it);
+      list.push(item);
 
       return {
         ...act,
@@ -2048,25 +2075,36 @@ export default function Calendar() {
             onPress={() => setMarketModalVisible(false)}
           />
           <Pressable
-            style={styles.modal}
+            style={[styles.modal, isDark && { backgroundColor: '#020617' }]}
             onPress={(e) => e.stopPropagation()}
           >
             {marketModalData && (
               <>
-                <View style={styles.modalHeader}>
-                  <View style={styles.modalHandle} />
+                <View style={[styles.modalHeader, isDark && { borderBottomColor: '#0f172a' }]}>
+                  <View style={[styles.modalHandle, isDark && { backgroundColor: '#0f172a' }]} />
                   <View style={styles.modalTitleContainer}>
                     <Ionicons name="cart" size={24} color={accent} />
-                    <Text style={styles.modalTitle}>
+                    <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>
                       {marketModalData.marketLabel || t('calendar.marketDefaultTitle')}
                     </Text>
                   </View>
-                  <Pressable
-                    onPress={() => setMarketModalVisible(false)}
-                    style={styles.modalClose}
-                  >
-                    <Ionicons name="close-circle" size={28} color="#6b7280" />
-                  </Pressable>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Pressable
+                      onPress={() => {
+                        setMarketAddContext({ activity: marketModalData.activity, listKey: marketModalData.marketKey });
+                        setMarketAddVisible(true);
+                      }}
+                      style={{ marginRight: 12 }}
+                    >
+                      <Ionicons name="add-circle" size={28} color={accent} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setMarketModalVisible(false)}
+                      style={styles.modalClose}
+                    >
+                      <Ionicons name="close-circle" size={28} color={isDark ? '#9ca3af' : '#6b7280'} />
+                    </Pressable>
+                  </View>
                 </View>
 
                 <ScrollView
@@ -2076,10 +2114,10 @@ export default function Calendar() {
                   keyboardShouldPersistTaps="handled"
                 >
                   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
                       {getDisplayTitle(marketModalData.activity)}
                     </Text>
-                    <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                    <Text style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', marginTop: 4 }}>
                       {formatDate(marketModalData.activity.date, language)}
                     </Text>
 
@@ -2088,7 +2126,7 @@ export default function Calendar() {
                         <View style={styles.checklistIconBg}>
                           <Ionicons name="cart" size={16} color={accent} />
                         </View>
-                        <Text style={styles.checklistTitle}>
+                        <Text style={[styles.checklistTitle, isDark && { color: '#e5e7eb' }]}>
                           {marketModalData.marketLabel ||
                             t('calendar.marketDefaultSectionTitle')}
                         </Text>
@@ -2116,16 +2154,38 @@ export default function Calendar() {
                           )?.data[marketModalData.marketKey] || [];
 
                         return (
-                          <MarketTable
-                            items={allItems}
-                            onToggle={(index) =>
-                              toggleChecklistItem(
-                                marketModalData.activity,
-                                marketModalData.marketKey,
-                                index
-                              )
-                            }
-                          />
+                          <>
+                            <MarketTable
+                              items={allItems}
+                              onToggle={(index) =>
+                                toggleChecklistItem(
+                                  marketModalData.activity,
+                                  marketModalData.marketKey,
+                                  index
+                                )
+                              }
+                            />
+
+                            <View style={{ height: 12 }} />
+                            <Pressable
+                              onPress={() => {
+                                setMarketAddContext({ activity: marketModalData.activity, listKey: marketModalData.marketKey || 'market' });
+                                setMarketAddVisible(true);
+                              }}
+                              style={{
+                                marginTop: 8,
+                                paddingVertical: 10,
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                borderColor: isDark ? '#0f172a' : '#e5e7eb',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Text style={{ color: isDark ? '#e5e7eb' : '#111827', fontWeight: '700' }}>
+                                {t('calendar.addMarketItem') || 'Agregar producto'}
+                              </Text>
+                            </Pressable>
+                          </>
                         );
                       })()}
                     </View>
@@ -2139,6 +2199,18 @@ export default function Calendar() {
       </Modal>
 
       {/* VITAMINS LIST MODAL */}
+      <MarketAddModal
+        visible={marketAddVisible}
+        onClose={() => setMarketAddVisible(false)}
+        onAdd={(item) => {
+          if (marketAddContext && marketAddContext.activity) {
+            const listKey = marketAddContext.listKey || 'market';
+            addMarketItem(marketAddContext.activity, listKey, item);
+          }
+          setMarketAddVisible(false);
+        }}
+      />
+
       <Modal
         transparent
         visible={vitaminsModalVisible && !!vitaminsModalData}
@@ -2192,7 +2264,7 @@ export default function Calendar() {
                         <View style={styles.checklistIconBg}>
                           <Ionicons name="medkit" size={16} color="#22c55e" />
                         </View>
-                        <Text style={styles.checklistTitle}>
+                        <Text style={[styles.checklistTitle, isDark && { color: '#e5e7eb' }]}>
                           {vitaminsModalData.vitaminsLabel ||
                             t('calendar.vitaminsDefaultSectionTitle')}
                         </Text>
@@ -2296,7 +2368,7 @@ export default function Calendar() {
                         <View style={styles.checklistIconBg}>
                           <Ionicons name="home" size={16} color={accent} />
                         </View>
-                        <Text style={styles.checklistTitle}>
+                        <Text style={[styles.checklistTitle, isDark && { color: '#e5e7eb' }]}>
                           {checklistModalData.checklistLabel ||
                             t('calendar.checklistDefaultSectionTitle')}
                         </Text>

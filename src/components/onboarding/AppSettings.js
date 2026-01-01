@@ -70,7 +70,7 @@ export default function AppSettings({ navigation, route }) {
       // If we arrived here directly from the slides (no profile yet),
       // just apply language/theme and go to Register.
       if (!route.params?.profile && route.params?.from === 'slides') {
-        navigation.replace('Register', { fromSettings: true });
+        navigation.replace('Final', { fromSettings: true });
         return;
       }
 
@@ -91,7 +91,7 @@ export default function AppSettings({ navigation, route }) {
       const { error } = await supabase.from('profiles').upsert(payload);
       if (error) throw error;
 
-      navigation.replace('Personalization');
+      navigation.replace('Final');
     } catch (err) {
       Alert.alert('Error', err.message || 'No se pudo guardar la configuración');
     } finally {
