@@ -23,27 +23,45 @@ function parseConfig(config) {
 function normalizeType(type) {
   return String(type || '')
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '');
 }
 
-function localizeSpecialHabitTextLabel(template, field, language) {
-  if (!field || field.type !== 'text') return field;
+function localizeSpecialHabitFieldLabel(template, field, language) {
+  if (!field) return field;
+  const fieldType = String(field.type || '').trim().toLowerCase();
 
-  const byType = {
-    birthday: 'specialHabits.birthday.question',
-    study: 'specialHabits.study.question',
-    book: 'specialHabits.book.question',
-    call: 'specialHabits.call.question',
-    skincare: 'specialHabits.skincare.question',
-    water: 'specialHabits.water.question',
-  };
+  // Field-type based localization for "special" templates
+  if (fieldType === 'market') {
+    return { ...field, label: translate('calendar.marketDefaultSectionTitle', language) };
+  }
+  if (fieldType === 'vitamins') {
+    return { ...field, label: translate('calendar.vitaminsDefaultSectionTitle', language) };
+  }
+  if (fieldType === 'checklist') {
+    // Commonly used for "organize" templates
+    return { ...field, label: translate('calendar.checklistDefaultSectionTitle', language) };
+  }
 
-  const typeKey = byType[normalizeType(template?.type)];
-  if (typeKey) {
-    return {
-      ...field,
-      label: translate(typeKey, language),
+  // Template-type based localization for question-like text fields
+  if (fieldType === 'text') {
+    const byType = {
+      birthday: 'specialHabits.birthday.question',
+      study: 'specialHabits.study.question',
+      book: 'specialHabits.book.question',
+      read: 'specialHabits.book.question',
+      call: 'specialHabits.call.question',
+      skincare: 'specialHabits.skincare.question',
+      water: 'specialHabits.water.question',
     };
+
+    const typeKey = byType[normalizeType(template?.type)];
+    if (typeKey) {
+      return {
+        ...field,
+        label: translate(typeKey, language),
+      };
+    }
   }
 
   const labelMap = {
@@ -52,7 +70,20 @@ function localizeSpecialHabitTextLabel(template, field, language) {
     '¿Qué libro leerás hoy?': 'specialHabits.book.question',
     '¿A quién llamarás hoy?': 'specialHabits.call.question',
     '¿Con qué cuidarás tu piel hoy?': 'specialHabits.skincare.question',
+    '¿Qué producto usarás para tu piel?': 'specialHabits.skincare.question',
+    '¿Qué producto usarás para tu piel hoy?': 'specialHabits.skincare.question',
     '¿Cuál es tu objetivo de agua hoy?': 'specialHabits.water.question',
+
+    // Section headers that often come hardcoded in templates
+    'Lista de compras': 'calendar.marketDefaultSectionTitle',
+    'Lista de mercado': 'calendar.marketDefaultSectionTitle',
+    'Shopping list': 'calendar.marketDefaultSectionTitle',
+    'Lista de compras del mercado': 'calendar.marketDefaultSectionTitle',
+    'Vitaminas': 'calendar.vitaminsDefaultSectionTitle',
+    'Vitaminas a tomar': 'calendar.vitaminsDefaultSectionTitle',
+    'Vitamins': 'calendar.vitaminsDefaultSectionTitle',
+    'Espacios a organizar': 'calendar.checklistDefaultSectionTitle',
+    'Spaces to organize': 'calendar.checklistDefaultSectionTitle',
   };
 
   const mapKey = labelMap[String(field.label || '').trim()];
@@ -76,7 +107,7 @@ function localizeTemplates(templates, language) {
     const nextCfg = {
       ...cfg,
       fields: cfg.fields.map((field) =>
-        localizeSpecialHabitTextLabel(template, field, language)
+        localizeSpecialHabitFieldLabel(template, field, language)
       ),
     };
 

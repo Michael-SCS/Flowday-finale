@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSettings } from '../utils/settingsContext';
 
-const MarketTableItem = React.memo(function MarketTableItem({ item, index, isDark, onToggle }) {
+const MarketTableItem = React.memo(function MarketTableItem({ item, index, isDark, accentColor, onToggle }) {
   const product = typeof item === 'string' ? item : (item.product || item.name || item.label || '');
   const qty = item.quantity !== undefined && item.quantity !== null ? String(item.quantity) : item.qty || '';
   const price = item.price !== undefined && item.price !== null ? String(item.price) : '';
@@ -27,7 +27,7 @@ const MarketTableItem = React.memo(function MarketTableItem({ item, index, isDar
           <Ionicons
             name={item.checked ? 'checkmark-circle' : 'ellipse-outline'}
             size={32}
-            color={item.checked ? '#10b981' : (isDark ? '#64748b' : '#d1d5db')}
+            color={item.checked ? (accentColor || '#10b981') : (isDark ? '#64748b' : '#d1d5db')}
           />
         </View>
 
@@ -67,15 +67,26 @@ const MarketTableItem = React.memo(function MarketTableItem({ item, index, isDar
   );
 });
 
-export default function MarketTable({ items = [], onToggle, onClose, virtualized = true }) {
+export default function MarketTable({
+  items = [],
+  onToggle,
+  onClose,
+  virtualized = true,
+  embedded = false,
+  showHeader = true,
+  showSummary = true,
+  title,
+  accentColor,
+  isDark: isDarkOverride,
+}) {
   const { themeMode } = useSettings();
-  const isDark = themeMode === 'dark';
+  const isDark = typeof isDarkOverride === 'boolean' ? isDarkOverride : themeMode === 'dark';
 
   const renderItem = useCallback(
     ({ item, index }) => (
-      <MarketTableItem item={item} index={index} isDark={isDark} onToggle={onToggle} />
+      <MarketTableItem item={item} index={index} isDark={isDark} accentColor={accentColor} onToggle={onToggle} />
     ),
-    [isDark, onToggle]
+    [isDark, accentColor, onToggle]
   );
 
   const keyExtractor = useCallback(
@@ -95,23 +106,32 @@ export default function MarketTable({ items = [], onToggle, onClose, virtualized
     return { totalQuantity: tQty, totalAmount: tAmount };
   }, [items]);
   return (
-    <View style={[styles.container, isDark && styles.containerDark]}>
-      {/* HEADER CON BOTÓN DE CERRAR */}
-      <View style={[styles.header, isDark && styles.headerDark]}>
-        <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>
-          Lista de Compras
-        </Text>
-        {onClose && (
-          <Pressable onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close-circle" size={28} color={isDark ? '#e5e7eb' : '#111827'} />
-          </Pressable>
-        )}
-      </View>
+    <View
+      style={[
+        styles.container,
+        embedded && styles.containerEmbedded,
+        isDark && styles.containerDark,
+        embedded && isDark && styles.containerEmbeddedDark,
+      ]}
+    >
+      {/* HEADER CON BOTÓN DE CERRAR (opcional) */}
+      {showHeader && !embedded && (
+        <View style={[styles.header, isDark && styles.headerDark]}>
+          <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>
+            {title || 'Lista de Compras'}
+          </Text>
+          {onClose && (
+            <Pressable onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close-circle" size={28} color={isDark ? '#e5e7eb' : '#111827'} />
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {virtualized ? (
         <FlatList
           data={items}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, embedded && styles.scrollContentEmbedded]}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           initialNumToRender={10}
@@ -119,13 +139,14 @@ export default function MarketTable({ items = [], onToggle, onClose, virtualized
           windowSize={5}
         />
       ) : (
-        <View style={styles.scrollContent}>
+        <View style={[styles.scrollContent, embedded && styles.scrollContentEmbedded]}>
           {items.map((item, index) => (
             <MarketTableItem
               key={keyExtractor(item, index)}
               item={item}
               index={index}
               isDark={isDark}
+              accentColor={accentColor}
               onToggle={onToggle}
             />
           ))}
@@ -133,7 +154,7 @@ export default function MarketTable({ items = [], onToggle, onClose, virtualized
       )}
 
       {/* RESUMEN TOTAL */}
-      {items.length > 0 && (
+      {showSummary && items.length > 0 && (
         <View style={[styles.summary, isDark && styles.summaryDark]}>
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, isDark && styles.summaryLabelDark]}>
@@ -175,6 +196,16 @@ const styles = StyleSheet.create({
   containerDark: {
     backgroundColor: '#0f172a',
   },
+  containerEmbedded: {
+    backgroundColor: 'transparent',
+    flex: 0,
+    flexGrow: 0,
+  },
+  containerEmbeddedDark: {
+    backgroundColor: 'transparent',
+    flex: 0,
+    flexGrow: 0,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -208,6 +239,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     flex: 1,
     padding: 16,
+  },
+  scrollContentEmbedded: {
+    padding: 0,
+    flex: 0,
+    flexGrow: 0,
   },
   card: {
     backgroundColor: '#fff',

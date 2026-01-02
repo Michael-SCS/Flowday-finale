@@ -70,8 +70,8 @@ export default function OnboardingSlides({ navigation }) {
             if (index < slides.length - 1) {
               flatRef.current.scrollToIndex({ index: index + 1, animated: true });
             } else {
-              // After the last slide, go to the registration screen
-              navigation.navigate('Register');
+              // After the last slide, go to app settings (language/theme)
+              navigation.navigate('AppSettings', { from: 'slides', onboarding: true });
             }
           }}
         >

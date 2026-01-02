@@ -3,9 +3,11 @@ import { View, Text, ActivityIndicator, TouchableOpacity, StyleSheet } from 'rea
 import { supabase } from '../../utils/supabase';
 import { generateInitialHabits } from '../../utils/initialHabits';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSettings } from '../../utils/settingsContext';
 
 export default function OnboardingFinal({ navigation }) {
   const [loading, setLoading] = useState(true);
+  const { language } = useSettings();
 
   const safeResetToApp = () => {
     try {
@@ -32,6 +34,30 @@ export default function OnboardingFinal({ navigation }) {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) throw new Error('Usuario no autenticado');
 
+        // Read locally-collected onboarding profile info
+        let profilePayload = null;
+        try {
+          const raw = await AsyncStorage.getItem('onboarding_profile_payload');
+          if (raw) profilePayload = JSON.parse(raw);
+        } catch {
+          profilePayload = null;
+        }
+
+        if (profilePayload) {
+          const payload = {
+            id: user.id,
+            nombre: profilePayload.nombre || '',
+            apellido: profilePayload.apellido || '',
+            edad: typeof profilePayload.edad === 'number' ? profilePayload.edad : null,
+            genero: profilePayload.genero || null,
+            email: user.email,
+            language: language,
+          };
+
+          const { error: profileError } = await supabase.from('profiles').upsert(payload);
+          if (profileError) throw profileError;
+        }
+
         const { error } = await supabase.from('user_onboarding').upsert({
           user_id: user.id,
           onboarding_completed: true,
@@ -39,14 +65,13 @@ export default function OnboardingFinal({ navigation }) {
         });
         if (error) throw error;
 
-        // Marcar localmente que en este dispositivo ya se mostró el onboarding
-        try {
-          await AsyncStorage.setItem('device_onboarding_shown', 'true');
-        } catch {
-          // no bloqueante
-        }
-
         await generateInitialHabits(user.id);
+
+        // Marcar localmente que en este dispositivo ya se mostró el onboarding
+        // y finalizar el estado en progreso (esto evita que se reinicie el flujo).
+        try { await AsyncStorage.setItem('device_onboarding_shown', 'true'); } catch {}
+        try { await AsyncStorage.removeItem('onboarding_in_progress'); } catch {}
+        try { await AsyncStorage.removeItem('onboarding_profile_payload'); } catch {}
 
             // Ahora que AuthGate expone un Stack raíz con la pantalla 'App', resetear a 'App'
             try {

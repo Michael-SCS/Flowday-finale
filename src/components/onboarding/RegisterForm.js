@@ -88,7 +88,7 @@ export default function RegisterForm({ navigation, route }) {
       if (error) throw error;
       // After signing up inside onboarding, proceed to profile step.
       // Mark onboarding as in-progress so RootNavigator won't jump to App.
-      navigation.replace('Profile', { fromRegistration: true, fromSettings: route?.params?.fromSettings });
+      navigation.replace('Profile', { onboarding: true, fromRegistration: true, fromSettings: route?.params?.fromSettings });
     } catch (err) {
       try { await AsyncStorage.removeItem('onboarding_in_progress'); } catch (e) {}
       alert(err.message || String(err));

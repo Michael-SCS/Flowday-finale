@@ -46,6 +46,54 @@ export default function ProfileScreen() {
   const genderKeys = ['male', 'female', 'nonBinary', 'genderFluid', 'preferNotSay', 'other'];
   const genderOptions = genderKeys.map((k) => t(`profile.genderOptions.${k}`));
 
+  const supportedLanguageKeys = ['es', 'en', 'pt', 'fr'];
+
+  const getYearsSuffix = () => {
+    const suffix = t('profile.yearsSuffix');
+    if (suffix && suffix !== 'profile.yearsSuffix') return suffix;
+
+    const fallback = {
+      es: 'años',
+      en: 'years',
+      pt: 'anos',
+      fr: 'ans',
+    };
+    return fallback[language] || fallback.en;
+  };
+
+  const normalizeGenderKey = (value) => {
+    if (!value) return null;
+    const raw = String(value).trim();
+
+    if (genderKeys.includes(raw)) return raw;
+
+    const lower = raw.toLowerCase();
+    for (const key of genderKeys) {
+      for (const lang of supportedLanguageKeys) {
+        const label = translate(`profile.genderOptions.${key}`, lang);
+        if (typeof label === 'string' && label.toLowerCase() === lower) {
+          return key;
+        }
+      }
+    }
+    return null;
+  };
+
+  const getGenderLabel = (value) => {
+    const key = normalizeGenderKey(value);
+    if (key) return t(`profile.genderOptions.${key}`);
+    return value;
+  };
+
+  const getLanguageLabel = (code) => {
+    if (!code) return '';
+    const normalized = String(code).toLowerCase();
+    const key = `profile.language${normalized.charAt(0).toUpperCase() + normalized.slice(1)}`;
+    const label = t(key);
+    if (label && label !== key) return label;
+    return normalized.toUpperCase();
+  };
+
   const loadProfile = async () => {
     try {
       setLoading(true);
@@ -313,13 +361,13 @@ export default function ProfileScreen() {
                       {edad && (
                         <View style={[styles.infoBadge, { backgroundColor: `${accent}15`, borderColor: `${accent}30` }]}>
                           <Ionicons name="calendar-outline" size={14} color={accent} />
-                          <Text style={[styles.badgeText, { color: accent }]}>{edad} años</Text>
+                          <Text style={[styles.badgeText, { color: accent }]}>{edad} {getYearsSuffix()}</Text>
                         </View>
                       )}
                       {genero && (
                         <View style={[styles.infoBadge, { backgroundColor: `${accent}15`, borderColor: `${accent}30` }]}> 
                           <Ionicons name="person-outline" size={14} color={accent} />
-                          <Text style={[styles.badgeText, { color: accent }]}>{genero.charAt(0).toUpperCase() + genero.slice(1)}</Text>
+                          <Text style={[styles.badgeText, { color: accent }]}>{getGenderLabel(genero)}</Text>
                         </View>
                       )}
                     </View>
@@ -331,7 +379,7 @@ export default function ProfileScreen() {
                       </View>
                       <View style={[styles.preferenceChip, { backgroundColor: `${accent}10` }]}>
                         <Ionicons name="language" size={14} color={accent} />
-                        <Text style={[styles.preferenceText, { color: accent }]}>{language.toUpperCase()}</Text>
+                        <Text style={[styles.preferenceText, { color: accent }]}>{getLanguageLabel(language)}</Text>
                       </View>
                     </View>
                   </View>

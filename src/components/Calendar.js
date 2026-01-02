@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  ScrollView,
   Image,
   Alert,
   Modal,
@@ -21,7 +20,7 @@ import {
   LocaleConfig,
 } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
-import { Swipeable } from 'react-native-gesture-handler';
+import { Swipeable, ScrollView } from 'react-native-gesture-handler';
 import { ActivityIndicator } from 'react-native';
 import { loadHabitTemplates } from '../utils/habitCache';
 import HabitFormModal from './HabitFormModal';
@@ -29,6 +28,7 @@ import ChecklistTable from './ChecklistTable';
 import MarketTable from './MarketTable';
 import MarketAddModal from './MarketAddModal';
 import VitaminsTable from './VitaminsTable';
+import VitaminsAddModal from './VitaminsAddModal';
 import { v4 as uuidv4 } from 'uuid';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n } from '../utils/i18n';
@@ -117,11 +117,11 @@ function buildSuggestedTimeMinutesAround(startMinutes, {
 function computeEndTimeString(startTimeString, durationMinutes) {
   const startMin = timeStringToMinutes(startTimeString);
   if (startMin == null) return null;
+  const DEFAULT_DURATION_IF_EMPTY_MINUTES = 60;
   const duration =
     typeof durationMinutes === 'number' && durationMinutes > 0
       ? durationMinutes
-      : 0;
-  if (!duration) return null;
+      : DEFAULT_DURATION_IF_EMPTY_MINUTES;
   return minutesToTimeString(startMin + duration);
 }
 
@@ -129,10 +129,12 @@ function suggestTimesForDay(existingActivities, candidate, editingActivityId) {
   const startMin = timeStringToMinutes(candidate?.time);
   if (startMin == null) return [];
 
+  const DEFAULT_DURATION_IF_EMPTY_MINUTES = 60;
+
   const durationMinutes =
     typeof candidate.durationMinutes === 'number' && candidate.durationMinutes > 0
       ? candidate.durationMinutes
-      : 0;
+      : DEFAULT_DURATION_IF_EMPTY_MINUTES;
 
   const minuteCandidates = buildSuggestedTimeMinutesAround(startMin);
   const timeCandidates = minuteCandidates
@@ -156,10 +158,12 @@ function suggestTimesForSeries(activitiesByDate, datesToCreate, candidate) {
   const startMin = timeStringToMinutes(candidate?.time);
   if (startMin == null) return [];
 
+  const DEFAULT_DURATION_IF_EMPTY_MINUTES = 60;
+
   const durationMinutes =
     typeof candidate.durationMinutes === 'number' && candidate.durationMinutes > 0
       ? candidate.durationMinutes
-      : 0;
+      : DEFAULT_DURATION_IF_EMPTY_MINUTES;
 
   const minuteCandidates = buildSuggestedTimeMinutesAround(startMin);
   const timeCandidates = minuteCandidates
@@ -185,11 +189,13 @@ function hasTimeConflictForDate(existingActivities, candidate, editingActivityId
   const candidateStart = timeStringToMinutes(candidate.time);
   if (candidateStart == null) return false;
 
+  const DEFAULT_DURATION_IF_EMPTY_MINUTES = 60;
+
   const candidateDuration =
     typeof candidate.durationMinutes === 'number' && candidate.durationMinutes > 0
       ? candidate.durationMinutes
-      : 0;
-  const candidateEnd = candidateDuration > 0 ? candidateStart + candidateDuration : candidateStart;
+      : DEFAULT_DURATION_IF_EMPTY_MINUTES;
+  const candidateEnd = candidateStart + candidateDuration;
 
   for (const act of existingActivities) {
     if (editingActivityId && act.id === editingActivityId) continue;
@@ -199,14 +205,10 @@ function hasTimeConflictForDate(existingActivities, candidate, editingActivityId
     const otherDuration =
       typeof act.durationMinutes === 'number' && act.durationMinutes > 0
         ? act.durationMinutes
-        : 0;
-    const otherEnd = otherDuration > 0 ? otherStart + otherDuration : otherStart;
+        : DEFAULT_DURATION_IF_EMPTY_MINUTES;
+    const otherEnd = otherStart + otherDuration;
 
-    if (candidateDuration === 0 && otherDuration === 0) {
-      if (candidateStart === otherStart) return true;
-    } else {
-      if (candidateStart < otherEnd && candidateEnd > otherStart) return true;
-    }
+    if (candidateStart < otherEnd && candidateEnd > otherStart) return true;
   }
 
   return false;
@@ -362,6 +364,8 @@ export default function Calendar() {
   const isDark = themeMode === 'dark';
   const [marketAddVisible, setMarketAddVisible] = useState(false);
   const [marketAddContext, setMarketAddContext] = useState(null);
+  const [vitaminsAddVisible, setVitaminsAddVisible] = useState(false);
+  const [vitaminsAddContext, setVitaminsAddContext] = useState(null);
   const [selectedDate, setSelectedDate] = useState(today);
   const [activities, setActivities] = useState({});
   const [habits, setHabits] = useState([]);
@@ -574,8 +578,8 @@ export default function Calendar() {
       if (!schedule || schedule.frequency === 'once') {
         const dateKey = targetDateKey;
 
-        if (updated[dateKey]) {
-          if (schedule?.time) {
+          if (updated[dateKey]) {
+          if (schedule?.time && !payload?.allowTimeConflict) {
             const hasConflict = hasTimeConflictForDate(
               updated[dateKey],
               {
@@ -596,7 +600,14 @@ export default function Calendar() {
               );
 
               const maxButtons = Platform.OS === 'ios' ? 2 : 4;
-              const buttons = (suggestions || []).slice(0, maxButtons).map((timeStr) => ({
+              const keepLabel =
+                t('calendar.keepSameTime') || (language === 'es' ? 'Dejar igual' : 'Keep time');
+              const buttons = [
+                {
+                  text: keepLabel,
+                  onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
+                },
+                ...(suggestions || []).slice(0, maxButtons).map((timeStr) => ({
                 text: timeStr,
                 onPress: () => {
                   const nextEnd = computeEndTimeString(timeStr, schedule?.durationMinutes);
@@ -609,7 +620,8 @@ export default function Calendar() {
                     },
                   });
                 },
-              }));
+              })),
+              ];
 
               buttons.push({ text: t('calendar.cancel') || 'Cancelar', style: 'cancel' });
 
@@ -730,7 +742,7 @@ export default function Calendar() {
         datesToCreate = datesToCreate.filter((d) => d <= schedule.endDate);
       }
 
-      if (schedule.time) {
+      if (schedule.time && !payload?.allowTimeConflict) {
         const candidate = {
           time: schedule.time,
           durationMinutes: schedule.durationMinutes,
@@ -744,7 +756,14 @@ export default function Calendar() {
           const suggestions = suggestTimesForSeries(updated, datesToCreate, candidate);
 
           const maxButtons = Platform.OS === 'ios' ? 2 : 4;
-          const buttons = (suggestions || []).slice(0, maxButtons).map((timeStr) => ({
+          const keepLabel =
+            t('calendar.keepSameTime') || (language === 'es' ? 'Dejar igual' : 'Keep time');
+          const buttons = [
+            {
+              text: keepLabel,
+              onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
+            },
+            ...(suggestions || []).slice(0, maxButtons).map((timeStr) => ({
             text: timeStr,
             onPress: () => {
               const nextEnd = computeEndTimeString(timeStr, schedule?.durationMinutes);
@@ -757,7 +776,8 @@ export default function Calendar() {
                 },
               });
             },
-          }));
+          })),
+          ];
 
           buttons.push({ text: t('calendar.cancel') || 'Cancelar', style: 'cancel' });
 
@@ -889,7 +909,7 @@ export default function Calendar() {
       datesToCreate = datesToCreate.filter((d) => d <= schedule.endDate);
     }
 
-    if (schedule.time) {
+    if (schedule.time && !payload?.allowTimeConflict) {
       const candidate = {
         time: schedule.time,
         durationMinutes: schedule.durationMinutes,
@@ -903,7 +923,14 @@ export default function Calendar() {
         const suggestions = suggestTimesForSeries(updated, datesToCreate, candidate);
 
         const maxButtons = Platform.OS === 'ios' ? 2 : 4;
-        const buttons = (suggestions || []).slice(0, maxButtons).map((timeStr) => ({
+        const keepLabel =
+          t('calendar.keepSameTime') || (language === 'es' ? 'Dejar igual' : 'Keep time');
+        const buttons = [
+          {
+            text: keepLabel,
+            onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
+          },
+          ...(suggestions || []).slice(0, maxButtons).map((timeStr) => ({
           text: timeStr,
           onPress: () => {
             const nextEnd = computeEndTimeString(timeStr, schedule?.durationMinutes);
@@ -916,7 +943,8 @@ export default function Calendar() {
               },
             });
           },
-        }));
+        })),
+        ];
 
         buttons.push({ text: t('calendar.cancel') || 'Cancelar', style: 'cancel' });
 
@@ -1063,24 +1091,90 @@ export default function Calendar() {
   }
 
   function addMarketItem(activity, listType, item) {
+    // Add to ALL cards of the same habit/style (same habit_id), so the list stays in sync.
+    // Keep `checked` independent per-day by only appending the new item.
+    const normalizeName = (name) =>
+      String(name ?? '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+
+    const incomingNameRaw = String(item?.product ?? item?.name ?? item?.label ?? '').trim();
+    const incomingKey = normalizeName(incomingNameRaw);
+    if (!incomingKey) return;
+
     const updated = { ...activities };
 
-    updated[activity.date] = updated[activity.date].map((act) => {
-      if (act.id !== activity.id) return act;
+    Object.keys(updated).forEach((dateKey) => {
+      const dayActs = updated[dateKey] || [];
+      updated[dateKey] = dayActs.map((act) => {
+        if (act?.habit_id !== activity?.habit_id) return act;
 
-      const data = { ...act.data };
-      const originalList = data[listType] || [];
+        const data = { ...(act.data || {}) };
+        const originalList = Array.isArray(data[listType]) ? data[listType] : [];
 
-      const list = originalList.map((it) => it);
-      list.push(item);
+        const hasDuplicate = originalList.some((it) => {
+          const n = normalizeName(it?.product ?? it?.name ?? it?.label ?? '');
+          return !!n && n === incomingKey;
+        });
 
-      return {
-        ...act,
-        data: {
-          ...data,
-          [listType]: list,
-        },
-      };
+        if (hasDuplicate) {
+          return act;
+        }
+
+        const list = [...originalList, { ...item, checked: false }];
+
+        return {
+          ...act,
+          data: {
+            ...data,
+            [listType]: list,
+          },
+        };
+      });
+    });
+
+    saveActivities(updated);
+  }
+
+  function addVitaminsItem(activity, listType, item) {
+    const normalizeName = (name) =>
+      String(name ?? '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+
+    const incomingNameRaw = String(item?.name ?? item?.label ?? item?.product ?? '').trim();
+    const incomingKey = normalizeName(incomingNameRaw);
+    if (!incomingKey) return;
+
+    const updated = { ...activities };
+
+    Object.keys(updated).forEach((dateKey) => {
+      const dayActs = updated[dateKey] || [];
+      updated[dateKey] = dayActs.map((act) => {
+        if (act?.habit_id !== activity?.habit_id) return act;
+
+        const data = { ...(act.data || {}) };
+        const originalList = Array.isArray(data[listType]) ? data[listType] : [];
+
+        const hasDuplicate = originalList.some((it) => {
+          const n = normalizeName(it?.name ?? it?.label ?? it?.product ?? '');
+          return !!n && n === incomingKey;
+        });
+
+        if (hasDuplicate) return act;
+
+        const list = [...originalList, { ...item, name: incomingNameRaw, checked: false }];
+
+        return {
+          ...act,
+          data: {
+            ...data,
+            [listType]: list,
+          },
+        };
+      });
     });
 
     saveActivities(updated);
@@ -1356,7 +1450,10 @@ export default function Calendar() {
   ========================= */
 
   function getHabitTemplateForActivity(activity) {
-    return habits.find((h) => h.id === activity.habit_id);
+    if (!activity) return null;
+    const targetId = activity.habit_id;
+    if (targetId == null) return null;
+    return habits.find((h) => String(h?.id) === String(targetId)) || null;
   }
 
   // Devuelve el título a mostrar según el idioma actual de la app.
@@ -1365,10 +1462,24 @@ export default function Calendar() {
   function getDisplayTitle(activity) {
     if (!activity) return '';
     const habitTemplate = getHabitTemplateForActivity(activity);
-    if (habitTemplate && habitTemplate.title) {
-      return habitTemplate.title;
-    }
-    return activity.title || '';
+
+    const templateTitle =
+      typeof habitTemplate?.title === 'string' ? habitTemplate.title.trim() : '';
+    if (templateTitle) return templateTitle;
+
+    const raw =
+      activity.title ??
+      activity.name ??
+      activity.label ??
+      activity.habitTitle ??
+      activity.habit_title ??
+      activity.habit?.title ??
+      '';
+
+    const fallback = typeof raw === 'string' ? raw.trim() : String(raw || '').trim();
+    if (fallback) return fallback;
+
+    return language === 'es' ? 'Hábito' : 'Habit';
   }
 
   function parseHabitConfig(habit) {
@@ -1683,6 +1794,13 @@ export default function Calendar() {
         />
 
         <View style={[styles.content, isDark && { backgroundColor: '#020617' }]}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+          >
             {activities[selectedDate]?.length ? (
               [...(activities[selectedDate] || [])]
                 .sort((a, b) => {
@@ -1748,7 +1866,7 @@ export default function Calendar() {
                 if (rawTextValue) {
                   const habitTemplateForSubtitle = getHabitTemplateForActivity(activityWithDate);
                   const habitType = String(habitTemplateForSubtitle?.type || '').toLowerCase();
-                  const titleLower = (activityWithDate.title || '').toLowerCase();
+                  const titleLower = String(displayTitle || activityWithDate.title || '').toLowerCase();
                   const answer = String(rawTextValue).trim();
 
                   const prefixKeyByType = {
@@ -1788,28 +1906,15 @@ export default function Calendar() {
                 const isCompleted = !!activityWithDate.completed;
                 const cardColor = activityWithDate?.data?.color || accent;
                 const cardTextColor = getContrastColor(cardColor);
-                const hasCustomColor = !!activityWithDate?.data?.color;
                 const titleTextColor = isCompleted
                   ? undefined
-                  : hasCustomColor
-                  ? cardTextColor
-                  : isDark
-                  ? '#e5e7eb'
-                  : undefined;
+                  : cardTextColor;
                 const subtitleTextColor = isCompleted
                   ? undefined
-                  : hasCustomColor
-                  ? cardTextColor
-                  : isDark
-                  ? '#9ca3af'
-                  : undefined;
+                  : cardTextColor;
                 const descTextColor = isCompleted
                   ? undefined
-                  : hasCustomColor
-                  ? cardTextColor
-                  : isDark
-                  ? '#e5e7eb'
-                  : undefined;
+                  : cardTextColor;
 
                 return (
                   <Swipeable
@@ -1883,7 +1988,7 @@ export default function Calendar() {
                           )}
                         </View>
                         <View style={styles.cardHeaderText}>
-                          <View style={{ flex: 1 }}>
+                          <View style={{ flex: 1, minWidth: 0 }}>
                             <Text
                               style={[
                                 styles.cardTitle,
@@ -1971,7 +2076,7 @@ export default function Calendar() {
                 </Text>
               </View>
             )}
-            <View style={{ height: 100 }} />
+          </ScrollView>
         </View>
       </CalendarProvider>
 
@@ -2273,19 +2378,36 @@ export default function Calendar() {
                       {marketModalData.marketLabel || t('calendar.marketDefaultTitle')}
                     </Text>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      top: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
                     <Pressable
                       onPress={() => {
                         setMarketAddContext({ activity: marketModalData.activity, listKey: marketModalData.marketKey });
                         setMarketAddVisible(true);
                       }}
-                      style={{ marginRight: 12 }}
+                      style={[
+                        styles.marketModalHeaderIconBtn,
+                        { marginRight: 6 },
+                        isDark && styles.marketModalHeaderIconBtnDark,
+                      ]}
+                      hitSlop={8}
                     >
                       <Ionicons name="add-circle" size={28} color={accent} />
                     </Pressable>
                     <Pressable
                       onPress={() => setMarketModalVisible(false)}
-                      style={styles.modalClose}
+                      style={[
+                        styles.marketModalHeaderIconBtn,
+                        isDark && styles.marketModalHeaderIconBtnDark,
+                      ]}
+                      hitSlop={8}
                     >
                       <Ionicons name="close-circle" size={28} color={isDark ? '#9ca3af' : '#6b7280'} />
                     </Pressable>
@@ -2306,8 +2428,18 @@ export default function Calendar() {
                       {formatDate(marketModalData.activity.date, language)}
                     </Text>
 
-                    <View style={styles.checklistSection}>
-                      <View style={styles.checklistHeader}>
+                    <View
+                      style={[
+                        styles.checklistSection,
+                        isDark && { backgroundColor: '#0b1120', borderWidth: 1, borderColor: '#1e293b' },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.checklistHeader,
+                          isDark && { borderBottomColor: '#1e293b' },
+                        ]}
+                      >
                         <View style={styles.checklistIconBg}>
                           <Ionicons name="cart" size={16} color={accent} />
                         </View>
@@ -2338,11 +2470,22 @@ export default function Calendar() {
                             (a) => a.id === marketModalData.activity.id
                           )?.data[marketModalData.marketKey] || [];
 
+                        const currencySymbol = t('habitForm.marketPricePlaceholder') || '$';
+                        const totalAmount = (allItems || []).reduce((sum, it) => {
+                          const qty = parseFloat(String(it?.quantity ?? it?.qty ?? 0).replace(',', '.')) || 0;
+                          const price = parseFloat(String(it?.price ?? 0).replace(',', '.')) || 0;
+                          return sum + qty * price;
+                        }, 0);
+
                         return (
                           <>
                             <MarketTable
                               items={allItems}
                               virtualized={false}
+                              embedded
+                              showSummary={false}
+                              isDark={isDark}
+                              accentColor={accent}
                               onToggle={(index) =>
                                 toggleChecklistItem(
                                   marketModalData.activity,
@@ -2352,23 +2495,26 @@ export default function Calendar() {
                               }
                             />
 
-                            <View style={{ height: 12 }} />
+                            <View style={[styles.marketModalTotalRow, isDark && styles.marketModalTotalRowDark]}>
+                              <Text style={[styles.marketModalTotalLabel, isDark && styles.marketModalTotalLabelDark]}>
+                                {t('calendar.total') || 'Total:'}
+                              </Text>
+                              <Text style={[styles.marketModalTotalValue, isDark && styles.marketModalTotalValueDark]}>
+                                {currencySymbol}{totalAmount.toFixed(2)}
+                              </Text>
+                            </View>
+
                             <Pressable
-                              onPress={() => {
-                                setMarketAddContext({ activity: marketModalData.activity, listKey: marketModalData.marketKey || 'market' });
-                                setMarketAddVisible(true);
-                              }}
-                              style={{
-                                marginTop: 8,
-                                paddingVertical: 10,
-                                borderRadius: 10,
-                                borderWidth: 1,
-                                borderColor: isDark ? '#0f172a' : '#e5e7eb',
-                                alignItems: 'center',
-                              }}
+                              onPress={() => setMarketModalVisible(false)}
+                              style={[
+                                styles.marketModalAcceptBtn,
+                                isDark && styles.marketModalAcceptBtnDark,
+                                { borderColor: accent },
+                              ]}
                             >
-                              <Text style={{ color: isDark ? '#e5e7eb' : '#111827', fontWeight: '700' }}>
-                                {t('calendar.addMarketItem') || 'Agregar producto'}
+                              <Text style={[styles.marketModalAcceptTxt, { color: accent }]}
+                              >
+                                {t('calendar.accept') || 'Aceptar'}
                               </Text>
                             </Pressable>
                           </>
@@ -2394,6 +2540,18 @@ export default function Calendar() {
             addMarketItem(marketAddContext.activity, listKey, item);
           }
           setMarketAddVisible(false);
+        }}
+      />
+
+      <VitaminsAddModal
+        visible={vitaminsAddVisible}
+        onClose={() => setVitaminsAddVisible(false)}
+        onAdd={(item) => {
+          if (vitaminsAddContext && vitaminsAddContext.activity) {
+            const listKey = vitaminsAddContext.listKey || 'vitamins';
+            addVitaminsItem(vitaminsAddContext.activity, listKey, item);
+          }
+          setVitaminsAddVisible(false);
         }}
       />
 
@@ -2423,12 +2581,27 @@ export default function Calendar() {
                         t('calendar.vitaminsDefaultTitle')}
                     </Text>
                   </View>
-                  <Pressable
-                    onPress={() => setVitaminsModalVisible(false)}
-                    style={styles.modalClose}
-                  >
-                    <Ionicons name="close-circle" size={28} color="#6b7280" />
-                  </Pressable>
+                  <View style={styles.modalHeaderActions}>
+                    <Pressable
+                      onPress={() => {
+                        setVitaminsAddContext({
+                          activity: vitaminsModalData.activity,
+                          listKey: vitaminsModalData.vitaminsKey,
+                        });
+                        setVitaminsAddVisible(true);
+                      }}
+                      style={styles.modalIconBtn}
+                    >
+                      <Ionicons name="add-circle" size={28} color="#22c55e" />
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => setVitaminsModalVisible(false)}
+                      style={styles.modalIconBtn}
+                    >
+                      <Ionicons name="close-circle" size={28} color="#6b7280" />
+                    </Pressable>
+                  </View>
                 </View>
 
                 <ScrollView
@@ -3022,15 +3195,16 @@ const styles = StyleSheet.create({
   cardHeaderText: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   cardTitle: {
     fontSize: 17,
     fontWeight: '700',
     color: '#fff',
-    flex: 1,
     letterSpacing: -0.3,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   cardTitleCompleted: {
     textDecorationLine: 'line-through',
@@ -3297,6 +3471,69 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     top: 16,
+  },
+  modalHeaderActions: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  modalIconBtn: {
+    padding: 2,
+  },
+  marketModalHeaderIconBtn: {
+    padding: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  marketModalHeaderIconBtnDark: {
+    backgroundColor: 'rgba(15,23,42,0.85)',
+  },
+  marketModalTotalRow: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  marketModalTotalRowDark: {
+    borderTopColor: '#1e293b',
+  },
+  marketModalTotalLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  marketModalTotalLabelDark: {
+    color: '#e5e7eb',
+  },
+  marketModalTotalValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#111827',
+  },
+  marketModalTotalValueDark: {
+    color: '#ffffff',
+  },
+  marketModalAcceptBtn: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 2,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  marketModalAcceptBtnDark: {
+    backgroundColor: 'rgba(2,6,23,0.2)',
+  },
+  marketModalAcceptTxt: {
+    fontWeight: '900',
+    fontSize: 14,
   },
   secondaryButton: {
     paddingVertical: 10,

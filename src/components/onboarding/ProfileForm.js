@@ -14,7 +14,8 @@ export default function ProfileForm({ navigation, route }) {
   const [errors, setErrors] = useState({});
 
   const { t } = useI18n();
-  const { languageSource, language } = useSettings();
+  const { languageSource, language, themeMode } = useSettings();
+  const isDark = themeMode === 'dark';
 
   // Función para capitalizar cada palabra
   const capitalizeWords = (text) => {
@@ -39,7 +40,7 @@ export default function ProfileForm({ navigation, route }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  async function goToAppSettings() {
+  async function goNext() {
     if (!validateForm()) return;
     const profilePayload = {
       nombre: nombre.trim(),
@@ -48,11 +49,21 @@ export default function ProfileForm({ navigation, route }) {
       genero,
     };
 
-    // Save to Supabase only when editing from user settings, AppSettings,
-    // or when coming from registration. If coming from registration, sign
-    // in using the credentials passed from `RegisterForm` before upserting
-    // the profile. Only send to Supabase when all fields are valid.
-    if (languageSource === 'user' || route?.params?.fromSettings || route?.params?.fromRegistration) {
+    const isOnboarding = !!(route?.params?.onboarding || route?.params?.fromRegistration || route?.params?.fromSettings);
+
+    // Onboarding requirement: don't write anything to Supabase until OnboardingFinal.
+    if (isOnboarding) {
+      try {
+        await AsyncStorage.setItem('onboarding_profile_payload', JSON.stringify(profilePayload));
+      } catch {
+        // ignore
+      }
+      navigation.replace('Final');
+      return;
+    }
+
+    // Non-onboarding path (if this screen is reused elsewhere): allow saving.
+    if (languageSource === 'user' || route?.params?.fromSettings) {
       setLoading(true);
       try {
         let user = null;
@@ -76,11 +87,11 @@ export default function ProfileForm({ navigation, route }) {
         const { error } = await supabase.from('profiles').upsert(payload);
         if (error) throw error;
 
-        try { await AsyncStorage.setItem('device_onboarding_shown', 'true'); } catch {}
-        try { await AsyncStorage.removeItem('onboarding_in_progress'); } catch {}
-
-        // No manual navigation reset here: RootNavigator will switch to App
-        // once onboarding_in_progress is cleared and device_onboarding_shown is set.
+        try {
+          navigation.goBack && navigation.goBack();
+        } catch {
+          // ignore
+        }
         return;
       } catch (err) {
         Alert.alert('Error', err.message || 'No se pudo guardar el perfil');
@@ -89,28 +100,41 @@ export default function ProfileForm({ navigation, route }) {
       }
     }
 
-    navigation.navigate('Register', {
-      profile: profilePayload,
-    });
+    // Default fallback: just go back
+    try {
+      navigation.goBack && navigation.goBack();
+    } catch {
+      // ignore
+    }
   }
 
   const GenderButton = ({ value, label, icon }) => (
     <TouchableOpacity
-      style={[styles.genderBtn, genero === value && styles.genderBtnActive]}
+      style={[
+        styles.genderBtn,
+        {
+          backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+          borderColor: isDark ? '#334155' : '#e6eef9',
+        },
+        genero === value && styles.genderBtnActive,
+      ]}
       onPress={() => {
         setGenero(value);
         setErrors(prev => ({ ...prev, genero: null }));
       }}
     >
       <Text style={styles.genderIcon}>{icon}</Text>
-      <Text style={[styles.genderText, genero === value && styles.genderTextActive]}>{label}</Text>
+      <Text style={[styles.genderText, { color: isDark ? '#94a3b8' : '#64748b' }, genero === value && styles.genderTextActive]}>{label}</Text>
     </TouchableOpacity>
   );
 
   const isFormValid = nombre.trim() && apellido.trim() && edad.trim() && genero;
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f8fafc' }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <ScrollView 
           contentContainerStyle={styles.scrollContent} 
@@ -124,43 +148,51 @@ export default function ProfileForm({ navigation, route }) {
               resizeMode="contain"
             />
             
-            <View style={styles.card}>
-              <Text style={styles.pageTitle}>{t('register.step1Helper')}</Text>
+            <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
+              <Text style={[styles.pageTitle, { color: isDark ? '#f1f5f9' : '#111827' }]}>{t('register.step1Helper')}</Text>
 
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>{t('profile.firstName')}</Text>
+                <Text style={[styles.label, { color: isDark ? '#cbd5e1' : '#374151' }]}>{t('profile.firstName')}</Text>
                 <TextInput
                   value={nombre}
                   onChangeText={(text) => {
                     setNombre(text);
                     setErrors(prev => ({ ...prev, nombre: null }));
                   }}
-                  style={[styles.input, errors.nombre && styles.inputError]}
+                  style={[
+                    styles.input,
+                    { backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#e2e8f0' : '#1f2937', borderColor: isDark ? '#334155' : '#e6eef9' },
+                    errors.nombre && styles.inputError,
+                  ]}
                   placeholder={t('profile.firstName')}
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={isDark ? '#64748b' : '#94a3b8'}
                   autoCapitalize="words"
                 />
                 {errors.nombre && <Text style={styles.errorText}>{errors.nombre}</Text>}
               </View>
 
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>{t('profile.lastName')}</Text>
+                <Text style={[styles.label, { color: isDark ? '#cbd5e1' : '#374151' }]}>{t('profile.lastName')}</Text>
                 <TextInput
                   value={apellido}
                   onChangeText={(text) => {
                     setApellido(text);
                     setErrors(prev => ({ ...prev, apellido: null }));
                   }}
-                  style={[styles.input, errors.apellido && styles.inputError]}
+                  style={[
+                    styles.input,
+                    { backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#e2e8f0' : '#1f2937', borderColor: isDark ? '#334155' : '#e6eef9' },
+                    errors.apellido && styles.inputError,
+                  ]}
                   placeholder={t('profile.lastName')}
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={isDark ? '#64748b' : '#94a3b8'}
                   autoCapitalize="words"
                 />
                 {errors.apellido && <Text style={styles.errorText}>{errors.apellido}</Text>}
               </View>
 
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>{t('profile.age')}</Text>
+                <Text style={[styles.label, { color: isDark ? '#cbd5e1' : '#374151' }]}>{t('profile.age')}</Text>
                 <TextInput
                   value={edad}
                   onChangeText={(text) => {
@@ -169,15 +201,19 @@ export default function ProfileForm({ navigation, route }) {
                   }}
                   keyboardType="numeric"
                   maxLength={3}
-                  style={[styles.input, errors.edad && styles.inputError]}
+                  style={[
+                    styles.input,
+                    { backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#e2e8f0' : '#1f2937', borderColor: isDark ? '#334155' : '#e6eef9' },
+                    errors.edad && styles.inputError,
+                  ]}
                   placeholder="Ej: 25"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={isDark ? '#64748b' : '#94a3b8'}
                 />
                 {errors.edad && <Text style={styles.errorText}>{errors.edad}</Text>}
               </View>
 
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>{t('profile.gender')}</Text>
+                <Text style={[styles.label, { color: isDark ? '#cbd5e1' : '#374151' }]}>{t('profile.gender')}</Text>
                 <View style={styles.genderColumn}>
                   <GenderButton value={t('profile.genderOptions.male')} label={t('profile.genderOptions.male')} icon="♂️" />
                   <GenderButton value={t('profile.genderOptions.female')} label={t('profile.genderOptions.female')} icon="♀️" />
@@ -188,7 +224,7 @@ export default function ProfileForm({ navigation, route }) {
 
               <TouchableOpacity
                 style={[styles.btn, (!isFormValid || loading) && styles.btnDisabled]}
-                onPress={goToAppSettings}
+                onPress={goNext}
                 disabled={!isFormValid || loading}
               >
                 {loading ? (

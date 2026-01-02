@@ -68,6 +68,25 @@ function getContrastColorLocal(hex) {
   }
 }
 
+function normalizeMarketProductName(name) {
+  return String(name ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+function parseMoneyLike(value) {
+  const n = parseFloat(String(value ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatMarketValue(value, currencySymbol) {
+  const n = parseMoneyLike(value);
+  if (n === null) return `${currencySymbol}${String(value ?? 0)}`;
+  // keep it simple; avoid locale deps
+  return `${currencySymbol}${n}`;
+}
+
 /* ======================
    COMPONENTE
 ====================== */
@@ -307,9 +326,35 @@ export default function HabitFormModal({
               visible={marketAddVisible}
               onClose={() => setMarketAddVisible(false)}
               onAdd={(newItem) => {
+                const incomingName = String(newItem.product || newItem.name || '').trim();
+                const nextNameKey = normalizeMarketProductName(incomingName);
+
+                if (!nextNameKey) {
+                  setMarketAddVisible(false);
+                  return;
+                }
+
+                const existing = (items || []).find(
+                  (it) => normalizeMarketProductName(it?.name) === nextNameKey
+                );
+
+                if (existing) {
+                  const currency = t('habitForm.marketPricePlaceholder') || '$';
+                  const valueText = formatMarketValue(existing?.price, currency);
+                  Alert.alert(
+                    t('habitForm.marketDuplicateTitle') || 'Producto repetido',
+                    `"${incomingName}" ${t('habitForm.marketDuplicateMessage') || 'ya está en la lista de compras por un valor de'} ${valueText}.`
+                  );
+                  setMarketAddVisible(false);
+                  return;
+                }
+
                 const copy = [...(items || [])];
-                // map to habit market item shape
-                copy.push({ name: newItem.product || newItem.name || '', qty: String(newItem.quantity || ''), price: String(newItem.price || '') });
+                copy.push({
+                  name: incomingName,
+                  qty: String(newItem.quantity || ''),
+                  price: String(newItem.price || ''),
+                });
                 updateField(field.key, copy);
                 setMarketAddVisible(false);
               }}
@@ -402,16 +447,42 @@ export default function HabitFormModal({
       return;
     }
 
+    // Validate: market list must not contain repeated products (case-insensitive)
+    const marketFields = (config?.fields || []).filter((f) => f?.type === 'market');
+    for (const field of marketFields) {
+      const list = Array.isArray(formData?.[field.key]) ? formData[field.key] : [];
+      const seen = new Map();
+      for (const item of list) {
+        const key = normalizeMarketProductName(item?.name);
+        if (!key) continue;
+        if (seen.has(key)) {
+          const existing = seen.get(key);
+          const currency = t('habitForm.marketPricePlaceholder') || '$';
+          const valueText = formatMarketValue(existing?.price, currency);
+          Alert.alert(
+            t('habitForm.marketDuplicateTitle') || 'Producto repetido',
+            `"${String(item?.name || existing?.name || '').trim()}" ${t('habitForm.marketDuplicateMessage') || 'ya está en la lista de compras por un valor de'} ${valueText}.`
+          );
+          return;
+        }
+        seen.set(key, item);
+      }
+    }
+
     const timeString = time
       ? `${String(time.getHours()).padStart(2, '0')}:${String(
           time.getMinutes()
         ).padStart(2, '0')}`
       : null;
 
+    const DEFAULT_DURATION_IF_EMPTY_MINUTES = 60;
+
     const normalizedDuration =
       typeof durationMinutes === 'number' && durationMinutes > 0
         ? durationMinutes
-        : null;
+        : timeString
+          ? DEFAULT_DURATION_IF_EMPTY_MINUTES
+          : null;
 
     let endTimeString = null;
     if (time && normalizedDuration) {
@@ -424,6 +495,13 @@ export default function HabitFormModal({
       ).padStart(2, '0')}`;
     }
 
+    const formatLocalYMD = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     onSave({
       habit,
       description,
@@ -433,8 +511,9 @@ export default function HabitFormModal({
       },
       editingActivityId: editingActivity?.id || null,
       schedule: {
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: hasEndDate ? endDate.toISOString().split('T')[0] : null,
+        // Use local date (not UTC) to avoid shifting the scheduled day on some devices/timezones.
+        startDate: formatLocalYMD(startDate),
+        endDate: hasEndDate ? formatLocalYMD(endDate) : null,
         frequency,
         daysOfWeek: frequency === 'weekly' ? daysOfWeek : [],
         time: timeString,
@@ -606,7 +685,7 @@ export default function HabitFormModal({
                     ? `${String(time.getHours()).padStart(2, '0')}:${String(
                         time.getMinutes()
                       ).padStart(2, '0')}`
-                    : t('habitForm.timeNotSet')}
+                    : 'Select the time'}
                 </Text>
                 <Ionicons name="time-outline" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
               </View>
@@ -658,23 +737,117 @@ export default function HabitFormModal({
                       }
                     }
                   }}
+                  style={isDark ? { color: '#ffffff' } : undefined}
+                  itemStyle={Platform.OS === 'ios' && isDark ? { color: '#ffffff' } : undefined}
                   dropdownIconColor={isDark ? '#9ca3af' : '#6b7280'}
                   mode={Platform.OS === 'ios' ? 'dialog' : 'dropdown'}
                 >
                   <Picker.Item
                     label={t('habitForm.durationSelectPlaceholder')}
                     value=""
+                    color={
+                      Platform.OS === 'ios'
+                        ? isDark
+                          ? '#ffffff'
+                          : undefined
+                        : isDark
+                          ? '#111827'
+                          : undefined
+                    }
                   />
-                  <Picker.Item label="10 min" value="10" />
-                  <Picker.Item label="15 min" value="15" />
-                  <Picker.Item label="30 min" value="30" />
-                  <Picker.Item label="60 min" value="60" />
+                  <Picker.Item
+                    label="10 min"
+                    value="10"
+                    color={
+                      Platform.OS === 'ios'
+                        ? isDark
+                          ? '#ffffff'
+                          : undefined
+                        : isDark
+                          ? '#111827'
+                          : undefined
+                    }
+                  />
+                  <Picker.Item
+                    label="15 min"
+                    value="15"
+                    color={
+                      Platform.OS === 'ios'
+                        ? isDark
+                          ? '#ffffff'
+                          : undefined
+                        : isDark
+                          ? '#111827'
+                          : undefined
+                    }
+                  />
+                  <Picker.Item
+                    label="30 min"
+                    value="30"
+                    color={
+                      Platform.OS === 'ios'
+                        ? isDark
+                          ? '#ffffff'
+                          : undefined
+                        : isDark
+                          ? '#111827'
+                          : undefined
+                    }
+                  />
+                  <Picker.Item
+                    label="60 min"
+                    value="60"
+                    color={
+                      Platform.OS === 'ios'
+                        ? isDark
+                          ? '#ffffff'
+                          : undefined
+                        : isDark
+                          ? '#111827'
+                          : undefined
+                    }
+                  />
                   <Picker.Item
                     label={t('habitForm.durationCustom')}
                     value="custom"
+                    color={
+                      Platform.OS === 'ios'
+                        ? isDark
+                          ? '#ffffff'
+                          : undefined
+                        : isDark
+                          ? '#111827'
+                          : undefined
+                    }
                   />
                 </Picker>
               </View>
+
+              {durationPickerValue === '' && (
+                <Text style={[styles.sublabel, { marginTop: 8 }, isDark && { color: '#9ca3af' }]}>
+                  {t('habitForm.durationDefaultHint')}
+                </Text>
+              )}
+
+              {time && (
+                <Text style={[styles.sublabel, { marginTop: 8 }, isDark && { color: '#9ca3af' }]}>
+                  {(() => {
+                    const startH = String(time.getHours()).padStart(2, '0');
+                    const startM = String(time.getMinutes()).padStart(2, '0');
+                    const startStr = `${startH}:${startM}`;
+                    const effectiveDuration =
+                      typeof durationMinutes === 'number' && durationMinutes > 0
+                        ? durationMinutes
+                        : 60;
+                    const startTotal = time.getHours() * 60 + time.getMinutes();
+                    const total = startTotal + effectiveDuration;
+                    const endH = String(Math.floor(total / 60) % 24).padStart(2, '0');
+                    const endM = String(total % 60).padStart(2, '0');
+                    const endStr = `${endH}:${endM}`;
+                    return `${startStr} - ${endStr}`;
+                  })()}
+                </Text>
+              )}
 
               {durationPickerValue === 'custom' && (
                 <View style={styles.durationCustomWrapper}>
@@ -685,7 +858,7 @@ export default function HabitFormModal({
                     style={[styles.durationInput, isDark && styles.inputDark]}
                     keyboardType="numeric"
                     placeholder={t('habitForm.durationCustomPlaceholder')}
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={isDark ? '#ffffff' : '#9ca3af'}
                     value={
                       typeof durationMinutes === 'number' &&
                       ![10, 15, 30, 60].includes(durationMinutes)
@@ -705,26 +878,6 @@ export default function HabitFormModal({
               )}
             </View>
 
-            {/* HORA FIN */}
-            <View style={styles.endTimeRow}>
-              <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.endTimeLabel')}</Text>
-              <View style={styles.boxRight}>
-                <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
-                  {time && durationMinutes && durationMinutes > 0
-                    ? (() => {
-                        const startTotal = time.getHours() * 60 + time.getMinutes();
-                        const total = startTotal + durationMinutes;
-                        const h = Math.floor(total / 60) % 24;
-                        const m = total % 60;
-                        return `${String(h).padStart(2, '0')}:${String(m).padStart(
-                          2,
-                          '0'
-                        )}`;
-                      })()
-                    : t('habitForm.timeNotSet')}
-                </Text>
-              </View>
-            </View>
           </View>
 
           {/* FRECUENCIA */}
@@ -795,7 +948,7 @@ export default function HabitFormModal({
 
           {/* COLOR */}
           <View style={styles.section}>
-            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.colorLabel') || 'Color'}</Text>
+            <Text style={[styles.label, styles.colorLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.colorLabel') || 'Color'}</Text>
             <View style={{ marginTop: 8 }}>
               <View style={styles.colorGrid}>
                 {COLOR_OPTIONS.map((c) => (
@@ -878,8 +1031,16 @@ const styles = StyleSheet.create({
   },
   colorGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
     gap: 10,
+    width: '100%',
     marginTop: 8,
+  },
+  colorLabel: {
+    width: '100%',
+    textAlign: 'center',
   },
   colorSwatch: {
     width: 36,

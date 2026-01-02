@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
-import { supabase } from '../../utils/supabase';
 import { useSettings } from '../../utils/settingsContext';
 import { useI18n } from '../../utils/i18n';
 
 export default function AppSettings({ navigation, route }) {
   const { t } = useI18n();
-  const profile = route.params?.profile || {};
   const { language: currentLanguage, themeMode: currentThemeMode, setLanguage, setThemeMode, setLanguageTemp } = useSettings();
 
   // If we came here directly from the slides, force the UI to show English
@@ -67,37 +65,9 @@ export default function AppSettings({ navigation, route }) {
   async function finish() {
     setLoading(true);
     try {
-      // If we arrived here directly from the slides OR from login 'no account',
-      // don't require an authenticated user: continue the onboarding to registration.
-      if (!route.params?.profile && (route.params?.from === 'slides' || route.params?.from === 'login_no_account')) {
-        navigation.replace('Register', { fromSettings: true });
-        return;
-      }
-
-      // If we have a profile payload but no authenticated user, forward to Register
-      if (route.params?.profile && !route.params?.fromSettings) {
-        navigation.replace('Register', { profile: route.params.profile });
-        return;
-      }
-
-      // Otherwise, save profile (user should be logged in at this point)
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) throw new Error('Usuario no autenticado');
-
-      const payload = {
-        id: user.id,
-        nombre: profile.nombre || '',
-        apellido: profile.apellido || '',
-        edad: profile.edad || null,
-        genero: profile.genero || null,
-        email: user.email,
-        language: currentLanguage,
-      };
-
-      const { error } = await supabase.from('profiles').upsert(payload);
-      if (error) throw error;
-
-      navigation.replace('Final');
+      // Onboarding requirement: do NOT send anything to Supabase here.
+      // Continue the onboarding flow to registration.
+      navigation.replace('Register', { onboarding: true, fromSettings: true });
     } catch (err) {
       Alert.alert('Error', err.message || 'No se pudo guardar la configuración');
     } finally {

@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { TabActions } from '@react-navigation/native';
 
 import CalendarScreen from '../components/Calendar';
 import PomodoroScreen from '../components/Pomodoro';
@@ -24,7 +24,7 @@ export default function TabNavigator() {
   const { themeColor, themeMode } = useSettings();
   const { t } = useI18n();
   const accent = getAccentColor(themeColor);
-  const navigation = useNavigation();
+  const tabNavRef = useRef(null);
   const [showTour, setShowTour] = useState(false);
   const { isPro } = useProStatus();
   const isDark = themeMode === 'dark';
@@ -60,6 +60,7 @@ export default function TabNavigator() {
   return (
     <TourProvider value={tourValue}>
       <Tab.Navigator
+      ref={tabNavRef}
       initialRouteName="Calendar"
       screenOptions={{
         headerShown: false,
@@ -127,7 +128,18 @@ export default function TabNavigator() {
         onClose={() => setShowTour(false)}
         onRequestTabChange={(tabName) => {
           if (tabName) {
-            navigation.navigate(tabName);
+            const nav = tabNavRef.current;
+            try {
+              if (nav && typeof nav.navigate === 'function') {
+                nav.navigate(tabName);
+                return;
+              }
+              if (nav && typeof nav.dispatch === 'function') {
+                nav.dispatch(TabActions.jumpTo(tabName));
+              }
+            } catch {
+              // ignore
+            }
           }
         }}
       />
