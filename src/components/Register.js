@@ -89,8 +89,9 @@ export default function Register({ navigation }) {
       return;
     }
 
-    const user = data.user;
+    const user = data?.user ?? null;
 
+    // If Supabase returns a user (auto-login), proceed to create profile and go to onboarding.
     if (user) {
       await supabase.from('profiles').insert({
         id: user.id,
@@ -101,9 +102,25 @@ export default function Register({ navigation }) {
         email,
         language,
       });
+
+      setLoading(false);
+      // If register happened outside onboarding, go directly to app
+      try {
+        navigation.reset({ index: 0, routes: [{ name: 'App', state: { index: 0, routes: [{ name: 'Calendar' }] } }] });
+      } catch (e) {
+        // fallback
+        try { navigation.navigate('App'); } catch {}
+      }
+      return;
     }
 
+    // If there's no user returned, most likely the project requires email confirmation.
+    // Show friendly instruction and send user to Login.
     setLoading(false);
+    setError('Revisa tu correo para confirmar la cuenta. Después podrás iniciar sesión.');
+    try {
+      navigation.navigate('Login');
+    } catch (e) {}
   }
 
   return (

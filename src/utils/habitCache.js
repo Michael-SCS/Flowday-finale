@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
+import { translate } from './i18n';
 
 // v2: incluimos versión en la clave para evitar usar cache antiguo
 const CACHE_KEY_BASE = '@fluu_habit_templates_v2';
@@ -7,18 +8,100 @@ const CACHE_TIME_KEY_BASE = '@fluu_habit_templates_time_v2';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 horas
 const SUPPORTED_LANGUAGES = ['es', 'en', 'fr', 'pt', 'de'];
 
-async function getUserCacheKeys(language = 'es') {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+let _cachedUser = null;
 
-  if (!user) {
+function parseConfig(config) {
+  if (!config) return null;
+  if (typeof config === 'object') return config;
+  try {
+    return JSON.parse(config);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeType(type) {
+  return String(type || '')
+    .trim()
+    .toLowerCase();
+}
+
+function localizeSpecialHabitTextLabel(template, field, language) {
+  if (!field || field.type !== 'text') return field;
+
+  const byType = {
+    birthday: 'specialHabits.birthday.question',
+    study: 'specialHabits.study.question',
+    book: 'specialHabits.book.question',
+    call: 'specialHabits.call.question',
+    skincare: 'specialHabits.skincare.question',
+    water: 'specialHabits.water.question',
+  };
+
+  const typeKey = byType[normalizeType(template?.type)];
+  if (typeKey) {
+    return {
+      ...field,
+      label: translate(typeKey, language),
+    };
+  }
+
+  const labelMap = {
+    '¿Quién cumplirá años?': 'specialHabits.birthday.question',
+    '¿Qué estudiarás hoy?': 'specialHabits.study.question',
+    '¿Qué libro leerás hoy?': 'specialHabits.book.question',
+    '¿A quién llamarás hoy?': 'specialHabits.call.question',
+    '¿Con qué cuidarás tu piel hoy?': 'specialHabits.skincare.question',
+    '¿Cuál es tu objetivo de agua hoy?': 'specialHabits.water.question',
+  };
+
+  const mapKey = labelMap[String(field.label || '').trim()];
+  if (mapKey) {
+    return {
+      ...field,
+      label: translate(mapKey, language),
+    };
+  }
+
+  return field;
+}
+
+function localizeTemplates(templates, language) {
+  if (!Array.isArray(templates) || templates.length === 0) return templates;
+
+  return templates.map((template) => {
+    const cfg = parseConfig(template?.config);
+    if (!cfg || !Array.isArray(cfg.fields)) return template;
+
+    const nextCfg = {
+      ...cfg,
+      fields: cfg.fields.map((field) =>
+        localizeSpecialHabitTextLabel(template, field, language)
+      ),
+    };
+
+    return {
+      ...template,
+      config: nextCfg,
+    };
+  });
+}
+
+async function getUserCacheKeys(language = 'es') {
+  if (!_cachedUser) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    _cachedUser = user || null;
+  }
+
+  if (!_cachedUser) {
     return { user: null, cacheKey: null, cacheTimeKey: null };
   }
 
-  const suffix = `_${user.id}`;
+  const suffix = `_${_cachedUser.id}`;
   return {
-    user,
+    user: _cachedUser,
     cacheKey: `${CACHE_KEY_BASE}${suffix}_${language}`,
     cacheTimeKey: `${CACHE_TIME_KEY_BASE}${suffix}_${language}`,
   };
@@ -127,7 +210,7 @@ export async function loadHabitTemplates(appLanguage = 'es') {
   const cached = await getCachedHabits(lang);
   if (cached) {
     refreshInBackground(lang);
-    return cached;
+    return localizeTemplates(cached, lang);
   }
 
   // 2️⃣ Intentar con el idioma actual
@@ -138,8 +221,9 @@ export async function loadHabitTemplates(appLanguage = 'es') {
     templates = await fetchTemplatesForLanguage('en');
   }
 
-  await saveCache(templates, lang);
-  return templates;
+  const localized = localizeTemplates(templates, lang);
+  await saveCache(localized, lang);
+  return localized;
 }
 
 /* ======================
@@ -159,7 +243,8 @@ async function refreshInBackground(language = 'es') {
     templates = await fetchTemplatesForLanguage('en');
   }
 
-  await saveCache(templates, lang);
+  const localized = localizeTemplates(templates, lang);
+  await saveCache(localized, lang);
 }
 
 // Limpiar cache de plantillas de hábitos del usuario actual
@@ -182,4 +267,5 @@ export async function clearHabitCache() {
   }
 
   await AsyncStorage.multiRemove(keysToRemove);
+  _cachedUser = null;
 }

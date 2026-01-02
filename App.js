@@ -2,11 +2,12 @@ import 'react-native-gesture-handler'; // 🔥 SIEMPRE PRIMERO
 import 'react-native-get-random-values';
 
 import React, { useEffect } from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import AuthGate from './src/navigation/AuthGate';
+import { AuthProvider } from './src/auth/AuthProvider';
+import RootNavigator from './src/navigation/RootNavigator';
 import { SettingsProvider, useSettings, getAccentColor } from './src/utils/settingsContext';
 import { requestNotificationPermissions } from './src/utils/notifications';
 
@@ -29,9 +30,7 @@ function AppInner() {
   };
 
   return (
-    <NavigationContainer theme={navigationTheme}>
-      <AuthGate />
-    </NavigationContainer>
+    <RootNavigator navigationTheme={navigationTheme} />
   );
 }
 
@@ -44,7 +43,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <SettingsProvider>
-          <AppInner />
+          <AuthProvider>
+            <AppInner />
+          </AuthProvider>
         </SettingsProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

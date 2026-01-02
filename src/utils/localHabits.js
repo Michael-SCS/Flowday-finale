@@ -3,13 +3,20 @@ import { supabase } from './supabase';
 
 const KEY = 'FLUU_CUSTOM_HABITS';
 
+let _cachedUserId = null;
+let _cachedUserKey = null;
+
 async function getUserKey() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) return null;
-  return `${KEY}_${user.id}`;
+  if (_cachedUserId === user.id && _cachedUserKey) return _cachedUserKey;
+
+  _cachedUserId = user.id;
+  _cachedUserKey = `${KEY}_${user.id}`;
+  return _cachedUserKey;
 }
 
 /* Obtener hábitos personalizados */

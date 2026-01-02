@@ -5,6 +5,7 @@ import { loadHabitTemplates } from '../utils/habitCache';
 import AppNavigator from './AppNavigator';
 import AuthNavigator from './AuthNavigator';
 import OnboardingNavigator from './OnboardingNavigator';
+import AuthErrorScreen from './AuthErrorScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSettings, mapLocaleToLang } from '../utils/settingsContext';
 import * as Localization from 'expo-localization';
@@ -14,6 +15,8 @@ const Stack = createNativeStackNavigator();
 export default function AuthGate() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authInvalid, setAuthInvalid] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState(null);
   const [deviceOnboardingChecked, setDeviceOnboardingChecked] = useState(false);
@@ -22,16 +25,44 @@ export default function AuthGate() {
 
   useEffect(() => {
     // Sesión inicial (persistida)
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+
+        // Validate user presence immediately
+        try {
+          const userRes = await supabase.auth.getUser();
+          const user = userRes?.data?.user ?? null;
+          setCurrentUser(user);
+          setAuthInvalid(!user);
+        } catch (e) {
+          setCurrentUser(null);
+          setAuthInvalid(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
 
     // Escuchar cambios de auth
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+
+      // whenever auth changes, update currentUser and authInvalid
+      (async () => {
+        try {
+          const userRes = await supabase.auth.getUser();
+          const user = userRes?.data?.user ?? null;
+          setCurrentUser(user);
+          setAuthInvalid(!user);
+        } catch (e) {
+          setCurrentUser(null);
+          setAuthInvalid(true);
+        }
+      })();
     });
 
     return () => subscription.unsubscribe();
@@ -65,7 +96,7 @@ export default function AuthGate() {
 
   // Precargar hábitos una vez que haya sesión, para que el modal sea fluido
   useEffect(() => {
-    if (!session) return;
+    if (!session || !currentUser) return;
 
     loadHabitTemplates(language).catch(() => {
       // si falla, simplemente se cargará más tarde desde Calendar
@@ -76,7 +107,7 @@ export default function AuthGate() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!session) {
+      if (!session || !currentUser) {
         if (mounted) {
           setOnboardingChecked(false);
           setOnboardingCompleted(null);
@@ -85,14 +116,7 @@ export default function AuthGate() {
       }
 
       try {
-        const user = session.user || (await supabase.auth.getUser()).data.user;
-        if (!user) {
-          if (mounted) {
-            setOnboardingChecked(false);
-            setOnboardingCompleted(null);
-          }
-          return;
-        }
+        const user = currentUser;
 
         const { data, error } = await supabase
           .from('user_onboarding')
@@ -145,9 +169,9 @@ export default function AuthGate() {
 
   const decideInitial = () => {
     if (deviceOnboardingChecked && deviceOnboardingNeeded) return 'Onboarding';
-    // If this device already showed onboarding, prefer App (show calendar)
-    if (deviceOnboardingChecked && !deviceOnboardingNeeded) return 'App';
-    if (!session) return 'Auth';
+    // If this device already showed onboarding, but there's no valid user/session -> show AuthError
+    if (!session || authInvalid) return 'AuthError';
+    // If device showed onboarding and session+user ok, continue evaluating
     if (!onboardingChecked || onboardingCompleted === null) return 'Auth';
     if (!onboardingCompleted) return 'Onboarding';
     return 'App';
@@ -159,6 +183,8 @@ export default function AuthGate() {
     <Stack.Navigator key={initialRoute} initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
       <Stack.Screen name="Auth" component={AuthNavigator} />
+      <Stack.Screen name="AuthError" component={AuthErrorScreen} />
+      <Stack.Screen name="Login" component={require('./LoginScreen').default} />
       <Stack.Screen name="App" component={AppNavigator} />
     </Stack.Navigator>
   );

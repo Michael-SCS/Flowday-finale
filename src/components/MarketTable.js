@@ -1,14 +1,99 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSettings } from '../utils/settingsContext';
 
-export default function MarketTable({ items = [], onToggle, onClose }) {
+const MarketTableItem = React.memo(function MarketTableItem({ item, index, isDark, onToggle }) {
+  const product = typeof item === 'string' ? item : (item.product || item.name || item.label || '');
+  const qty = item.quantity !== undefined && item.quantity !== null ? String(item.quantity) : item.qty || '';
+  const price = item.price !== undefined && item.price !== null ? String(item.price) : '';
+
+  const qtyNumber = (() => { const n = parseFloat(String(qty).replace(',', '.')); return Number.isFinite(n) ? n : 0; })();
+  const priceNumber = (() => { const n = parseFloat(String(price).replace(',', '.')); return Number.isFinite(n) ? n : 0; })();
+  const lineTotal = qtyNumber * priceNumber;
+
+  return (
+    <Pressable
+      style={[
+        styles.card,
+        isDark && styles.cardDark,
+        item.checked && styles.cardChecked,
+        item.checked && isDark && styles.cardCheckedDark
+      ]}
+      onPress={() => onToggle && onToggle(index)}
+    >
+      <View style={styles.cardContent}>
+        <View style={styles.checkboxContainer}>
+          <Ionicons
+            name={item.checked ? 'checkmark-circle' : 'ellipse-outline'}
+            size={32}
+            color={item.checked ? '#10b981' : (isDark ? '#64748b' : '#d1d5db')}
+          />
+        </View>
+
+        <View style={styles.productInfo}>
+          <Text
+            style={[
+              styles.productName,
+              isDark && styles.productNameDark,
+              item.checked && styles.productNameChecked
+            ]}
+            numberOfLines={2}
+          >
+            {product}
+          </Text>
+
+          <View style={styles.detailsRow}>
+            <View style={styles.detailItem}>
+              <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>Cantidad:</Text>
+              <Text style={[styles.detailValue, isDark && styles.detailValueDark]}>{qty}</Text>
+            </View>
+
+            <View style={styles.detailItem}>
+              <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>Precio:</Text>
+              <Text style={[styles.detailValue, isDark && styles.detailValueDark]}>${price}</Text>
+            </View>
+
+            {lineTotal > 0 && (
+              <View style={styles.detailItem}>
+                <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>Subtotal:</Text>
+                <Text style={[styles.subtotalValue, isDark && styles.subtotalValueDark]}>${lineTotal.toFixed(2)}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
+});
+
+export default function MarketTable({ items = [], onToggle, onClose, virtualized = true }) {
   const { themeMode } = useSettings();
   const isDark = themeMode === 'dark';
-  let totalQuantity = 0;
-  let totalAmount = 0;
 
+  const renderItem = useCallback(
+    ({ item, index }) => (
+      <MarketTableItem item={item} index={index} isDark={isDark} onToggle={onToggle} />
+    ),
+    [isDark, onToggle]
+  );
+
+  const keyExtractor = useCallback(
+    (item, index) => (item && item.id ? String(item.id) : String(index)),
+    []
+  );
+
+  const { totalQuantity, totalAmount } = useMemo(() => {
+    let tQty = 0;
+    let tAmount = 0;
+    items.forEach((item) => {
+      const qty = parseFloat(String(item?.quantity ?? item?.qty ?? 0).replace(',', '.')) || 0;
+      const price = parseFloat(String(item?.price ?? 0).replace(',', '.')) || 0;
+      tQty += qty;
+      tAmount += qty * price;
+    });
+    return { totalQuantity: tQty, totalAmount: tAmount };
+  }, [items]);
   return (
     <View style={[styles.container, isDark && styles.containerDark]}>
       {/* HEADER CON BOTÓN DE CERRAR */}
@@ -23,102 +108,29 @@ export default function MarketTable({ items = [], onToggle, onClose }) {
         )}
       </View>
 
-      <ScrollView style={styles.scrollContent}>
-        {items.map((item, index) => {
-          const product = typeof item === 'string' ? item : (item.product || item.name || item.label || '');
-          const qty =
-            item.quantity !== undefined && item.quantity !== null
-              ? String(item.quantity)
-              : item.qty || '';
-          const price =
-            item.price !== undefined && item.price !== null
-              ? String(item.price)
-              : '';
-
-          const qtyNumber = (() => {
-            const n = parseFloat(String(qty).replace(',', '.'));
-            return Number.isFinite(n) ? n : 0;
-          })();
-
-          const priceNumber = (() => {
-            const n = parseFloat(String(price).replace(',', '.'));
-            return Number.isFinite(n) ? n : 0;
-          })();
-
-          const lineTotal = qtyNumber * priceNumber;
-          totalQuantity += qtyNumber;
-          totalAmount += lineTotal;
-
-          return (
-            <Pressable
-              key={index}
-              style={[
-                styles.card,
-                isDark && styles.cardDark,
-                item.checked && styles.cardChecked,
-                item.checked && isDark && styles.cardCheckedDark
-              ]}
-              onPress={() => onToggle && onToggle(index)}
-            >
-              <View style={styles.cardContent}>
-                {/* CHECKBOX */}
-                <View style={styles.checkboxContainer}>
-                  <Ionicons
-                    name={item.checked ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={32}
-                    color={item.checked ? '#10b981' : (isDark ? '#64748b' : '#d1d5db')}
-                  />
-                </View>
-
-                {/* CONTENIDO DEL PRODUCTO */}
-                <View style={styles.productInfo}>
-                  <Text 
-                    style={[
-                      styles.productName,
-                      isDark && styles.productNameDark,
-                      item.checked && styles.productNameChecked
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {product}
-                  </Text>
-                  
-                  <View style={styles.detailsRow}>
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>
-                        Cantidad:
-                      </Text>
-                      <Text style={[styles.detailValue, isDark && styles.detailValueDark]}>
-                        {qty}
-                      </Text>
-                    </View>
-
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>
-                        Precio:
-                      </Text>
-                      <Text style={[styles.detailValue, isDark && styles.detailValueDark]}>
-                        ${price}
-                      </Text>
-                    </View>
-
-                    {lineTotal > 0 && (
-                      <View style={styles.detailItem}>
-                        <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>
-                          Subtotal:
-                        </Text>
-                        <Text style={[styles.subtotalValue, isDark && styles.subtotalValueDark]}>
-                          ${lineTotal.toFixed(2)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {virtualized ? (
+        <FlatList
+          data={items}
+          contentContainerStyle={styles.scrollContent}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+        />
+      ) : (
+        <View style={styles.scrollContent}>
+          {items.map((item, index) => (
+            <MarketTableItem
+              key={keyExtractor(item, index)}
+              item={item}
+              index={index}
+              isDark={isDark}
+              onToggle={onToggle}
+            />
+          ))}
+        </View>
+      )}
 
       {/* RESUMEN TOTAL */}
       {items.length > 0 && (

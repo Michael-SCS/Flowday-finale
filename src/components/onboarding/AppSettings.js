@@ -67,10 +67,16 @@ export default function AppSettings({ navigation, route }) {
   async function finish() {
     setLoading(true);
     try {
-      // If we arrived here directly from the slides (no profile yet),
-      // just apply language/theme and go to Register.
-      if (!route.params?.profile && route.params?.from === 'slides') {
-        navigation.replace('Final', { fromSettings: true });
+      // If we arrived here directly from the slides OR from login 'no account',
+      // don't require an authenticated user: continue the onboarding to registration.
+      if (!route.params?.profile && (route.params?.from === 'slides' || route.params?.from === 'login_no_account')) {
+        navigation.replace('Register', { fromSettings: true });
+        return;
+      }
+
+      // If we have a profile payload but no authenticated user, forward to Register
+      if (route.params?.profile && !route.params?.fromSettings) {
+        navigation.replace('Register', { profile: route.params.profile });
         return;
       }
 

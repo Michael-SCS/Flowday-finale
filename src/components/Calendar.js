@@ -32,6 +32,7 @@ import VitaminsTable from './VitaminsTable';
 import { v4 as uuidv4 } from 'uuid';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n } from '../utils/i18n';
+import { translateHabitCategory } from '../utils/habitCategories';
 import {
   loadActivities as loadUserActivities,
   saveActivities as saveUserActivities,
@@ -79,6 +80,105 @@ function timeStringToMinutes(timeStr) {
   const [h, m] = String(timeStr).split(':').map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
   return h * 60 + m;
+}
+
+function minutesToTimeString(totalMinutes) {
+  if (!Number.isFinite(totalMinutes)) return null;
+  const mins = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function buildSuggestedTimeMinutesAround(startMinutes, {
+  stepMinutes = 30,
+  minMinutes = 6 * 60,
+  maxMinutes = 22 * 60,
+  maxSuggestions = 4,
+} = {}) {
+  if (!Number.isFinite(startMinutes)) return [];
+  const suggestions = [];
+  for (let i = 1; suggestions.length < maxSuggestions && i <= 48; i += 1) {
+    const forward = startMinutes + i * stepMinutes;
+    const backward = startMinutes - i * stepMinutes;
+
+    if (forward >= minMinutes && forward <= maxMinutes) {
+      suggestions.push(forward);
+      if (suggestions.length >= maxSuggestions) break;
+    }
+    if (backward >= minMinutes && backward <= maxMinutes) {
+      suggestions.push(backward);
+      if (suggestions.length >= maxSuggestions) break;
+    }
+  }
+  return suggestions;
+}
+
+function computeEndTimeString(startTimeString, durationMinutes) {
+  const startMin = timeStringToMinutes(startTimeString);
+  if (startMin == null) return null;
+  const duration =
+    typeof durationMinutes === 'number' && durationMinutes > 0
+      ? durationMinutes
+      : 0;
+  if (!duration) return null;
+  return minutesToTimeString(startMin + duration);
+}
+
+function suggestTimesForDay(existingActivities, candidate, editingActivityId) {
+  const startMin = timeStringToMinutes(candidate?.time);
+  if (startMin == null) return [];
+
+  const durationMinutes =
+    typeof candidate.durationMinutes === 'number' && candidate.durationMinutes > 0
+      ? candidate.durationMinutes
+      : 0;
+
+  const minuteCandidates = buildSuggestedTimeMinutesAround(startMin);
+  const timeCandidates = minuteCandidates
+    .map(minutesToTimeString)
+    .filter(Boolean);
+
+  const out = [];
+  for (const tStr of timeCandidates) {
+    const ok = !hasTimeConflictForDate(
+      existingActivities || [],
+      { time: tStr, durationMinutes },
+      editingActivityId
+    );
+    if (ok) out.push(tStr);
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
+function suggestTimesForSeries(activitiesByDate, datesToCreate, candidate) {
+  const startMin = timeStringToMinutes(candidate?.time);
+  if (startMin == null) return [];
+
+  const durationMinutes =
+    typeof candidate.durationMinutes === 'number' && candidate.durationMinutes > 0
+      ? candidate.durationMinutes
+      : 0;
+
+  const minuteCandidates = buildSuggestedTimeMinutesAround(startMin);
+  const timeCandidates = minuteCandidates
+    .map(minutesToTimeString)
+    .filter(Boolean);
+
+  const out = [];
+  for (const tStr of timeCandidates) {
+    const okAllDays = (datesToCreate || []).every((date) =>
+      !hasTimeConflictForDate(
+        (activitiesByDate && activitiesByDate[date]) || [],
+        { time: tStr, durationMinutes },
+        null
+      )
+    );
+    if (okAllDays) out.push(tStr);
+    if (out.length >= 4) break;
+  }
+  return out;
 }
 
 function hasTimeConflictForDate(existingActivities, candidate, editingActivityId) {
@@ -354,7 +454,6 @@ export default function Calendar() {
   const [moveTasksModalVisible, setMoveTasksModalVisible] = useState(false);
   const [moveTasksDate, setMoveTasksDate] = useState(null);
   const [moveTasksSelection, setMoveTasksSelection] = useState({});
-  const [weeklyPlannerPromptShownForWeek, setWeeklyPlannerPromptShownForWeek] = useState({});
   const [weeklyPlannerVisible, setWeeklyPlannerVisible] = useState(false);
   const [weeklyPriorityText, setWeeklyPriorityText] = useState('');
   const [weeklyHardHabitId, setWeeklyHardHabitId] = useState(null);
@@ -391,41 +490,7 @@ export default function Calendar() {
     }
   }, []);
 
-  // Detectar domingo y mostrar prompt de planificación semanal (una vez por semana)
-  useEffect(() => {
-    const [y, m, d] = selectedDate.split('-').map(Number);
-    const current = new Date(y, m - 1, d);
-    const isSunday = current.getDay() === 0; // 0 = domingo
 
-    if (!isSunday) return;
-
-    // Identificador simple de semana: año + semanaISO
-    const oneJan = new Date(current.getFullYear(), 0, 1);
-    const dayOfYear = Math.floor(
-      (current.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000)
-    ) + 1;
-    const weekNumber = Math.ceil((current.getDay() + dayOfYear) / 7);
-    const weekKey = `${current.getFullYear()}-${weekNumber}`;
-
-    if (weeklyPlannerPromptShownForWeek[weekKey]) return;
-
-    setWeeklyPlannerPromptShownForWeek((prev) => ({ ...prev, [weekKey]: true }));
-
-    Alert.alert(
-      t('calendar.weeklyPlannerPromptTitle'),
-      t('calendar.weeklyPlannerPromptMessage'),
-      [
-        {
-          text: t('calendar.weeklyPlannerSkip'),
-          style: 'cancel',
-        },
-        {
-          text: t('calendar.weeklyPlannerStart'),
-          onPress: () => setWeeklyPlannerVisible(true),
-        },
-      ]
-    );
-  }, [selectedDate, weeklyPlannerPromptShownForWeek, t]);
 
   async function loadActivities() {
     try {
@@ -470,14 +535,44 @@ export default function Calendar() {
   ========================= */
 
   function handleSaveHabit(payload) {
-    // Si venimos desde una edición, actualizamos SOLO esa actividad
-    if (editingActivity && payload.editingActivityId === editingActivity.id) {
+    // Si venimos desde una edición, actualizamos la actividad por ID (más robusto)
+    if (payload?.editingActivityId) {
       const updated = { ...activities };
       const { habit, description, data, schedule } = payload;
 
+      const targetId = payload.editingActivityId;
+
+      // Encontrar la actividad original y su fecha dentro del estado actual
+      let targetDateKey = null;
+      let targetActivity = null;
+
+      for (const dateKey of Object.keys(updated)) {
+        const found = (updated[dateKey] || []).find((a) => a.id === targetId);
+        if (found) {
+          targetDateKey = dateKey;
+          targetActivity = found;
+          break;
+        }
+      }
+
+      // Fallback: si por algún motivo no está indexada en el estado, intenta con la fecha actual
+      if (!targetActivity) {
+        const fallbackDate = editingActivity?.date || selectedDate;
+        const found = (updated[fallbackDate] || []).find((a) => a.id === targetId);
+        if (found) {
+          targetDateKey = fallbackDate;
+          targetActivity = found;
+        }
+      }
+
+      if (!targetActivity || !targetDateKey) {
+        Alert.alert('Error', 'No se pudo encontrar la actividad a editar.');
+        return;
+      }
+
       // Si es una actividad única, solo editamos esta instancia
       if (!schedule || schedule.frequency === 'once') {
-        const dateKey = editingActivity.date;
+        const dateKey = targetDateKey;
 
         if (updated[dateKey]) {
           if (schedule?.time) {
@@ -487,20 +582,50 @@ export default function Calendar() {
                 time: schedule.time,
                 durationMinutes: schedule.durationMinutes,
               },
-              editingActivity.id
+              targetId
             );
 
             if (hasConflict) {
+              const suggestions = suggestTimesForDay(
+                updated[dateKey] || [],
+                {
+                  time: schedule.time,
+                  durationMinutes: schedule.durationMinutes,
+                },
+                targetId
+              );
+
+              const maxButtons = Platform.OS === 'ios' ? 2 : 4;
+              const buttons = (suggestions || []).slice(0, maxButtons).map((timeStr) => ({
+                text: timeStr,
+                onPress: () => {
+                  const nextEnd = computeEndTimeString(timeStr, schedule?.durationMinutes);
+                  handleSaveHabit({
+                    ...payload,
+                    schedule: {
+                      ...payload.schedule,
+                      time: timeStr,
+                      endTime: nextEnd,
+                    },
+                  });
+                },
+              }));
+
+              buttons.push({ text: t('calendar.cancel') || 'Cancelar', style: 'cancel' });
+
               Alert.alert(
                 t('calendar.timeConflictTitle'),
-                t('calendar.timeConflictMessage')
+                suggestions.length
+                  ? `${t('calendar.timeConflictMessage')}\n\n${t('calendar.timeSuggestionsPick')}`
+                  : t('calendar.timeConflictMessage'),
+                buttons
               );
               return;
             }
           }
 
           updated[dateKey] = updated[dateKey].map((act) => {
-            if (act.id !== editingActivity.id) return act;
+            if (act.id !== targetId) return act;
             return {
               ...act,
               habit_id: habit.id,
@@ -520,7 +645,7 @@ export default function Calendar() {
           saveActivities(updated);
 
           const updatedActivity = (updated[dateKey] || []).find(
-            (act) => act.id === editingActivity.id
+            (act) => act.id === targetId
           );
 
           if (updatedActivity && updatedActivity.time) {
@@ -540,7 +665,7 @@ export default function Calendar() {
 
       // Si tiene una frecuencia (diaria, semanal, etc.),
       // actualizamos TODA la serie de ese hábito
-      const oldHabitId = editingActivity.habit_id;
+      const oldHabitId = targetActivity.habit_id;
 
       Object.keys(updated).forEach((dateKey) => {
         const dayActs = updated[dateKey] || [];
@@ -616,9 +741,32 @@ export default function Calendar() {
         );
 
         if (hasConflictSomeDay) {
+          const suggestions = suggestTimesForSeries(updated, datesToCreate, candidate);
+
+          const maxButtons = Platform.OS === 'ios' ? 2 : 4;
+          const buttons = (suggestions || []).slice(0, maxButtons).map((timeStr) => ({
+            text: timeStr,
+            onPress: () => {
+              const nextEnd = computeEndTimeString(timeStr, schedule?.durationMinutes);
+              handleSaveHabit({
+                ...payload,
+                schedule: {
+                  ...payload.schedule,
+                  time: timeStr,
+                  endTime: nextEnd,
+                },
+              });
+            },
+          }));
+
+          buttons.push({ text: t('calendar.cancel') || 'Cancelar', style: 'cancel' });
+
           Alert.alert(
             t('calendar.timeConflictTitle'),
-            t('calendar.timeConflictMessage')
+            suggestions.length
+              ? `${t('calendar.timeConflictMessage')}\n\n${t('calendar.timeSuggestionsPick')}`
+              : t('calendar.timeConflictMessage'),
+            buttons
           );
           return;
         }
@@ -752,9 +900,32 @@ export default function Calendar() {
       );
 
       if (hasConflictSomeDay) {
+        const suggestions = suggestTimesForSeries(updated, datesToCreate, candidate);
+
+        const maxButtons = Platform.OS === 'ios' ? 2 : 4;
+        const buttons = (suggestions || []).slice(0, maxButtons).map((timeStr) => ({
+          text: timeStr,
+          onPress: () => {
+            const nextEnd = computeEndTimeString(timeStr, schedule?.durationMinutes);
+            handleSaveHabit({
+              ...payload,
+              schedule: {
+                ...payload.schedule,
+                time: timeStr,
+                endTime: nextEnd,
+              },
+            });
+          },
+        }));
+
+        buttons.push({ text: t('calendar.cancel') || 'Cancelar', style: 'cancel' });
+
         Alert.alert(
           t('calendar.timeConflictTitle'),
-          t('calendar.timeConflictMessage')
+          suggestions.length
+            ? `${t('calendar.timeConflictMessage')}\n\n${t('calendar.timeSuggestionsPick')}`
+            : t('calendar.timeConflictMessage'),
+          buttons
         );
         return;
       }
@@ -1504,7 +1675,7 @@ export default function Calendar() {
         todayButtonText={t('calendar.todayButton')}
       >
         <ExpandableCalendar
-          key={language}
+          key={`${language}-${themeColor}-${themeMode}`}
           firstDay={1}
           markedDates={markedDates}
           markingType="custom"
@@ -1575,24 +1746,38 @@ export default function Calendar() {
                   : null;
 
                 if (rawTextValue) {
+                  const habitTemplateForSubtitle = getHabitTemplateForActivity(activityWithDate);
+                  const habitType = String(habitTemplateForSubtitle?.type || '').toLowerCase();
                   const titleLower = (activityWithDate.title || '').toLowerCase();
                   const answer = String(rawTextValue).trim();
 
-                  if (titleLower.includes('estudiar')) {
-                    friendlySubtitle = `Hoy debes estudiar: ${answer}`;
-                  } else if (titleLower.includes('leer') && titleLower.includes('libro')) {
-                    friendlySubtitle = `Hoy leerás ${answer}`;
-                  } else if (
-                    titleLower.includes('llamar') &&
-                    (titleLower.includes('amigo') || titleLower.includes('amig'))
-                  ) {
-                    friendlySubtitle = `Recuerda: llamarás a ${answer}`;
-                  } else if (titleLower.includes('cumple')) {
-                    friendlySubtitle = `Hoy es el cumpleaños de: ${answer}`;
-                  } else if (titleLower.includes('cuidar') && titleLower.includes('piel')) {
-                    friendlySubtitle = `Hoy cuidarás tu piel con: ${answer}`;
-                  } else if (titleLower.includes('beber') && titleLower.includes('agua')) {
-                    friendlySubtitle = `Hoy tu objetivo de agua es: ${answer}`;
+                  const prefixKeyByType = {
+                    birthday: 'specialHabits.birthday.subtitlePrefix',
+                    study: 'specialHabits.study.subtitlePrefix',
+                    book: 'specialHabits.book.subtitlePrefix',
+                    call: 'specialHabits.call.subtitlePrefix',
+                    skincare: 'specialHabits.skincare.subtitlePrefix',
+                    water: 'specialHabits.water.subtitlePrefix',
+                  };
+
+                  const resolvedType = (() => {
+                    if (prefixKeyByType[habitType]) return habitType;
+                    if (titleLower.includes('cumple') || titleLower.includes('birthday') || titleLower.includes('anniversaire') || titleLower.includes('anivers')) return 'birthday';
+                    if (titleLower.includes('estudiar') || titleLower.includes('study')) return 'study';
+                    if ((titleLower.includes('leer') && titleLower.includes('libro')) || titleLower.includes('book') || titleLower.includes('read')) return 'book';
+                    if (titleLower.includes('llamar') || titleLower.includes('call')) return 'call';
+                    if ((titleLower.includes('cuidar') && titleLower.includes('piel')) || titleLower.includes('skin')) return 'skincare';
+                    if ((titleLower.includes('beber') && titleLower.includes('agua')) || titleLower.includes('water') || titleLower.includes('eau') || titleLower.includes('água')) return 'water';
+                    return null;
+                  })();
+
+                  if (resolvedType) {
+                    const prefix = t(prefixKeyByType[resolvedType]);
+                    if (resolvedType === 'book' || resolvedType === 'call') {
+                      friendlySubtitle = `${prefix} ${answer}`.trim();
+                    } else {
+                      friendlySubtitle = `${prefix} ${answer}`.trim();
+                    }
                   } else if (textLabel) {
                     friendlySubtitle = `${textLabel} ${answer}`.trim();
                   } else {
@@ -2157,6 +2342,7 @@ export default function Calendar() {
                           <>
                             <MarketTable
                               items={allItems}
+                              virtualized={false}
                               onToggle={(index) =>
                                 toggleChecklistItem(
                                   marketModalData.activity,
@@ -2489,31 +2675,7 @@ export default function Calendar() {
                     return acc;
                   }, {})
                 ).map(([category, categoryHabits]) => {
-                  const displayCategory = language === 'en'
-                    ? category === 'Cuida de ti'
-                      ? 'Self-care'
-                      : category === 'Actividad física'
-                      ? 'Physical activity'
-                      : category === 'Vive más sano'
-                      ? 'Live healthier'
-                      : category === 'Aprende'
-                      ? 'Learn'
-                      : category === 'Vida social'
-                      ? 'Social life'
-                      : category === 'Hogar'
-                      ? 'Home'
-                      : category === 'Vida económica'
-                      ? 'Finances'
-                      : category === 'Salud'
-                      ? 'Health'
-                      : category === 'Social'
-                      ? 'Social'
-                      : category === 'Productividad'
-                      ? 'Productivity'
-                      : category === 'Sin categoría'
-                      ? 'Uncategorized'
-                      : category
-                    : category;
+                  const displayCategory = translateHabitCategory(category, language);
 
                   return (
                   <View key={category} style={styles.categorySection}>

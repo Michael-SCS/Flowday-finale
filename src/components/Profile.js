@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabase';
+import { useAuth } from '../auth/AuthProvider';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n, translate } from '../utils/i18n';
 import { clearLocalHabits } from '../utils/localHabits';
@@ -14,6 +16,8 @@ import { loadActivities as loadUserActivities } from '../utils/localActivities';
 import { clearPomodoroStats } from '../utils/pomodoroStats';
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
+  const { signOut } = useAuth();
   const { themeColor, themeMode, language, setThemeColor, setThemeMode, setLanguage } = useSettings();
   const { t } = useI18n();
   const { openTour } = useTour();
@@ -53,8 +57,10 @@ export default function ProfileScreen() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setError(t('profile.loadUserError'));
-        setProfile(null);
+        // No authenticated user — update auth state so RootNavigator shows Login
+        try {
+          await signOut();
+        } catch (e) {}
         return;
       }
 
@@ -71,8 +77,10 @@ export default function ProfileScreen() {
       }
 
       if (!data) {
-        setError(t('profile.noProfileConfigured'));
-        setProfile(null);
+        // No profile configured for this user — update auth state to show Login
+        try {
+          await signOut();
+        } catch (e) {}
         return;
       }
 

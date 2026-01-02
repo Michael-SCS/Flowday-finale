@@ -19,6 +19,7 @@ const translations = {
       step2Title: 'Datos de acceso',
       welcome: '🌱 Bienvenido a Fluu\n\nEstás a punto de empezar un espacio creado para ayudarte a organizar tus días, crear hábitos y avanzar a tu propio ritmo.\nAquí no se trata de hacerlo perfecto, sino de hacerlo posible.\n\nRegístrate y comencemos paso a paso ✨',
       next: 'Siguiente',
+      finish: 'Finalizar',
       back: 'Atrás',
       submit: 'Registrarme',
       subtitle: 'Empieza a organizar tu vida en pocos pasos',
@@ -247,6 +248,8 @@ const translations = {
       timeConflictTitle: 'Horario no disponible',
       timeConflictMessage:
         'Ya tienes otra actividad en este horario. Ajusta la hora o la duración.',
+      timeSuggestionsLabel: 'Horas sugeridas:',
+      timeSuggestionsPick: 'Selecciona una hora sugerida:',
       duplicateActivityTitle: 'Evento ya agendado',
       duplicateActivityMessage:
         'Ya tienes este evento agendado para este día. ¿Quieres volver a agendarlo?',
@@ -274,6 +277,7 @@ const translations = {
       frequencyWeekly: 'Semanal',
       frequencyMonthly: 'Mensual',
       frequencyYearly: 'Anual',
+      marketSectionTitle: 'Productos',
       marketProductPlaceholder: 'Producto',
       marketQtyPlaceholder: 'Cant',
       marketPricePlaceholder: '$',
@@ -291,6 +295,32 @@ const translations = {
     },
     habitList: {
       title: 'Agregar hábito',
+    },
+    specialHabits: {
+      birthday: {
+        question: '¿Quién cumplirá años?',
+        subtitlePrefix: 'Hoy es el cumpleaños de:',
+      },
+      study: {
+        question: '¿Qué estudiarás hoy?',
+        subtitlePrefix: 'Hoy debes estudiar:',
+      },
+      book: {
+        question: '¿Qué libro leerás hoy?',
+        subtitlePrefix: 'Hoy leerás',
+      },
+      call: {
+        question: '¿A quién llamarás hoy?',
+        subtitlePrefix: 'Recuerda: llamarás a',
+      },
+      skincare: {
+        question: '¿Con qué cuidarás tu piel hoy?',
+        subtitlePrefix: 'Hoy cuidarás tu piel con:',
+      },
+      water: {
+        question: '¿Cuál es tu objetivo de agua hoy?',
+        subtitlePrefix: 'Hoy tu objetivo de agua es:',
+      },
     },
     pomodoro: {
       title: 'Pomodoro',
@@ -332,6 +362,7 @@ const translations = {
       welcome:
         '🌱 Welcome to Fluu\n\nYou are about to start a space created to help you organize your days, build habits and move forward at your own pace.\nThis is not about doing it perfectly, but about making it possible.\n\nSign up and let’s begin step by step ✨',
       next: 'Next',
+      finish: 'Finish',
       back: 'Back',
       submit: 'Sign up',
       subtitle: 'Start organizing your life in just a few steps',
@@ -562,6 +593,8 @@ const translations = {
       timeConflictTitle: 'Time not available',
       timeConflictMessage:
         'You already have another activity at this time. Adjust the time or duration.',
+      timeSuggestionsLabel: 'Suggested times:',
+      timeSuggestionsPick: 'Pick a suggested time:',
       duplicateActivityTitle: 'Event already scheduled',
       duplicateActivityMessage:
         'You already have this event scheduled for this day. Do you want to schedule it again?',
@@ -589,6 +622,7 @@ const translations = {
       frequencyWeekly: 'Weekly',
       frequencyMonthly: 'Monthly',
       frequencyYearly: 'Yearly',
+      marketSectionTitle: 'Products',
       marketProductPlaceholder: 'Product',
       marketQtyPlaceholder: 'Qty',
       marketPricePlaceholder: '$',
@@ -606,6 +640,32 @@ const translations = {
     },
     habitList: {
       title: 'Add habit',
+    },
+    specialHabits: {
+      birthday: {
+        question: 'Who will have a birthday?',
+        subtitlePrefix: "Today it's the birthday of:",
+      },
+      study: {
+        question: 'What will you study today?',
+        subtitlePrefix: 'Today you need to study:',
+      },
+      book: {
+        question: 'Which book will you read today?',
+        subtitlePrefix: 'Today you will read',
+      },
+      call: {
+        question: 'Who will you call today?',
+        subtitlePrefix: 'Reminder: you will call',
+      },
+      skincare: {
+        question: 'What will you use for your skincare today?',
+        subtitlePrefix: 'Today you will take care of your skin with:',
+      },
+      water: {
+        question: 'What is your water goal today?',
+        subtitlePrefix: 'Today your water goal is:',
+      },
     },
     pomodoro: {
       title: 'Pomodoro',
@@ -646,6 +706,7 @@ const translations = {
       welcome:
         '🌱 Bem-vindo ao Fluu\n\nVocê está prestes a iniciar um espaço criado para ajudá-lo a organizar seus dias, criar hábitos e avançar no seu próprio ritmo.\nNão se trata de fazer tudo perfeito, mas de tornar possível.\n\nRegistre-se e vamos começar passo a passo ✨',
       next: 'Próximo',
+      finish: 'Finalizar',
       back: 'Voltar',
       submit: 'Registrar',
       subtitle: 'Comece a organizar a sua vida em poucos passos',
@@ -864,6 +925,8 @@ const translations = {
       timeConflictTitle: 'Horário indisponível',
       timeConflictMessage:
         'Você já tem outra atividade neste horário. Ajuste o horário ou a duração.',
+      timeSuggestionsLabel: 'Horários sugeridos:',
+      timeSuggestionsPick: 'Escolha um horário sugerido:',
       duplicateActivityTitle: 'Evento já agendado',
       duplicateActivityMessage:
         'Você já tem este evento agendado para este dia. Deseja agendá-lo novamente?',
@@ -891,6 +954,7 @@ const translations = {
       frequencyWeekly: 'Semanal',
       frequencyMonthly: 'Mensal',
       frequencyYearly: 'Anual',
+      marketSectionTitle: 'Produtos',
       marketProductPlaceholder: 'Produto',
       marketQtyPlaceholder: 'Qtd',
       marketPricePlaceholder: 'R$',
@@ -903,9 +967,37 @@ const translations = {
       durationCustom: 'Personalizado',
       durationCustomPlaceholder: 'Minutos',
       endTimeLabel: 'Hora de término',
+      colorLabel: 'Cor do cartão',
+      selected: 'Selecionado',
     },
     habitList: {
       title: 'Adicionar hábito',
+    },
+    specialHabits: {
+      birthday: {
+        question: 'Quem fará aniversário?',
+        subtitlePrefix: 'Hoje é o aniversário de:',
+      },
+      study: {
+        question: 'O que você vai estudar hoje?',
+        subtitlePrefix: 'Hoje você precisa estudar:',
+      },
+      book: {
+        question: 'Qual livro você vai ler hoje?',
+        subtitlePrefix: 'Hoje você vai ler',
+      },
+      call: {
+        question: 'Para quem você vai ligar hoje?',
+        subtitlePrefix: 'Lembrete: você vai ligar para',
+      },
+      skincare: {
+        question: 'Com o que você vai cuidar da sua pele hoje?',
+        subtitlePrefix: 'Hoje você vai cuidar da sua pele com:',
+      },
+      water: {
+        question: 'Qual é sua meta de água hoje?',
+        subtitlePrefix: 'Hoje sua meta de água é:',
+      },
     },
     pomodoro: {
       title: 'Pomodoro',
@@ -946,6 +1038,7 @@ const translations = {
       welcome:
         "🌱 Bienvenue sur Fluu\n\nVous êtes sur le point de commencer un espace conçu pour vous aider à organiser vos journées, créer des habitudes et avancer à votre rythme.\nIl ne s'agit pas de le faire parfaitement, mais de le rendre possible.\n\nInscrivez-vous et commençons pas à pas ✨",
       next: 'Suivant',
+      finish: 'Terminer',
       back: 'Retour',
       submit: "S'inscrire",
       subtitle: 'Commencez à organiser votre vie en quelques étapes',
@@ -1166,6 +1259,8 @@ const translations = {
       timeConflictTitle: 'Horaire indisponible',
       timeConflictMessage:
         'Vous avez déjà une autre activité à cet horaire. Ajustez l\'heure ou la durée.',
+      timeSuggestionsLabel: 'Horaires suggérés :',
+      timeSuggestionsPick: 'Choisissez un horaire suggéré :',
       duplicateActivityTitle: 'Événement déjà planifié',
       duplicateActivityMessage:
         'Vous avez déjà planifié cet événement pour ce jour. Voulez-vous le planifier à nouveau ?',
@@ -1193,6 +1288,7 @@ const translations = {
       frequencyWeekly: 'Hebdomadaire',
       frequencyMonthly: 'Mensuelle',
       frequencyYearly: 'Annuelle',
+      marketSectionTitle: 'Produits',
       marketProductPlaceholder: 'Produit',
       marketQtyPlaceholder: 'Qté',
       marketPricePlaceholder: '€',
@@ -1205,9 +1301,37 @@ const translations = {
       durationCustom: 'Personnalisé',
       durationCustomPlaceholder: 'Minutes',
       endTimeLabel: 'Heure de fin',
+      colorLabel: 'Couleur de la carte',
+      selected: 'Sélectionné',
     },
     habitList: {
       title: 'Ajouter une habitude',
+    },
+    specialHabits: {
+      birthday: {
+        question: "Qui va fêter son anniversaire ?",
+        subtitlePrefix: "Aujourd'hui, c'est l'anniversaire de :",
+      },
+      study: {
+        question: "Qu'allez-vous étudier aujourd'hui ?",
+        subtitlePrefix: "Aujourd'hui vous devez étudier :",
+      },
+      book: {
+        question: "Quel livre allez-vous lire aujourd'hui ?",
+        subtitlePrefix: "Aujourd'hui vous lirez",
+      },
+      call: {
+        question: "Qui allez-vous appeler aujourd'hui ?",
+        subtitlePrefix: "Rappel : vous appellerez",
+      },
+      skincare: {
+        question: "Avec quoi allez-vous prendre soin de votre peau aujourd'hui ?",
+        subtitlePrefix: "Aujourd'hui vous prendrez soin de votre peau avec :",
+      },
+      water: {
+        question: "Quel est votre objectif d'eau aujourd'hui ?",
+        subtitlePrefix: "Aujourd'hui votre objectif d'eau est :",
+      },
     },
     pomodoro: {
       title: 'Pomodoro',

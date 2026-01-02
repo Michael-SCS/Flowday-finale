@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { loadHabitTemplates } from '../utils/habitCache';
 import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
+import { translateHabitCategory } from '../utils/habitCategories';
 
 export default function HabitModal({ onSelect, onClose }) {
   const [habits, setHabits] = useState([]);
@@ -62,84 +63,7 @@ export default function HabitModal({ onSelect, onClose }) {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
           {Object.keys(grouped).map((category) => {
-            let displayCategory = category;
-
-            if (language === 'en') {
-              displayCategory =
-                category === 'Cuida de ti'
-                  ? 'Self-care'
-                  : category === 'Actividad física'
-                  ? 'Physical activity'
-                  : category === 'Vive más sano'
-                  ? 'Live healthier'
-                  : category === 'Aprende'
-                  ? 'Learn'
-                  : category === 'Vida social'
-                  ? 'Social life'
-                  : category === 'Hogar'
-                  ? 'Home'
-                  : category === 'Vida económica'
-                  ? 'Finances'
-                  : category === 'Salud'
-                  ? 'Health'
-                  : category === 'Social'
-                  ? 'Social'
-                  : category === 'Productividad'
-                  ? 'Productivity'
-                  : category === 'Sin categoría'
-                  ? 'Uncategorized'
-                  : category;
-            } else if (language === 'pt') {
-              displayCategory =
-                category === 'Cuida de ti'
-                  ? 'Cuide de você'
-                  : category === 'Actividad física'
-                  ? 'Atividade física'
-                  : category === 'Vive más sano'
-                  ? 'Viva mais saudável'
-                  : category === 'Aprende'
-                  ? 'Aprender'
-                  : category === 'Vida social'
-                  ? 'Vida social'
-                  : category === 'Hogar'
-                  ? 'Casa'
-                  : category === 'Vida económica'
-                  ? 'Finanças'
-                  : category === 'Salud'
-                  ? 'Saúde'
-                  : category === 'Social'
-                  ? 'Social'
-                  : category === 'Productividad'
-                  ? 'Produtividade'
-                  : category === 'Sin categoría'
-                  ? 'Sem categoria'
-                  : category;
-            } else if (language === 'fr') {
-              displayCategory =
-                category === 'Cuida de ti'
-                  ? 'Prends soin de toi'
-                  : category === 'Actividad física'
-                  ? 'Activité physique'
-                  : category === 'Vive más sano'
-                  ? 'Vis plus sainement'
-                  : category === 'Aprende'
-                  ? 'Apprendre'
-                  : category === 'Vida social'
-                  ? 'Vie sociale'
-                  : category === 'Hogar'
-                  ? 'Maison'
-                  : category === 'Vida económica'
-                  ? 'Finances'
-                  : category === 'Salud'
-                  ? 'Santé'
-                  : category === 'Social'
-                  ? 'Social'
-                  : category === 'Productividad'
-                  ? 'Productivité'
-                  : category === 'Sin categoría'
-                  ? 'Sans catégorie'
-                  : category;
-            }
+            const displayCategory = translateHabitCategory(category, language);
 
             return (
               <View key={category} style={styles.section}>

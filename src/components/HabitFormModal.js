@@ -17,19 +17,20 @@ import MarketAddModal from './MarketAddModal';
 import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
 import { Picker } from '@react-native-picker/picker';
+import { translateHabitCategory } from '../utils/habitCategories';
 
 /* ======================
    CONSTANTES
 ====================== */
 
 const WEEK_DAYS = [
-  { key: 'mon', es: 'L', en: 'M' },
-  { key: 'tue', es: 'M', en: 'T' },
-  { key: 'wed', es: 'X', en: 'W' },
-  { key: 'thu', es: 'J', en: 'T' },
-  { key: 'fri', es: 'V', en: 'F' },
-  { key: 'sat', es: 'S', en: 'S' },
-  { key: 'sun', es: 'D', en: 'S' },
+  { key: 'mon', es: 'L', en: 'M', pt: 'S', fr: 'L' },
+  { key: 'tue', es: 'M', en: 'T', pt: 'T', fr: 'M' },
+  { key: 'wed', es: 'X', en: 'W', pt: 'Q', fr: 'M' },
+  { key: 'thu', es: 'J', en: 'T', pt: 'Q', fr: 'J' },
+  { key: 'fri', es: 'V', en: 'F', pt: 'S', fr: 'V' },
+  { key: 'sat', es: 'S', en: 'S', pt: 'S', fr: 'S' },
+  { key: 'sun', es: 'D', en: 'S', pt: 'D', fr: 'D' },
 ];
 
 const FREQUENCIES = [
@@ -463,8 +464,10 @@ export default function HabitFormModal({
               <View>
                 <Text style={[styles.title, isDark && { color: '#e5e7eb' }]}>{habit.title}</Text>
                 {habit.category && (
-                  <Text style={[styles.category, isDark && { color: '#9ca3af' }]}>{habit.category}</Text>
-                )}
+                      <Text style={[styles.category, isDark && { color: '#9ca3af' }]}>
+                        {translateHabitCategory(habit.category, language)}
+                      </Text>
+                    )}
               </View>
             </View>
           <View style={styles.headerRight}>
@@ -770,7 +773,7 @@ export default function HabitFormModal({
                           daysOfWeek.includes(d.key) && styles.dayTxtActive,
                         ]}
                       >
-                        {language === 'en' ? d.en : d.es}
+                        {d?.[language] || d.es}
                       </Text>
                     </Pressable>
                   ))}

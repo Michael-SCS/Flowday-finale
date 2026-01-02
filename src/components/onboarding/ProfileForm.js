@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Image, Alert, KeyboardAvoidingView, ScrollView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { supabase } from '../../utils/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useI18n } from '../../utils/i18n';
 import { useSettings } from '../../utils/settingsContext';
 
@@ -47,11 +48,20 @@ export default function ProfileForm({ navigation, route }) {
       genero,
     };
 
-    if (languageSource === 'user' || route?.params?.fromSettings) {
+    // Save to Supabase only when editing from user settings, AppSettings,
+    // or when coming from registration. If coming from registration, sign
+    // in using the credentials passed from `RegisterForm` before upserting
+    // the profile. Only send to Supabase when all fields are valid.
+    if (languageSource === 'user' || route?.params?.fromSettings || route?.params?.fromRegistration) {
       setLoading(true);
       try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) throw new Error('Usuario no autenticado');
+        let user = null;
+
+        const { data: { user: u }, error: authError } = await supabase.auth.getUser();
+        if (authError || !u) throw new Error('Usuario no autenticado');
+        user = u;
+
+        if (!user) throw new Error('Usuario no autenticado');
 
         const payload = {
           id: user.id,
@@ -66,7 +76,11 @@ export default function ProfileForm({ navigation, route }) {
         const { error } = await supabase.from('profiles').upsert(payload);
         if (error) throw error;
 
-        navigation.replace('Final');
+        try { await AsyncStorage.setItem('device_onboarding_shown', 'true'); } catch {}
+        try { await AsyncStorage.removeItem('onboarding_in_progress'); } catch {}
+
+        // No manual navigation reset here: RootNavigator will switch to App
+        // once onboarding_in_progress is cleared and device_onboarding_shown is set.
         return;
       } catch (err) {
         Alert.alert('Error', err.message || 'No se pudo guardar el perfil');
@@ -75,7 +89,7 @@ export default function ProfileForm({ navigation, route }) {
       }
     }
 
-    navigation.navigate('AppSettings', {
+    navigation.navigate('Register', {
       profile: profilePayload,
     });
   }
@@ -180,7 +194,7 @@ export default function ProfileForm({ navigation, route }) {
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.btnText}>{t('register.next')}</Text>
+                  <Text style={styles.btnText}>{t('register.finish') || t('register.next')}</Text>
                 )}
               </TouchableOpacity>
             </View>
