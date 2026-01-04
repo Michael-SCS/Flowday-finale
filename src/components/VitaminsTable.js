@@ -2,14 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function VitaminsTable({ items = [], onToggle }) {
+export default function VitaminsTable({ items = [], onToggle, isDark = false }) {
   return (
-    <View style={styles.table}>
+    <View style={[styles.table, isDark && styles.tableDark]}>
       {/* HEADER */}
-      <View style={[styles.row, styles.header]}>
+      <View style={[styles.row, styles.header, isDark && styles.headerDark]}>
         <Text style={[styles.cell, styles.check]} />
-        <Text style={[styles.cell, styles.name]}>Vitamina</Text>
-        <Text style={[styles.cell, styles.qty]}>Cant.</Text>
+        <Text style={[styles.cell, styles.name, isDark && styles.textDark]}>Vitamina</Text>
+        <Text style={[styles.cell, styles.qty, isDark && styles.textDark]}>Cant.</Text>
       </View>
 
       {items.map((item, index) => {
@@ -20,7 +20,7 @@ export default function VitaminsTable({ items = [], onToggle }) {
             : item.qty || '';
 
         return (
-          <View key={index} style={styles.row}>
+          <View key={index} style={[styles.row, isDark && styles.rowDark]}>
             <Pressable
               style={[styles.cell, styles.check]}
               onPress={() => onToggle && onToggle(index)}
@@ -37,12 +37,14 @@ export default function VitaminsTable({ items = [], onToggle }) {
                 styles.cell,
                 styles.name,
                 item.checked && styles.checkedText,
+                isDark && styles.textDark,
+                isDark && item.checked && styles.checkedTextDark,
               ]}
             >
               {name}
             </Text>
 
-            <Text style={[styles.cell, styles.qty]}>{qty}</Text>
+            <Text style={[styles.cell, styles.qty, isDark && styles.textDark]}>{qty}</Text>
           </View>
         );
       })}
@@ -62,6 +64,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
+  tableDark: {
+    backgroundColor: '#0b1120',
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -69,15 +74,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
+  rowDark: {
+    backgroundColor: '#0b1120',
+    borderBottomColor: '#1e293b',
+  },
   header: {
     backgroundColor: '#dcfce7',
     borderBottomWidth: 1,
     borderBottomColor: '#bbf7d0',
   },
+  headerDark: {
+    backgroundColor: '#0b1120',
+    borderBottomColor: '#1e293b',
+  },
   cell: {
     paddingVertical: 12,
     paddingHorizontal: 10,
     fontSize: 13,
+  },
+  textDark: {
+    color: '#e5e7eb',
   },
   check: { width: 40, textAlign: 'center' },
   name: { flex: 2 },
@@ -85,5 +101,8 @@ const styles = StyleSheet.create({
   checkedText: {
     textDecorationLine: 'line-through',
     color: '#9ca3af',
+  },
+  checkedTextDark: {
+    color: '#64748b',
   },
 });

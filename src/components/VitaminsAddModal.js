@@ -28,10 +28,11 @@ export default function VitaminsAddModal({ visible, onClose, onAdd }) {
 
   function handleAdd() {
     const cleanName = String(name || '').trim();
-    const cleanQty = String(quantity || '').trim();
+    const qtyNumber = parseFloat(String(quantity).replace(',', '.')) || 0;
     if (!cleanName) return;
 
-    onAdd && onAdd({ name: cleanName, qty: cleanQty, checked: false });
+    // Align payload with MarketAddModal: store numeric quantity when possible.
+    onAdd && onAdd({ name: cleanName, quantity: qtyNumber, checked: false });
     onClose && onClose();
   }
 
@@ -50,7 +51,7 @@ export default function VitaminsAddModal({ visible, onClose, onAdd }) {
           <View style={[styles.card, isDark && styles.cardDark]}>
             <View style={styles.header}>
               <Text style={[styles.title, isDark && styles.titleDark]}>
-                Agregar vitamina
+                Agregar medicamento
               </Text>
               <Pressable onPress={onClose} style={styles.closeBtn}>
                 <Ionicons
@@ -63,7 +64,7 @@ export default function VitaminsAddModal({ visible, onClose, onAdd }) {
 
             <View style={styles.field}>
               <Text style={[styles.label, isDark && styles.labelDark]}>
-                Nombre
+                Nombre del medicamento
               </Text>
               <TextInput
                 style={[styles.input, isDark && styles.inputDark, { minHeight: 48 }]}
@@ -83,7 +84,8 @@ export default function VitaminsAddModal({ visible, onClose, onAdd }) {
               <TextInput
                 style={[styles.input, isDark && styles.inputDark]}
                 value={quantity}
-                onChangeText={(v) => setQuantity(String(v).slice(0, 20))}
+                onChangeText={(v) => setQuantity(String(v).replace(/[^0-9,\.]/g, ''))}
+                keyboardType="numeric"
                 placeholder="1"
                 placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
               />

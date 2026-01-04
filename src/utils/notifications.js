@@ -73,12 +73,25 @@ export async function requestNotificationPermissions() {
   }
 }
 
+export async function cancelAllScheduledNotifications() {
+  try {
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) return;
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch (e) {
+    console.warn('[notifications] Error cancelando notificaciones programadas', e);
+  }
+}
+
 /**
  * Programa una notificación local 30 minutos antes de la hora indicada.
  * dateStr: 'YYYY-MM-DD'
  * timeStr: 'HH:MM'
  */
 export async function scheduleReminderForActivity({ date, time, title, body }) {
+  const { notificationsEnabled = true } = arguments?.[0] || {};
+
+  if (!notificationsEnabled) return;
   if (!date || !time) return;
 
   const [year, month, day] = String(date).split('-').map(Number);

@@ -14,8 +14,10 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import MarketAddModal from './MarketAddModal';
+import VitaminsAddModal from './VitaminsAddModal';
 import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
+import { formatTimeFromDate } from '../utils/timeFormat';
 import { Picker } from '@react-native-picker/picker';
 import { translateHabitCategory } from '../utils/habitCategories';
 
@@ -101,7 +103,7 @@ export default function HabitFormModal({
   onChangeHabit,
 }) {
   const { t } = useI18n();
-  const { language, themeMode } = useSettings();
+  const { language, themeMode, timeFormat } = useSettings();
 
   const isDark = themeMode === 'dark';
 
@@ -131,6 +133,8 @@ export default function HabitFormModal({
   const [selectedColor, setSelectedColor] = useState('#38BDF8');
   const [marketAddVisible, setMarketAddVisible] = useState(false);
   const [marketAddFieldKey, setMarketAddFieldKey] = useState(null);
+  const [vitaminsAddVisible, setVitaminsAddVisible] = useState(false);
+  const [vitaminsAddFieldKey, setVitaminsAddFieldKey] = useState(null);
 
   useEffect(() => {
     if (editingActivity && initialSchedule) {
@@ -401,7 +405,7 @@ export default function HabitFormModal({
                 <TextInput
                   style={[styles.input, isDark && styles.inputDark, styles.marketInput, { width: 70 }]}
                   keyboardType="numeric"
-                  value={item.qty}
+                  value={String(item.qty ?? item.quantity ?? '')}
                   onChangeText={(v) => {
                     const copy = [...vitamins];
                     copy[i].qty = v;
@@ -421,18 +425,38 @@ export default function HabitFormModal({
 
             <Pressable
               style={styles.addBtn}
-              onPress={() =>
-                updateField(field.key, [
-                  ...(vitamins || []),
-                  { name: '', qty: '' },
-                ])
-              }
+              onPress={() => {
+                setVitaminsAddFieldKey(field.key);
+                setVitaminsAddVisible(true);
+              }}
             >
-              <Ionicons name="add-circle" size={20} color="#22c55e" />
-              <Text style={styles.addTxt}>
-                {t('habitForm.vitaminsAddButton')}
-              </Text>
+              <Ionicons name="add" size={22} color="#22c55e" />
             </Pressable>
+
+            <VitaminsAddModal
+              visible={vitaminsAddVisible}
+              onClose={() => setVitaminsAddVisible(false)}
+              onAdd={(newItem) => {
+                if (!vitaminsAddFieldKey) {
+                  setVitaminsAddVisible(false);
+                  return;
+                }
+
+                const incomingName = String(newItem?.name || '').trim();
+                if (!incomingName) {
+                  setVitaminsAddVisible(false);
+                  return;
+                }
+
+                const copy = [...(vitamins || [])];
+                copy.push({
+                  name: incomingName,
+                  qty: String(newItem?.quantity ?? ''),
+                });
+                updateField(vitaminsAddFieldKey, copy);
+                setVitaminsAddVisible(false);
+              }}
+            />
           </>
         );
       }
@@ -685,9 +709,7 @@ export default function HabitFormModal({
               <View style={styles.boxRight}>
                 <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
                   {time
-                    ? `${String(time.getHours()).padStart(2, '0')}:${String(
-                        time.getMinutes()
-                      ).padStart(2, '0')}`
+                    ? formatTimeFromDate(time, { language, timeFormat })
                     : 'Select the time'}
                 </Text>
                 <Ionicons name="time-outline" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />

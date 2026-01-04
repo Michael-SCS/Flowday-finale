@@ -1,14 +1,16 @@
 import 'react-native-get-random-values';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   Image,
+  FlatList,
   Alert,
   Modal,
   LayoutAnimation,
+  InteractionManager,
   Platform,
   UIManager,
   TextInput,
@@ -38,6 +40,7 @@ import {
   saveActivities as saveUserActivities,
 } from '../utils/localActivities';
 import { scheduleReminderForActivity } from '../utils/notifications';
+import { formatTimeFromHHmm } from '../utils/timeFormat';
 
 // Función para obtener la fecha local correctamente
 function getTodayLocal() {
@@ -358,7 +361,13 @@ LocaleConfig.defaultLocale = 'es';
 ========================= */
 
 export default function Calendar() {
-  const { themeColor, themeMode, language } = useSettings();
+  const {
+    themeColor,
+    themeMode,
+    language,
+    notificationsEnabled,
+    timeFormat,
+  } = useSettings();
   const { t } = useI18n();
   const accent = getAccentColor(themeColor);
   const isDark = themeMode === 'dark';
@@ -376,7 +385,172 @@ export default function Calendar() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState(null);
   const [editingActivity, setEditingActivity] = useState(null);
-  const [expandedHabitCategories, setExpandedHabitCategories] = useState({});
+  const [expandedHabitCategory, setExpandedHabitCategory] = useState(null);
+
+  const habitModalCategoryListRef = useRef(null);
+
+  const habitCategoriesData = useMemo(() => {
+    const order = [];
+    const grouped = {};
+
+    for (const habit of habits || []) {
+      const rawCategory = habit?.category || 'Sin categoría';
+      if (!grouped[rawCategory]) {
+        grouped[rawCategory] = [];
+        order.push(rawCategory);
+      }
+      grouped[rawCategory].push(habit);
+    }
+
+    return order.map((category) => ({
+      key: category,
+      category,
+      displayCategory: translateHabitCategory(category, language),
+      habits: grouped[category] || [],
+    }));
+  }, [habits, language]);
+
+  const categoryIconName = useCallback(
+    (category) => (
+      category === 'Cuida de ti' ? 'heart' :
+        category === 'Actividad física' ? 'fitness' :
+          category === 'Vive más sano' ? 'leaf' :
+            category === 'Aprende' ? 'school' :
+              category === 'Vida social' ? 'people' :
+                // Categorías anteriores (compatibilidad)
+                category === 'Hogar' ? 'home' :
+                  category === 'Vida económica' ? 'wallet' :
+                    category === 'Salud' ? 'fitness' :
+                      category === 'Social' ? 'people' :
+                        category === 'Productividad' ? 'briefcase' :
+                          'sparkles'
+    ),
+    []
+  );
+
+  const scrollToHabitCategoryIndex = useCallback((index) => {
+    InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => {
+        try {
+          habitModalCategoryListRef.current?.scrollToIndex?.({
+            index,
+            animated: true,
+            viewPosition: 0,
+          });
+        } catch (e) {
+          // best-effort
+        }
+      });
+    });
+  }, []);
+
+  const onToggleHabitCategory = useCallback(
+    (category, index) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+      const next = expandedHabitCategory === category ? null : category;
+      setExpandedHabitCategory(next);
+
+      if (next) {
+        scrollToHabitCategoryIndex(index);
+      }
+    },
+    [expandedHabitCategory, scrollToHabitCategoryIndex]
+  );
+
+  const onPickHabitFromModal = useCallback(
+    (habit) => {
+      setSelectedHabit(habit);
+      if (!isChangingHabit) {
+        setEditingActivity(null);
+        setEditingSchedule(null);
+      }
+      setShowHabitModal(false);
+      setTimeout(() => setShowFormModal(true), 150);
+      setIsChangingHabit(false);
+    },
+    [isChangingHabit]
+  );
+
+  const HabitCategoryRow = useMemo(() => {
+    return React.memo(function HabitCategoryRowInner({ item, index, isExpanded }) {
+      return (
+        <View style={styles.categorySection}>
+          <Pressable
+            style={styles.categoryHeader}
+            onPress={() => onToggleHabitCategory(item.category, index)}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <View style={[styles.categoryIconContainer, isDark && { backgroundColor: '#1f2937' }]}>
+                <Ionicons
+                  name={categoryIconName(item.category)}
+                  size={20}
+                  color={accent}
+                />
+              </View>
+              <Text style={[styles.categoryTitle, isDark && { color: '#e5e7eb' }]}>
+                {item.displayCategory}
+              </Text>
+            </View>
+            <Ionicons
+              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={isDark ? '#9ca3af' : '#6b7280'}
+            />
+          </Pressable>
+
+          {isExpanded ? (
+            <View style={styles.habitsGrid}>
+              {item.habits.map((habit) => (
+                <Pressable
+                  key={habit.id}
+                  style={[styles.habitItem, isDark && { backgroundColor: '#0b1120' }]}
+                  onPress={() => onPickHabitFromModal(habit)}
+                >
+                  <View style={styles.habitCardContent}>
+                    {habit.icon ? (
+                      <Image
+                        source={{ uri: habit.icon }}
+                        style={styles.habitCardImage}
+                        progressiveRenderingEnabled
+                        fadeDuration={150}
+                      />
+                    ) : (
+                      <View style={styles.habitImagePlaceholder}>
+                        <Ionicons name="sparkles" size={24} color="#38BDF8" />
+                      </View>
+                    )}
+                    <View style={styles.habitTextContainer}>
+                      <Text
+                        style={[styles.habitTitle, isDark && { color: '#e5e7eb' }]}
+                        numberOfLines={2}
+                      >
+                        {habit.title}
+                      </Text>
+                      {habit.description ? (
+                        <Text
+                          style={[styles.habitDescription, isDark && { color: '#9ca3af' }]}
+                          numberOfLines={3}
+                        >
+                          {habit.description}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      );
+    }, (prev, next) => {
+      // Only re-render when this row's expanded state changes, or when its data changes.
+      return (
+        prev.isExpanded === next.isExpanded &&
+        prev.item === next.item
+      );
+    });
+  }, [accent, categoryIconName, isDark, onPickHabitFromModal, onToggleHabitCategory]);
 
   const [marketModalVisible, setMarketModalVisible] = useState(false);
   const [marketModalData, setMarketModalData] = useState(null);
@@ -666,6 +840,7 @@ export default function Calendar() {
               time: updatedActivity.time,
               title: t('calendar.reminderTitle'),
               body: `${t('calendar.reminderBodyPrefix')} ${updatedActivity.title}`,
+              notificationsEnabled,
             });
           }
         }
@@ -843,6 +1018,7 @@ export default function Calendar() {
             time: newActivity.time,
             title: t('calendar.reminderTitle'),
             body: `${t('calendar.reminderBodyPrefix')} ${newActivity.title}`,
+            notificationsEnabled,
           });
         }
       });
@@ -1039,6 +1215,7 @@ export default function Calendar() {
           time: newActivity.time,
           title: t('calendar.reminderTitle'),
           body: `${t('calendar.reminderBodyPrefix')} ${newActivity.title}`,
+          notificationsEnabled,
         });
       }
     });
@@ -1708,13 +1885,27 @@ export default function Calendar() {
      UI
   ========================= */
 
-  const markedDates = Object.keys(activities).reduce((acc, d) => {
-    const dayActs = activities[d] || [];
-    const total = dayActs.length;
-    const completed = dayActs.filter((a) => a.completed).length;
-    const allCompleted = total > 0 && completed === total;
+  const {
+    markedDates,
+    selectedDayActs,
+    selectedTotal,
+    selectedCompleted,
+    selectedAllCompleted,
+  } = useMemo(() => {
+    const acc = {};
 
-    if (total > 0) {
+    for (const d of Object.keys(activities)) {
+      const dayActs = activities[d] || [];
+      const total = dayActs.length;
+      if (total <= 0) continue;
+
+      let completed = 0;
+      for (const a of dayActs) {
+        if (a?.completed) completed += 1;
+      }
+
+      const allCompleted = completed === total;
+
       if (allCompleted) {
         acc[d] = {
           marked: true,
@@ -1731,8 +1922,7 @@ export default function Calendar() {
           },
         };
       } else {
-        // Si alguna actividad del día tiene color personalizado, lo usamos
-        const dayColor = (dayActs.find((a) => a.data && a.data.color) || {}).data?.color || accent;
+        const dayColor = (dayActs.find((a) => a?.data?.color) || {})?.data?.color || accent;
         acc[d] = {
           marked: true,
           dotColor: dayColor,
@@ -1740,40 +1930,58 @@ export default function Calendar() {
       }
     }
 
-    return acc;
-  }, {});
+    const dayActs = activities[selectedDate] || [];
+    const total = dayActs.length;
+    let completed = 0;
+    for (const a of dayActs) {
+      if (a?.completed) completed += 1;
+    }
+    const allCompleted = total > 0 && completed === total;
 
-  const selectedDayActs = activities[selectedDate] || [];
-  const selectedTotal = selectedDayActs.length;
-  const selectedCompleted = selectedDayActs.filter((a) => a.completed).length;
-  const selectedAllCompleted = selectedTotal > 0 && selectedCompleted === selectedTotal;
+    acc[selectedDate] = {
+      ...(acc[selectedDate] || {}),
+      customStyles: allCompleted
+        ? {
+            container: {
+              backgroundColor: '#22c55e',
+              borderRadius: 16,
+              borderWidth: 2,
+              borderColor: '#16a34a',
+            },
+            text: {
+              color: '#f0fdf4',
+              fontWeight: '800',
+            },
+          }
+        : {
+            container: {
+              backgroundColor: accent,
+              borderRadius: 16,
+            },
+            text: {
+              color: '#ffffff',
+              fontWeight: '800',
+            },
+          },
+    };
 
-  markedDates[selectedDate] = {
-    ...(markedDates[selectedDate] || {}),
-    customStyles: selectedAllCompleted
-      ? {
-          container: {
-            backgroundColor: '#22c55e',
-            borderRadius: 16,
-            borderWidth: 2,
-            borderColor: '#16a34a',
-          },
-          text: {
-            color: '#f0fdf4',
-            fontWeight: '800',
-          },
-        }
-      : {
-          container: {
-            backgroundColor: accent,
-            borderRadius: 16,
-          },
-          text: {
-            color: '#ffffff',
-            fontWeight: '800',
-          },
-        },
-  };
+    return {
+      markedDates: acc,
+      selectedDayActs: dayActs,
+      selectedTotal: total,
+      selectedCompleted: completed,
+      selectedAllCompleted: allCompleted,
+    };
+  }, [activities, accent, selectedDate]);
+
+  const selectedDayActsSorted = useMemo(() => {
+    if (!selectedDayActs?.length) return [];
+    return [...selectedDayActs].sort((a, b) => {
+      const aMin = timeStringToMinutes(a?.time) ?? Number.POSITIVE_INFINITY;
+      const bMin = timeStringToMinutes(b?.time) ?? Number.POSITIVE_INFINITY;
+      return aMin - bMin;
+    });
+  }, [selectedDayActs]);
 
   return (
     <SafeAreaView style={[styles.safe, isDark && { backgroundColor: '#020617' }]}>
@@ -1799,14 +2007,8 @@ export default function Calendar() {
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
           >
-            {activities[selectedDate]?.length ? (
-              [...(activities[selectedDate] || [])]
-                .sort((a, b) => {
-                  const aMin = timeStringToMinutes(a.time) ?? Number.POSITIVE_INFINITY;
-                  const bMin = timeStringToMinutes(b.time) ?? Number.POSITIVE_INFINITY;
-                  return aMin - bMin;
-                })
-                .map((activity) => {
+            {selectedDayActsSorted.length ? (
+              selectedDayActsSorted.map((activity) => {
                 // IMPORTANTE: Agregamos la fecha al objeto activity
                 const activityWithDate = {
                   ...activity,
@@ -1850,10 +2052,18 @@ export default function Calendar() {
 
                 const timeRangeText = (() => {
                   if (!activityWithDate.time) return null;
+                  const start = formatTimeFromHHmm(activityWithDate.time, {
+                    language,
+                    timeFormat,
+                  });
                   if (activityWithDate.endTime && activityWithDate.endTime !== activityWithDate.time) {
-                    return `${activityWithDate.time} - ${activityWithDate.endTime}`;
+                    const end = formatTimeFromHHmm(activityWithDate.endTime, {
+                      language,
+                      timeFormat,
+                    });
+                    return `${start} - ${end}`;
                   }
-                  return activityWithDate.time;
+                  return start;
                 })();
 
                 let friendlySubtitle = null;
@@ -2557,16 +2767,16 @@ export default function Calendar() {
             onPress={() => setVitaminsModalVisible(false)}
           />
           <Pressable
-            style={styles.modal}
+            style={[styles.modal, isDark && { backgroundColor: '#020617' }]}
             onPress={(e) => e.stopPropagation()}
           >
             {vitaminsModalData && (
               <>
-                <View style={styles.modalHeader}>
-                  <View style={styles.modalHandle} />
+                <View style={[styles.modalHeader, isDark && { borderBottomColor: '#0f172a' }]}>
+                  <View style={[styles.modalHandle, isDark && { backgroundColor: '#0f172a' }]} />
                   <View style={styles.modalTitleContainer}>
                     <Ionicons name="medkit" size={24} color="#22c55e" />
-                    <Text style={styles.modalTitle}>
+                    <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>
                       {vitaminsModalData.vitaminsLabel ||
                         t('calendar.vitaminsDefaultTitle')}
                     </Text>
@@ -2601,14 +2811,19 @@ export default function Calendar() {
                   keyboardShouldPersistTaps="handled"
                 >
                   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
                       {getDisplayTitle(vitaminsModalData.activity)}
                     </Text>
-                    <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                    <Text style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', marginTop: 4 }}>
                       {formatDate(vitaminsModalData.activity.date, language)}
                     </Text>
 
-                    <View style={styles.checklistSection}>
+                    <View
+                      style={[
+                        styles.checklistSection,
+                        isDark && { backgroundColor: '#0b1120', borderWidth: 1, borderColor: '#1e293b' },
+                      ]}
+                    >
                       <View style={styles.checklistHeader}>
                         <View style={styles.checklistIconBg}>
                           <Ionicons name="medkit" size={16} color="#22c55e" />
@@ -2643,6 +2858,7 @@ export default function Calendar() {
                         return (
                           <VitaminsTable
                             items={allItems}
+                            isDark={isDark}
                             onToggle={(index) =>
                               toggleChecklistItem(
                                 vitaminsModalData.activity,
@@ -2824,117 +3040,30 @@ export default function Calendar() {
                 </Text>
               </View>
             ) : (
-              <ScrollView
+              <FlatList
+                ref={habitModalCategoryListRef}
+                data={habitCategoriesData}
+                keyExtractor={(it) => it.key}
+                renderItem={({ item, index }) => (
+                  <HabitCategoryRow
+                    item={item}
+                    index={index}
+                    isExpanded={expandedHabitCategory === item.category}
+                  />
+                )}
+                onScrollToIndexFailed={(info) => {
+                  const offset = info.averageItemLength * info.index;
+                  habitModalCategoryListRef.current?.scrollToOffset?.({ offset, animated: true });
+                }}
+                removeClippedSubviews
+                initialNumToRender={6}
+                windowSize={7}
+                maxToRenderPerBatch={6}
+                updateCellsBatchingPeriod={50}
                 showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
                 keyboardShouldPersistTaps="handled"
-              >
-                {/* Agrupar hábitos por categoría */}
-                {Object.entries(
-                  habits.reduce((acc, habit) => {
-                    const rawCategory = habit.category || 'Sin categoría';
-                    if (!acc[rawCategory]) acc[rawCategory] = [];
-                    acc[rawCategory].push(habit);
-                    return acc;
-                  }, {})
-                ).map(([category, categoryHabits]) => {
-                  const displayCategory = translateHabitCategory(category, language);
-                  const isExpanded = expandedHabitCategories[category] === true;
-
-                  return (
-                  <View key={category} style={styles.categorySection}>
-                    <Pressable
-                      style={styles.categoryHeader}
-                      onPress={() =>
-                        setExpandedHabitCategories((prev) => ({
-                          ...prev,
-                          [category]: !(prev[category] === true),
-                        }))
-                      }
-                    >
-                      <View style={styles.categoryHeaderLeft}>
-                        <View style={[styles.categoryIconContainer, isDark && { backgroundColor: '#1f2937' }]}>
-                          <Ionicons
-                            name={
-                              category === 'Cuida de ti' ? 'heart' :
-                                category === 'Actividad física' ? 'fitness' :
-                                  category === 'Vive más sano' ? 'leaf' :
-                                    category === 'Aprende' ? 'school' :
-                                      category === 'Vida social' ? 'people' :
-                                        // Categorías anteriores (compatibilidad)
-                                        category === 'Hogar' ? 'home' :
-                                          category === 'Vida económica' ? 'wallet' :
-                                            category === 'Salud' ? 'fitness' :
-                                              category === 'Social' ? 'people' :
-                                                category === 'Productividad' ? 'briefcase' :
-                                                  'sparkles'
-                            }
-                            size={20}
-                            color={accent}
-                          />
-                        </View>
-                        <Text style={[styles.categoryTitle, isDark && { color: '#e5e7eb' }]}>{displayCategory}</Text>
-                      </View>
-                      <Ionicons
-                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={18}
-                        color={isDark ? '#9ca3af' : '#6b7280'}
-                      />
-                    </Pressable>
-
-                    {isExpanded ? (
-                      <View style={styles.habitsGrid}>
-                        {categoryHabits.map((habit) => (
-                          <Pressable
-                            key={habit.id}
-                            style={[styles.habitItem, isDark && { backgroundColor: '#0b1120' }]}
-                            onPress={() => {
-                              setSelectedHabit(habit);
-                              if (!isChangingHabit) {
-                                setEditingActivity(null);
-                                setEditingSchedule(null);
-                              }
-                              setShowHabitModal(false);
-                              setTimeout(() => setShowFormModal(true), 150);
-                              setIsChangingHabit(false);
-                            }}
-                          >
-                            <View style={styles.habitCardContent}>
-                              {habit.icon ? (
-                                <Image
-                                  source={{ uri: habit.icon }}
-                                  style={styles.habitCardImage}
-                                  progressiveRenderingEnabled
-                                  fadeDuration={150}
-                                />
-                              ) : (
-                                <View style={styles.habitImagePlaceholder}>
-                                  <Ionicons name="sparkles" size={24} color="#38BDF8" />
-                                </View>
-                              )}
-                              <View style={styles.habitTextContainer}>
-                                <Text style={[styles.habitTitle, isDark && { color: '#e5e7eb' }]} numberOfLines={2}>
-                                  {habit.title}
-                                </Text>
-                                {habit.description ? (
-                                  <Text
-                                    style={[styles.habitDescription, isDark && { color: '#9ca3af' }]}
-                                    numberOfLines={3}
-                                  >
-                                    {habit.description}
-                                  </Text>
-                                ) : null}
-                              </View>
-                            </View>
-                          </Pressable>
-                        ))}
-                      </View>
-                    ) : null}
-                  </View>
-                  );
-                })}
-                <View style={{ height: 20 }} />
-              </ScrollView>
+                contentContainerStyle={{ paddingBottom: 20 }}
+              />
             )}
           </View>
         </View>

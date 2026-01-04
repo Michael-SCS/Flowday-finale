@@ -59,3 +59,15 @@ supabase functions deploy check-email
 await supabase.functions.invoke('check-email', { body: { email } })
 // -> { data: { ok: true, exists: boolean } }
 ```
+
+---
+
+# Feedback (v1)
+
+For v1, feedback is stored directly in the database (no email provider, no additional Edge Functions).
+
+- Table: `public.feedback`
+- Migration: `supabase/migrations/20260104120000_create_feedback_table.sql`
+- The app inserts rows via `supabase.from('feedback').insert(...)`.
+
+You can read feedback messages from the Supabase Dashboard (Table editor / SQL) using service role privileges.

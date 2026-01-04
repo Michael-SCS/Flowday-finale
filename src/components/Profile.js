@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image, Alert, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,11 +15,23 @@ import { useTour } from '../utils/tourContext';
 import { useProStatus } from '../utils/proStatus';
 import { loadActivities as loadUserActivities } from '../utils/localActivities';
 import { clearPomodoroStats } from '../utils/pomodoroStats';
+import { cancelAllScheduledNotifications } from '../utils/notifications';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const { signOut } = useAuth();
-  const { themeColor, themeMode, language, setThemeColor, setThemeMode, setLanguage } = useSettings();
+  const {
+    themeColor,
+    themeMode,
+    language,
+    notificationsEnabled,
+    timeFormat,
+    setThemeColor,
+    setThemeMode,
+    setLanguage,
+    setNotificationsEnabled,
+    setTimeFormat,
+  } = useSettings();
   const { t } = useI18n();
   const { openTour } = useTour();
   const { isPro } = useProStatus();
@@ -45,10 +57,54 @@ export default function ProfileScreen() {
   const [edad, setEdad] = useState('');
   const [genero, setGenero] = useState('');
   const [languageValue, setLanguageValue] = useState(language || 'es');
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackSending, setFeedbackSending] = useState(false);
   const genderKeys = ['male', 'female', 'nonBinary', 'genderFluid', 'preferNotSay', 'other'];
   const genderOptions = genderKeys.map((k) => t(`profile.genderOptions.${k}`));
 
   const supportedLanguageKeys = ['es', 'en', 'pt', 'fr'];
+
+  async function sendFeedbackInApp(message) {
+    const trimmed = String(message || '').trim();
+    if (!trimmed) return;
+
+    setFeedbackSending(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const sessionUser = session?.user ?? null;
+      if (!sessionUser) {
+        Alert.alert(t('profile.feedbackTitle'), t('profile.loadUserError'));
+        return;
+      }
+
+      // Insert minimal payload; DB/RLS should derive user_id from auth.uid().
+      const { error } = await supabase.from('feedback').insert({
+        user_mail: sessionUser.email ?? null,
+        message: trimmed,
+      });
+
+      if (error) throw error;
+
+      Alert.alert(t('profile.feedbackTitle'), t('profile.feedbackSendSuccess'));
+      setShowFeedbackModal(false);
+      setFeedbackText('');
+    } catch (e) {
+      // Surface the underlying Supabase error to make setup issues (RLS/grants) actionable.
+      const details =
+        (e && typeof e === 'object' && (e.message || e.error_description || e.details || e.hint))
+          ? [e.message, e.error_description, e.details, e.hint].filter(Boolean).join('\n')
+          : String(e);
+
+      console.error('Feedback send failed', e);
+      Alert.alert(t('profile.feedbackTitle'), `${t('profile.feedbackSendError')}\n\n${details}`);
+    } finally {
+      setFeedbackSending(false);
+    }
+  }
 
   const getYearsSuffix = () => {
     const suffix = t('profile.yearsSuffix');
@@ -945,6 +1001,115 @@ export default function ProfileScreen() {
                     </View>
                   </View>
 
+                  {/* NOTIFICACIONES */}
+                  <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
+                    <View style={styles.settingsCardHeader}>
+                      <View style={[styles.settingsCardIcon, { backgroundColor: `${accent}20` }]}>
+                        <Ionicons name="notifications" size={20} color={accent} />
+                      </View>
+                      <Text style={[styles.settingsCardTitle, isDark && { color: '#e5e7eb' }]}>
+                        {t('profile.notificationsTitle')}
+                      </Text>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                      <View style={styles.inputField}>
+                        <View style={[styles.rowBetween, { alignItems: 'center' }]}>
+                          <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>
+                            {t('profile.notificationsEnabled')}
+                          </Text>
+                          <Switch
+                            value={!!notificationsEnabled}
+                            onValueChange={async (v) => {
+                              await setNotificationsEnabled(!!v);
+                              if (!v) {
+                                await cancelAllScheduledNotifications();
+                              }
+                            }}
+                            trackColor={{ false: '#e5e7eb', true: `${accent}66` }}
+                            thumbColor={notificationsEnabled ? accent : '#9ca3af'}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* FORMATO DE HORA */}
+                  <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
+                    <View style={styles.settingsCardHeader}>
+                      <View style={[styles.settingsCardIcon, { backgroundColor: `${accent}20` }]}>
+                        <Ionicons name="time" size={20} color={accent} />
+                      </View>
+                      <Text style={[styles.settingsCardTitle, isDark && { color: '#e5e7eb' }]}>
+                        {t('profile.timeFormatTitle')}
+                      </Text>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                      <View style={styles.inputField}>
+                        <View style={styles.languageGrid}>
+                          {[
+                            { key: 'system', label: t('profile.timeFormatSystem'), icon: 'settings-outline' },
+                            { key: '12h', label: t('profile.timeFormat12h'), icon: 'sunny-outline' },
+                            { key: '24h', label: t('profile.timeFormat24h'), icon: 'moon-outline' },
+                          ].map((opt) => {
+                            const isActive = opt.key === timeFormat;
+                            return (
+                              <Pressable
+                                key={opt.key}
+                                style={[
+                                  styles.languageOption,
+                                  isActive && [styles.languageOptionActive, { borderColor: accent }],
+                                  isDark && { backgroundColor: '#020617', borderColor: '#1e293b' },
+                                ]}
+                                onPress={() => setTimeFormat(opt.key)}
+                              >
+                                <Ionicons
+                                  name={opt.icon}
+                                  size={18}
+                                  color={isActive ? accent : isDark ? '#e5e7eb' : '#64748b'}
+                                />
+                                <Text
+                                  style={[
+                                    styles.languageLabel,
+                                    isActive && { color: accent, fontWeight: '700' },
+                                    isDark && !isActive && { color: '#cbd5e1' },
+                                  ]}
+                                >
+                                  {opt.label}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* FEEDBACK */}
+                  <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
+                    <View style={styles.settingsCardHeader}>
+                      <View style={[styles.settingsCardIcon, { backgroundColor: `${accent}20` }]}>
+                        <Ionicons name="chatbubble-ellipses" size={20} color={accent} />
+                      </View>
+                      <Text style={[styles.settingsCardTitle, isDark && { color: '#e5e7eb' }]}>
+                        {t('profile.feedbackTitle')}
+                      </Text>
+                    </View>
+
+                    <Pressable style={styles.policyLink} onPress={() => setShowFeedbackModal(true)}>
+                      <View style={styles.policyLinkContent}>
+                        <View style={[styles.policyLinkIcon, { backgroundColor: `${accent}15` }]}>
+                          <Ionicons name="chatbubble-ellipses-outline" size={18} color={accent} />
+                        </View>
+                        <Text style={[styles.policyLinkText, { color: accent }]}>
+                          {t('profile.feedbackOpen')}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                    </Pressable>
+                  </View>
+
                   {/* POLÍTICA DE PRIVACIDAD */}
                   <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
                     <Pressable
@@ -1061,6 +1226,95 @@ export default function ProfileScreen() {
               </View>
             </Pressable>
           </Pressable>
+        </Modal>
+
+        {/* MODAL FEEDBACK */}
+        <Modal
+          visible={showFeedbackModal}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowFeedbackModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, isDark && { backgroundColor: '#020617' }]}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalHandle} />
+                <View style={styles.modalTitleRow}>
+                  <View style={[styles.modalIconCircle, { backgroundColor: `${accent}20` }]}>
+                    <Ionicons name="chatbubble-ellipses" size={24} color={accent} />
+                  </View>
+                  <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>
+                    {t('profile.feedbackTitle')}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setShowFeedbackModal(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons name="close" size={26} color="#6b7280" />
+                </Pressable>
+              </View>
+
+              <View style={styles.settingsBody}>
+                <ScrollView
+                  style={styles.modalScroll}
+                  contentContainerStyle={styles.modalScrollContent}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
+                    <View style={styles.inputGroup}>
+                      <View style={styles.inputField}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>
+                          {t('profile.feedbackMessageLabel')}
+                        </Text>
+                        <View style={[styles.inputContainer, { alignItems: 'flex-start' }, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
+                          <TextInput
+                            style={[styles.textInput, { minHeight: 120, textAlignVertical: 'top' }, isDark && { color: '#e5e7eb' }]}
+                            value={feedbackText}
+                            onChangeText={setFeedbackText}
+                            placeholder={t('profile.feedbackMessagePlaceholder')}
+                            placeholderTextColor="#9ca3af"
+                            multiline
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={{ height: 100 }} />
+                </ScrollView>
+
+                <View style={[styles.floatingButtonContainer, isDark && { backgroundColor: '#020617', borderTopColor: '#1e293b' }]}>
+                  <Pressable
+                    style={[
+                      styles.saveButton,
+                      { backgroundColor: accent },
+                      feedbackSending && styles.saveButtonDisabled,
+                    ]}
+                    onPress={async () => {
+                      if (feedbackSending) return;
+                      const msg = String(feedbackText || '').trim();
+                      if (!msg) {
+                        Alert.alert(t('profile.feedbackTitle'), t('profile.feedbackEmpty'));
+                        return;
+                      }
+                      await sendFeedbackInApp(msg);
+                    }}
+                    disabled={feedbackSending}
+                  >
+                    {feedbackSending ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="send" size={22} color="#fff" />
+                    )}
+                    <Text style={styles.saveButtonText}>
+                      {feedbackSending ? t('profile.feedbackSending') : t('profile.feedbackSend')}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </View>
         </Modal>
       </View>
     </SafeAreaView>
@@ -1594,6 +1848,11 @@ const styles = StyleSheet.create({
   },
   inputField: {
     gap: 8,
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   inputLabel: {
     fontSize: 14,
