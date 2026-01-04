@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import OnboardingSlides from '../components/onboarding/OnboardingSlides';
+import AppSettings from '../components/onboarding/AppSettings';
 import RegisterForm from '../components/onboarding/RegisterForm';
 import ProfileForm from '../components/onboarding/ProfileForm';
-import AppSettings from '../components/onboarding/AppSettings';
 import OnboardingFinal from '../components/onboarding/OnboardingFinal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../utils/supabase';
@@ -17,15 +16,6 @@ export default function OnboardingNavigator({ navigation }) {
       try {
         // If onboarding is being shown, mark it as in-progress so auth changes
         // (e.g. after signup) don't reset the root to the App mid-flow.
-        try {
-          const shown = await AsyncStorage.getItem('device_onboarding_shown');
-          if (shown !== 'true') {
-            await AsyncStorage.setItem('onboarding_in_progress', 'true');
-          }
-        } catch {
-          // ignore
-        }
-
         const inProgress = await AsyncStorage.getItem('onboarding_in_progress');
         const sess = await supabase.auth.getSession();
         const user = sess?.data?.session?.user ?? (await supabase.auth.getUser()).data.user;
@@ -50,9 +40,8 @@ export default function OnboardingNavigator({ navigation }) {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Slides" component={OnboardingSlides} />
       <Stack.Screen name="AppSettings" component={AppSettings} />
-      <Stack.Screen name="Register" component={RegisterForm} />
+      <Stack.Screen name="RegisterForm" component={RegisterForm} />
       <Stack.Screen name="Profile" component={ProfileForm} />
       <Stack.Screen name="Final" component={OnboardingFinal} />
     </Stack.Navigator>

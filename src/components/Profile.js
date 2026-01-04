@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../auth/AuthProvider';
 import { useSettings, getAccentColor } from '../utils/settingsContext';
@@ -34,6 +35,7 @@ export default function ProfileScreen() {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const [statsLoading, setStatsLoading] = useState(false);
   const [stats, setStats] = useState(null);
@@ -105,10 +107,10 @@ export default function ProfileScreen() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        // No authenticated user — update auth state so RootNavigator shows Login
-        try {
-          await signOut();
-        } catch (e) {}
+        // Don't force sign-out here. A transient error (network) can make getUser fail.
+        // Root navigation will handle auth state; this screen just shows an error.
+        setError(t('profile.loadUserError'));
+        setProfile(null);
         return;
       }
 
@@ -125,10 +127,10 @@ export default function ProfileScreen() {
       }
 
       if (!data) {
-        // No profile configured for this user — update auth state to show Login
-        try {
-          await signOut();
-        } catch (e) {}
+        // Don't sign out if the profile row is missing.
+        // Show a clear message instead.
+        setError(t('profile.noProfileConfigured'));
+        setProfile(null);
         return;
       }
 
@@ -267,6 +269,76 @@ export default function ProfileScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const purgeLocalUserData = async () => {
+    await Promise.allSettled([
+      clearLocalHabits(),
+      clearActivities(),
+      clearHabitCache(),
+      clearPomodoroStats(),
+      AsyncStorage.removeItem('device_onboarding_shown'),
+      AsyncStorage.removeItem('onboarding_in_progress'),
+      AsyncStorage.removeItem('onboarding_profile_payload'),
+    ]);
+  };
+
+  const performAccountDeletion = async () => {
+    if (deletingAccount) return;
+
+    try {
+      setDeletingAccount(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        try {
+          await signOut();
+        } catch {}
+        return;
+      }
+
+      let deletedViaFunction = false;
+      try {
+        const res = await supabase.functions.invoke('delete-account', { body: {} });
+        if (!res?.error) deletedViaFunction = true;
+      } catch {
+        deletedViaFunction = false;
+      }
+
+      // Fallback: best-effort cleanup of public user data.
+      if (!deletedViaFunction) {
+        try {
+          await supabase.from('user_onboarding').delete().eq('user_id', user.id);
+        } catch {}
+        try {
+          await supabase.from('profiles').delete().eq('id', user.id);
+        } catch {}
+      }
+
+      await purgeLocalUserData();
+      await signOut();
+    } catch {
+      Alert.alert(t('profile.deleteAccountErrorTitle'), t('profile.deleteAccountErrorMessage'));
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    if (deletingAccount) return;
+    Alert.alert(
+      t('profile.deleteAccountTitle'),
+      t('profile.deleteAccountMessage'),
+      [
+        { text: t('profile.cancel'), style: 'cancel' },
+        { text: t('profile.deleteAccountConfirm'), style: 'destructive', onPress: performAccountDeletion },
+      ]
+    );
   };
 
   // Logout has been disabled: users cannot sign out from the app.
@@ -588,11 +660,11 @@ export default function ProfileScreen() {
                     <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
                       <Ionicons name="happy" size={18} color={accent} />
                     </View>
-                    <Text style={styles.policySubtitle}>
+                    <Text style={[styles.policySubtitle, isDark && { color: '#e5e7eb' }]}>
                       {t('profile.privacyMinorsTitle')}
                     </Text>
                   </View>
-                  <Text style={styles.modalText}>
+                  <Text style={[styles.modalText, isDark && { color: '#cbd5e1' }]}>
                     {t('profile.privacyMinorsText')}
                   </Text>
                 </View>
@@ -602,11 +674,11 @@ export default function ProfileScreen() {
                     <View style={[styles.policySectionIcon, { backgroundColor: `${accent}15` }]}>
                       <Ionicons name="sync" size={18} color={accent} />
                     </View>
-                    <Text style={styles.policySubtitle}>
+                    <Text style={[styles.policySubtitle, isDark && { color: '#e5e7eb' }]}>
                       {t('profile.privacyChangesTitle')}
                     </Text>
                   </View>
-                  <Text style={styles.modalText}>
+                  <Text style={[styles.modalText, isDark && { color: '#cbd5e1' }]}>
                     {t('profile.privacyChangesText')}
                   </Text>
                 </View>
@@ -615,7 +687,7 @@ export default function ProfileScreen() {
                   <View style={styles.acceptanceIconWrapper}>
                     <Ionicons name="checkmark-circle" size={28} color={accent} />
                   </View>
-                  <Text style={styles.acceptanceText}>
+                  <Text style={[styles.acceptanceText, { color: '#111827' }]}>
                     {t('profile.privacyAcceptanceText')}
                   </Text>
                 </View>
@@ -886,6 +958,27 @@ export default function ProfileScreen() {
                         <Text style={[styles.policyLinkText, { color: accent }]}>
                           {t('profile.privacyPolicy')}
                         </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                    </Pressable>
+                  </View>
+
+                  {/* BORRAR CUENTA */}
+                  <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
+                    <Pressable
+                      style={styles.policyLink}
+                      onPress={handleDeleteAccount}
+                      disabled={deletingAccount}
+                    >
+                      <View style={styles.policyLinkContent}>
+                        <View style={[styles.policyLinkIcon, { backgroundColor: '#ef444420' }]}>
+                          {deletingAccount ? (
+                            <ActivityIndicator size="small" color="#ef4444" />
+                          ) : (
+                            <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                          )}
+                        </View>
+                        <Text style={[styles.policyLinkText, { color: '#ef4444' }]}>{t('profile.deleteAccount')}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
                     </Pressable>

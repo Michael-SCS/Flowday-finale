@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
-import { useSettings } from '../../utils/settingsContext';
+import { getAccentColor, useSettings } from '../../utils/settingsContext';
 import { useI18n } from '../../utils/i18n';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AppSettings({ navigation, route }) {
   const { t } = useI18n();
-  const { language: currentLanguage, themeMode: currentThemeMode, setLanguage, setThemeMode, setLanguageTemp } = useSettings();
+  const insets = useSafeAreaInsets();
+  const {
+    language: currentLanguage,
+    themeMode: currentThemeMode,
+    themeColor,
+    setThemeColor,
+    setLanguage,
+    setThemeMode,
+    setLanguageTemp,
+  } = useSettings();
 
   // If we came here directly from the slides, force the UI to show English
   // so the language choice step is presented in English.
@@ -18,6 +28,7 @@ export default function AppSettings({ navigation, route }) {
   }, []);
 
   const [loading, setLoading] = useState(false);
+  const accent = getAccentColor(themeColor);
 
   const Option = ({ onPress, active, children, fullWidth = false }) => {
     const isDark = currentThemeMode === 'dark';
@@ -29,12 +40,12 @@ export default function AppSettings({ navigation, route }) {
           fullWidth && styles.optBtnFull,
           {
             backgroundColor: active 
-              ? (isDark ? '#6366f1' : '#4f46e5')
+              ? accent
               : (isDark ? '#1e293b' : '#ffffff'),
             borderColor: active 
-              ? (isDark ? '#818cf8' : '#6366f1')
+              ? accent
               : (isDark ? '#334155' : '#e2e8f0'),
-            shadowColor: active ? '#6366f1' : '#000',
+            shadowColor: active ? accent : '#000',
             shadowOpacity: active ? 0.3 : 0.05,
             shadowOffset: { width: 0, height: active ? 4 : 2 },
             shadowRadius: active ? 8 : 4,
@@ -67,7 +78,7 @@ export default function AppSettings({ navigation, route }) {
     try {
       // Onboarding requirement: do NOT send anything to Supabase here.
       // Continue the onboarding flow to registration.
-      navigation.replace('Register', { onboarding: true, fromSettings: true });
+      navigation.replace('RegisterForm', { onboarding: true, fromSettings: true });
     } catch (err) {
       Alert.alert('Error', err.message || 'No se pudo guardar la configuración');
     } finally {
@@ -78,19 +89,20 @@ export default function AppSettings({ navigation, route }) {
   const isDark = currentThemeMode === 'dark';
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f8fafc' }]}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f8fafc' }]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: 40 + (insets?.bottom || 0) }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
         <Text style={[styles.title, { color: isDark ? '#f1f5f9' : '#0f172a' }]}>
           {t('profile.settingsModalTitle')}
         </Text>
         <Text style={[styles.subtitle, { color: isDark ? '#94a3b8' : '#64748b' }]}>
           Personaliza tu experiencia
         </Text>
-      </View>
+        </View>
 
       <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
         <View style={styles.section}>
@@ -136,12 +148,41 @@ export default function AppSettings({ navigation, route }) {
         </View>
       </View>
 
+      <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.icon}>🟦</Text>
+            <Text style={[styles.label, { color: isDark ? '#f1f5f9' : '#1e293b' }]}>
+              {t('profile.interfaceColor')}
+            </Text>
+          </View>
+          <View style={styles.optionsGrid}>
+            <Option onPress={() => setThemeColor('blue')} active={themeColor === 'blue'} fullWidth>
+              {t('profile.colorBlue')}
+            </Option>
+            <Option onPress={() => setThemeColor('pink')} active={themeColor === 'pink'} fullWidth>
+              {t('profile.colorPink')}
+            </Option>
+            <Option onPress={() => setThemeColor('yellow')} active={themeColor === 'yellow'} fullWidth>
+              {t('profile.colorYellow')}
+            </Option>
+            <Option onPress={() => setThemeColor('purple')} active={themeColor === 'purple'} fullWidth>
+              {t('profile.colorPurple')}
+            </Option>
+            <Option onPress={() => setThemeColor('teal')} active={themeColor === 'teal'} fullWidth>
+              {t('profile.colorTeal')}
+            </Option>
+          </View>
+        </View>
+      </View>
+
       <TouchableOpacity 
         style={[
           styles.saveBtn,
           { 
-            backgroundColor: isDark ? '#10b981' : '#16a34a',
+            backgroundColor: accent,
             opacity: loading ? 0.7 : 1,
+            shadowColor: accent,
           }
         ]} 
         onPress={finish} 
@@ -152,7 +193,8 @@ export default function AppSettings({ navigation, route }) {
           {loading ? '⏳ ' + t('profile.saving') : '✓ ' + t('profile.save')}
         </Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -160,10 +202,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scroll: {
+    flex: 1,
+  },
   contentContainer: {
     padding: 20,
     paddingTop: 40,
-    paddingBottom: 40,
   },
   header: {
     marginBottom: 32,

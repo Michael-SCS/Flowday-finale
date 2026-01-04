@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useI18n } from '../../utils/i18n';
 
@@ -80,17 +79,23 @@ export default function RegisterForm({ navigation, route }) {
 
     setLoading(true);
     try {
-      // Mark onboarding as in-progress BEFORE auth changes, so RootNavigator
-      // won't jump to the App when the session appears.
-      try { await AsyncStorage.setItem('onboarding_in_progress', 'true'); } catch (e) {}
+      // Onboarding requirement: do NOT create the user in Supabase here.
+      // Save credentials locally; the real signUp happens in OnboardingFinal.
+      try {
+        await AsyncStorage.setItem(
+          'onboarding_auth_payload',
+          JSON.stringify({ email: String(email).trim(), password: String(password) })
+        );
+      } catch (e) {
+        // ignore
+      }
 
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      // After signing up inside onboarding, proceed to profile step.
-      // Mark onboarding as in-progress so RootNavigator won't jump to App.
-      navigation.replace('Profile', { onboarding: true, fromRegistration: true, fromSettings: route?.params?.fromSettings });
+      navigation.replace('Profile', {
+        onboarding: true,
+        fromRegistration: true,
+        fromSettings: route?.params?.fromSettings,
+      });
     } catch (err) {
-      try { await AsyncStorage.removeItem('onboarding_in_progress'); } catch (e) {}
       alert(err.message || String(err));
     } finally {
       setLoading(false);

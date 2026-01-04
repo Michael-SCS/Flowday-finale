@@ -1,22 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from './supabase';
+import { getCurrentUserId, userScopedKey } from './userScope';
 
 const KEY = 'FLUU_CUSTOM_HABITS';
 
-let _cachedUserId = null;
-let _cachedUserKey = null;
-
 async function getUserKey() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-  if (_cachedUserId === user.id && _cachedUserKey) return _cachedUserKey;
-
-  _cachedUserId = user.id;
-  _cachedUserKey = `${KEY}_${user.id}`;
-  return _cachedUserKey;
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+  return userScopedKey(KEY, userId);
 }
 
 /* Obtener hábitos personalizados */

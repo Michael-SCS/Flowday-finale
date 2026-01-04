@@ -1,14 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { translate } from './i18n';
+import { getCurrentUserId } from './userScope';
 
 // v2: incluimos versión en la clave para evitar usar cache antiguo
 const CACHE_KEY_BASE = '@fluu_habit_templates_v2';
 const CACHE_TIME_KEY_BASE = '@fluu_habit_templates_time_v2';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 horas
 const SUPPORTED_LANGUAGES = ['es', 'en', 'fr', 'pt', 'de'];
-
-let _cachedUser = null;
 
 function parseConfig(config) {
   if (!config) return null;
@@ -119,20 +118,14 @@ function localizeTemplates(templates, language) {
 }
 
 async function getUserCacheKeys(language = 'es') {
-  if (!_cachedUser) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    _cachedUser = user || null;
-  }
-
-  if (!_cachedUser) {
+  const userId = getCurrentUserId();
+  if (!userId) {
     return { user: null, cacheKey: null, cacheTimeKey: null };
   }
 
-  const suffix = `_${_cachedUser.id}`;
+  const suffix = `_${userId}`;
   return {
-    user: _cachedUser,
+    user: { id: userId },
     cacheKey: `${CACHE_KEY_BASE}${suffix}_${language}`,
     cacheTimeKey: `${CACHE_TIME_KEY_BASE}${suffix}_${language}`,
   };
@@ -280,13 +273,10 @@ async function refreshInBackground(language = 'es') {
 
 // Limpiar cache de plantillas de hábitos del usuario actual
 export async function clearHabitCache() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = getCurrentUserId();
+  if (!userId) return;
 
-  if (!user) return;
-
-  const suffix = `_${user.id}`;
+  const suffix = `_${userId}`;
   const languages = SUPPORTED_LANGUAGES;
   const keysToRemove = [];
 
@@ -298,5 +288,4 @@ export async function clearHabitCache() {
   }
 
   await AsyncStorage.multiRemove(keysToRemove);
-  _cachedUser = null;
 }

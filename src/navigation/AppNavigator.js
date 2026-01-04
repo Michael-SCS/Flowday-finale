@@ -15,6 +15,7 @@ import { useSettings, getAccentColor } from '../utils/settingsContext';
 import { useI18n } from '../utils/i18n';
 import { TourProvider } from '../utils/tourContext';
 import { useProStatus } from '../utils/proStatus';
+import { useAuth } from '../auth/AuthProvider';
 
 const Tab = createBottomTabNavigator();
 const TOUR_STORAGE_KEY = 'fluu_hasSeenMascotTour';
@@ -28,6 +29,11 @@ export default function TabNavigator() {
   const [showTour, setShowTour] = useState(false);
   const { isPro } = useProStatus();
   const isDark = themeMode === 'dark';
+  const { user } = useAuth();
+  const tourStorageKey = useMemo(() => {
+    if (!user?.id) return null;
+    return `${TOUR_STORAGE_KEY}_${user.id}`;
+  }, [user?.id]);
 
   const tourValue = useMemo(
     () => ({
@@ -41,7 +47,14 @@ export default function TabNavigator() {
   useEffect(() => {
     let mounted = true;
 
-    AsyncStorage.getItem(TOUR_STORAGE_KEY)
+    if (!tourStorageKey) {
+      setShowTour(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    AsyncStorage.getItem(tourStorageKey)
       .then((value) => {
         if (!mounted) return;
         if (!value) {
@@ -55,7 +68,7 @@ export default function TabNavigator() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [tourStorageKey]);
 
   return (
     <TourProvider value={tourValue}>

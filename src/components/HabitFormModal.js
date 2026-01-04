@@ -102,11 +102,16 @@ export default function HabitFormModal({
 }) {
   const { t } = useI18n();
   const { language, themeMode } = useSettings();
+
   const isDark = themeMode === 'dark';
+
   const baseDate = useMemo(() => {
+    if (selectedDate instanceof Date) return selectedDate;
     if (typeof selectedDate === 'string') {
-      const [y, m, d] = selectedDate.split('-').map(Number);
-      return new Date(y, m - 1, d);
+      const [y, m, d] = selectedDate.split('-').map((n) => parseInt(n, 10));
+      if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+        return new Date(y, m - 1, d);
+      }
     }
     return new Date();
   }, [selectedDate]);
@@ -117,7 +122,6 @@ export default function HabitFormModal({
   const [activePicker, setActivePicker] = useState(null);
   const [frequency, setFrequency] = useState('once');
   const [daysOfWeek, setDaysOfWeek] = useState([]);
-  const [description, setDescription] = useState('');
   const [formData, setFormData] = useState({});
   const [time, setTime] = useState(null);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
@@ -169,7 +173,7 @@ export default function HabitFormModal({
       setDurationMinutes(null);
       setDurationPickerValue('');
     }
-    setDescription(editingActivity?.description || '');
+    // Notes/description section removed.
     setFormData(editingActivity?.data || {});
     // Inicializar color desde la actividad editada o desde la plantilla
     const initialColor = editingActivity?.data?.color || habit?.color || '#38BDF8';
@@ -504,7 +508,6 @@ export default function HabitFormModal({
 
     onSave({
       habit,
-      description,
       data: {
         ...formData,
         color: selectedColor,
@@ -881,10 +884,12 @@ export default function HabitFormModal({
           </View>
 
           {/* FRECUENCIA */}
-          <View style={styles.section}>
-            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.frequencyLabel')}</Text>
+          <View style={[styles.section, styles.frequencySection]}>
+            <Text style={[styles.label, styles.frequencyLabel, isDark && { color: '#e5e7eb' }]}>
+              {t('habitForm.frequencyLabel')}
+            </Text>
 
-            <View style={styles.freqGrid}>
+            <View style={[styles.freqGrid, styles.freqGridCentered]}>
               {FREQUENCIES.map((f) => (
                 <Pressable
                   key={f.key}
@@ -907,7 +912,7 @@ export default function HabitFormModal({
 
             {frequency === 'weekly' && (
               <>
-                <Text style={[styles.sublabel, isDark && { color: '#9ca3af' }]}>
+                <Text style={[styles.sublabel, styles.frequencySublabel, isDark && { color: '#9ca3af' }]}>
                   {t('habitForm.weeklySelectDays')}
                 </Text>
                 <View style={styles.daysRow}>
@@ -968,21 +973,6 @@ export default function HabitFormModal({
                 ))}
               </View>
             </View>
-          </View>
-
-          {/* NOTAS */}
-          <View style={styles.section}>
-            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.notesLabel')}</Text>
-            <TextInput
-              style={[styles.input, isDark && styles.inputDark, styles.textarea]}
-              placeholder={t('habitForm.notesPlaceholder')}
-              placeholderTextColor="#9ca3af"
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              value={description}
-              onChangeText={setDescription}
-            />
           </View>
 
           <View style={{ height: 100 }} />
@@ -1173,10 +1163,24 @@ const styles = StyleSheet.create({
   },
 
   // Frequency
+  frequencySection: {
+    alignItems: 'center',
+  },
+  frequencyLabel: {
+    textAlign: 'center',
+  },
+  frequencySublabel: {
+    textAlign: 'center',
+    alignSelf: 'stretch',
+  },
   freqGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  freqGridCentered: {
+    justifyContent: 'center',
+    alignSelf: 'stretch',
   },
   freqBtn: {
     flexDirection: 'row',

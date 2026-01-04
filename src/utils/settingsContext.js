@@ -36,19 +36,32 @@ export function mapLocaleToLang(locale) {
   return 'en';
 }
 
+function getSystemLocaleString() {
+  try {
+    // expo-localization v17+ supports getLocales() which is the most reliable.
+    const locales = typeof Localization.getLocales === 'function' ? Localization.getLocales() : null;
+    const first = Array.isArray(locales) ? locales[0] : null;
+    const tag = first?.languageTag || first?.languageCode;
+    if (typeof tag === 'string' && tag.length > 0) return tag;
+  } catch {
+    // ignore
+  }
+
+  // Fallbacks for older APIs
+  return (
+    (typeof Localization.locale === 'string' && Localization.locale) ||
+    (Array.isArray(Localization.locales) && Localization.locales[0]) ||
+    'en'
+  );
+}
+
 export function SettingsProvider({ children }) {
   const [themeColor, setThemeColorState] = useState('blue');
   const [themeMode, setThemeModeState] = useState('light');
   const [languageSource, setLanguageSource] = useState('system');
-  const mapLocaleToLang = (locale) => {
-    if (!locale || typeof locale !== 'string') return 'en';
-    const code = locale.split(/[-_]/)[0].toLowerCase();
-    if (['es', 'en', 'pt', 'fr', 'de', 'it'].includes(code)) return code;
-    return 'en';
-  };
 
   // Inicializar idioma inmediatamente desde la configuración del sistema
-  const initialSystemLang = mapLocaleToLang(Localization.locale || Localization.locales?.[0]);
+  const initialSystemLang = mapLocaleToLang(getSystemLocaleString());
   const [language, setLanguageState] = useState(initialSystemLang);
 
   useEffect(() => {
@@ -64,40 +77,19 @@ export function SettingsProvider({ children }) {
         if (storedThemeMode === 'dark' || storedThemeMode === 'light') {
           setThemeModeState(storedThemeMode);
         }
-        if (storedLang) {
-          // Si ya hay un idioma guardado, comprobamos si fue guardado
-          // automáticamente por el sistema o por el usuario.
-          // Compatibilidad: si no hay storedLangSource pero el valor coincide
-          // con el idioma del sistema al instalar (initialSystemLang),
-          // asumimos que lo estableció el sistema.
-          const considerSystem = storedLangSource === 'system' || (!storedLangSource && storedLang === initialSystemLang);
-          if (considerSystem) {
-            const currentSystem = mapLocaleToLang(Localization.locale || Localization.locales?.[0]);
-            if (currentSystem !== storedLang) {
-              setLanguageState(currentSystem);
-              try {
-                await AsyncStorage.setItem(LANG_KEY, currentSystem);
-                await AsyncStorage.setItem(LANG_SOURCE_KEY, 'system');
-                setLanguageSource('system');
-              } catch {
-                // ignorar errores de persistencia
-              }
-            } else {
-              setLanguageState(storedLang);
-              setLanguageSource(storedLangSource || 'system');
-            }
-          } else {
-            // source === 'user' -> respetamos elección del usuario
-            setLanguageState(storedLang);
-            setLanguageSource(storedLangSource || 'user');
-          }
+        // Idioma:
+        // - Si el usuario eligió manualmente -> respetar.
+        // - Si no (incluye compatibilidad con instalaciones viejas sin LANG_SOURCE) -> sincronizar con idioma del sistema.
+        if (storedLangSource === 'user' && storedLang) {
+          setLanguageState(storedLang);
+          setLanguageSource('user');
         } else {
-          const systemLanguage = mapLocaleToLang(Localization.locale || Localization.locales?.[0]);
+          const systemLanguage = mapLocaleToLang(getSystemLocaleString());
           setLanguageState(systemLanguage);
+          setLanguageSource('system');
           try {
             await AsyncStorage.setItem(LANG_KEY, systemLanguage);
             await AsyncStorage.setItem(LANG_SOURCE_KEY, 'system');
-            setLanguageSource('system');
           } catch {
             // ignorar error de persistencia
           }
@@ -115,9 +107,9 @@ export function SettingsProvider({ children }) {
       (async () => {
         try {
           const storedLangSource = await AsyncStorage.getItem(LANG_SOURCE_KEY);
-          // Solo re-sincronizamos si la preferencia la puso el sistema
-          if (storedLangSource === 'system') {
-            const currentSystem = mapLocaleToLang(Localization.locale || Localization.locales?.[0]);
+          // Re-sincronizamos mientras el usuario no haya forzado un idioma manualmente.
+          if (storedLangSource !== 'user') {
+            const currentSystem = mapLocaleToLang(getSystemLocaleString());
             setLanguageState(currentSystem);
             try {
               await AsyncStorage.setItem(LANG_KEY, currentSystem);

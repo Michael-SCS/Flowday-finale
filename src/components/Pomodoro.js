@@ -490,14 +490,12 @@ export default function PomodoroScreen() {
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <Pressable 
-            style={styles.modalOverlay}
-            onPress={() => setShowSettingsModal(false)}
-          >
-            <Pressable 
-              style={[styles.modalContent, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
-              onPress={(e) => e.stopPropagation()}
-            >
+          <View style={styles.modalOverlay}>
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowSettingsModal(false)}
+            />
+            <View style={[styles.modalContent, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
             {/* HEADER MODAL */}
             <View style={[styles.modalHeader, isDark && { borderBottomColor: '#1e293b' }]}>
               <View style={styles.modalHandle} />
@@ -515,6 +513,10 @@ export default function PomodoroScreen() {
 
             <ScrollView
               showsVerticalScrollIndicator={false}
+              scrollEventThrottle={16}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
               contentContainerStyle={styles.modalScrollContent}
             >
               {/* PRESETS */}
@@ -620,7 +622,10 @@ export default function PomodoroScreen() {
                       {totalSessions} {t('pomodoro.sessions')}
                     </Text>
                     <Text style={[styles.sessionsSubText, isDark && { color: '#9ca3af' }]}>
-                      {workMinutes} {t('pomodoro.workMinutes')} • {restMinutes} {t('pomodoro.restMinutes')}
+                      {workMinutes} {t('pomodoro.workMinutes')}
+                    </Text>
+                    <Text style={[styles.sessionsSubText, isDark && { color: '#9ca3af' }]}>
+                      {restMinutes} {t('pomodoro.restMinutes')}
                     </Text>
                     <View style={styles.totalBadge}>
                       <Ionicons name="time" size={14} color={accent} />
@@ -662,8 +667,8 @@ export default function PomodoroScreen() {
                 <Text style={styles.modalSaveButtonText}>{t('pomodoro.saveConfig')}</Text>
               </Pressable>
             </ScrollView>
-          </Pressable>
-          </Pressable>
+            </View>
+          </View>
         </KeyboardAvoidingView>
         </Modal>
         </View>
@@ -1023,32 +1028,35 @@ const styles = StyleSheet.create({
 
   // Sessions
   sessionsCard: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     backgroundColor: '#fafafa',
     padding: 16,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: '#e5e7eb',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   sessionsInfo: {
-    flex: 1,
+    alignItems: 'center',
     gap: 4,
   },
   sessionsMainText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
+    textAlign: 'center',
   },
   sessionsSubText: {
     fontSize: 13,
     color: '#6b7280',
     fontWeight: '500',
+    textAlign: 'center',
   },
   totalBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     marginTop: 4,
   },
@@ -1060,6 +1068,7 @@ const styles = StyleSheet.create({
   sessionsControls: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
   },
   sessionsButton: {

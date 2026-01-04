@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from './supabase';
+import { getCurrentUserId, userScopedKey } from './userScope';
 
 const KEY = 'FLUU_POMODORO_STATS';
 
@@ -11,12 +11,9 @@ function dateKey(d) {
 }
 
 async function getUserKey() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-  return `${KEY}_${user.id}`;
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+  return userScopedKey(KEY, userId);
 }
 
 export async function loadPomodoroStats() {

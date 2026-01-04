@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../utils/supabase';
+import { setCurrentUserId } from '../utils/userScope';
 
 const AuthContext = createContext(null);
 
@@ -18,15 +19,11 @@ export function AuthProvider({ children }) {
         if (!mounted) return;
         setSession(data.session);
 
-        try {
-          const userRes = await supabase.auth.getUser();
-          const u = userRes?.data?.user ?? null;
-          setUser(u);
-          setAuthInvalid(!u);
-        } catch {
-          setUser(null);
-          setAuthInvalid(true);
-        }
+        // Avoid forcing "invalid" auth based on getUser(), which can fail temporarily.
+        // If there's a persisted session, use its user.
+        setUser(data.session?.user ?? null);
+        setCurrentUserId(data.session?.user?.id ?? null);
+        setAuthInvalid(false);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -37,15 +34,9 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!mounted) return;
       setSession(newSession);
-      try {
-        const userRes = await supabase.auth.getUser();
-        const u = userRes?.data?.user ?? null;
-        setUser(u);
-        setAuthInvalid(!u);
-      } catch {
-        setUser(null);
-        setAuthInvalid(true);
-      }
+      setUser(newSession?.user ?? null);
+      setCurrentUserId(newSession?.user?.id ?? null);
+      setAuthInvalid(false);
     });
 
     return () => {
@@ -60,6 +51,7 @@ export function AuthProvider({ children }) {
     } finally {
       setUser(null);
       setSession(null);
+      setCurrentUserId(null);
       setAuthInvalid(true);
     }
   }, []);

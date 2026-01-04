@@ -1,6 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, ImageBackground, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useI18n } from '../../utils/i18n';
+
+const ONBOARDING_VERSION = '2026-01-03-v1';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,6 +33,30 @@ export default function OnboardingSlides({ navigation }) {
   const flatRef = useRef(null);
   const [index, setIndex] = useState(0);
   const { t } = useI18n();
+
+  const finishOnboardingSlides = async () => {
+    // Mark onboarding as completed for this device so it doesn't show again.
+    try { await AsyncStorage.setItem('device_onboarding_shown', 'true'); } catch {}
+    try { await AsyncStorage.setItem('onboarding_version', ONBOARDING_VERSION); } catch {}
+    try { await AsyncStorage.removeItem('onboarding_in_progress'); } catch {}
+
+    // Reset to Login on the root navigator.
+    try {
+      const parent = navigation.getParent && navigation.getParent();
+      if (parent && typeof parent.reset === 'function') {
+        parent.reset({ index: 0, routes: [{ name: 'Login' }] });
+        return;
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } catch {
+      try { navigation.navigate('Login'); } catch {}
+    }
+  };
 
   const renderItem = ({ item }) => (
     <View style={styles.slide}>
@@ -70,12 +97,12 @@ export default function OnboardingSlides({ navigation }) {
             if (index < slides.length - 1) {
               flatRef.current.scrollToIndex({ index: index + 1, animated: true });
             } else {
-              // After the last slide, go to app settings (language/theme)
-              navigation.navigate('AppSettings', { from: 'slides', onboarding: true });
+              // After the last slide, go to Login.
+              finishOnboardingSlides();
             }
           }}
         >
-          <Text style={styles.continueText}>Continue</Text>
+          <Text style={styles.continueText}>{t('onboarding.continue')}</Text>
         </TouchableOpacity>
       </View>
     </View>

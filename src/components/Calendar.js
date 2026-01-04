@@ -376,6 +376,7 @@ export default function Calendar() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState(null);
   const [editingActivity, setEditingActivity] = useState(null);
+  const [expandedHabitCategories, setExpandedHabitCategories] = useState({});
 
   const [marketModalVisible, setMarketModalVisible] = useState(false);
   const [marketModalData, setMarketModalData] = useState(null);
@@ -542,7 +543,7 @@ export default function Calendar() {
     // Si venimos desde una edición, actualizamos la actividad por ID (más robusto)
     if (payload?.editingActivityId) {
       const updated = { ...activities };
-      const { habit, description, data, schedule } = payload;
+      const { habit, data, schedule } = payload;
 
       const targetId = payload.editingActivityId;
 
@@ -643,7 +644,6 @@ export default function Calendar() {
               habit_id: habit.id,
               title: habit.title,
               icon: habit.icon,
-              description: description || null,
               time: schedule?.time ?? act.time ?? null,
               durationMinutes:
                 typeof schedule?.durationMinutes === 'number'
@@ -823,7 +823,6 @@ export default function Calendar() {
           habit_id: habit.id,
           title: habit.title,
           icon: habit.icon,
-          description: description || null,
           time: schedule.time || null,
           durationMinutes:
             typeof schedule.durationMinutes === 'number'
@@ -855,7 +854,7 @@ export default function Calendar() {
     }
 
     const updated = { ...activities };
-    const { schedule, habit, description, data, allowDuplicate } = payload;
+    const { schedule, habit, data, allowDuplicate } = payload;
 
     let datesToCreate = [];
 
@@ -1020,7 +1019,6 @@ export default function Calendar() {
         habit_id: habit.id,
         title: habit.title,
         icon: habit.icon,
-        description: description || null,
         time: schedule.time || null,
         durationMinutes:
           typeof schedule.durationMinutes === 'number'
@@ -2053,14 +2051,6 @@ export default function Calendar() {
                         </View>
                       </View>
 
-                      {/* DESCRIPTION */}
-                      {activity.description && (
-                        <View style={styles.descriptionContainer}>
-                          <Ionicons name="document-text-outline" size={16} color="#9ca3af" />
-                          <Text style={[styles.cardDesc, descTextColor && { color: descTextColor }]}>{activity.description}</Text>
-                        </View>
-                      )}
-
                     </Pressable>
                   </Swipeable>
                 );
@@ -2849,79 +2839,97 @@ export default function Calendar() {
                   }, {})
                 ).map(([category, categoryHabits]) => {
                   const displayCategory = translateHabitCategory(category, language);
+                  const isExpanded = expandedHabitCategories[category] === true;
 
                   return (
                   <View key={category} style={styles.categorySection}>
-                    <View style={styles.categoryHeader}>
-                      <View style={[styles.categoryIconContainer, isDark && { backgroundColor: '#1f2937' }]}>
-                        <Ionicons
-                          name={
-                            category === 'Cuida de ti' ? 'heart' :
-                              category === 'Actividad física' ? 'fitness' :
-                                category === 'Vive más sano' ? 'leaf' :
-                                  category === 'Aprende' ? 'school' :
-                                    category === 'Vida social' ? 'people' :
-                                      // Categorías anteriores (compatibilidad)
-                                      category === 'Hogar' ? 'home' :
-                                        category === 'Vida económica' ? 'wallet' :
-                                          category === 'Salud' ? 'fitness' :
-                                            category === 'Social' ? 'people' :
-                                              category === 'Productividad' ? 'briefcase' :
-                                                'sparkles'
-                          }
-                          size={20}
-                          color={accent}
-                        />
-                      </View>
-                      <Text style={[styles.categoryTitle, isDark && { color: '#e5e7eb' }]}>{displayCategory}</Text>
-                    </View>
-
-                    <View style={styles.habitsGrid}>
-                      {categoryHabits.map((habit) => (
-                        <Pressable
-                          key={habit.id}
-                          style={[styles.habitItem, isDark && { backgroundColor: '#0b1120' }]}
-                          onPress={() => {
-                            setSelectedHabit(habit);
-                            if (!isChangingHabit) {
-                              setEditingActivity(null);
-                              setEditingSchedule(null);
+                    <Pressable
+                      style={styles.categoryHeader}
+                      onPress={() =>
+                        setExpandedHabitCategories((prev) => ({
+                          ...prev,
+                          [category]: !(prev[category] === true),
+                        }))
+                      }
+                    >
+                      <View style={styles.categoryHeaderLeft}>
+                        <View style={[styles.categoryIconContainer, isDark && { backgroundColor: '#1f2937' }]}>
+                          <Ionicons
+                            name={
+                              category === 'Cuida de ti' ? 'heart' :
+                                category === 'Actividad física' ? 'fitness' :
+                                  category === 'Vive más sano' ? 'leaf' :
+                                    category === 'Aprende' ? 'school' :
+                                      category === 'Vida social' ? 'people' :
+                                        // Categorías anteriores (compatibilidad)
+                                        category === 'Hogar' ? 'home' :
+                                          category === 'Vida económica' ? 'wallet' :
+                                            category === 'Salud' ? 'fitness' :
+                                              category === 'Social' ? 'people' :
+                                                category === 'Productividad' ? 'briefcase' :
+                                                  'sparkles'
                             }
-                            setShowHabitModal(false);
-                            setTimeout(() => setShowFormModal(true), 150);
-                            setIsChangingHabit(false);
-                          }}
-                        >
-                          <View style={styles.habitCardContent}>
-                            {habit.icon ? (
-                              <Image
-                                source={{ uri: habit.icon }}
-                                style={styles.habitCardImage}
-                                progressiveRenderingEnabled
-                                fadeDuration={150}
-                              />
-                            ) : (
-                              <View style={styles.habitImagePlaceholder}>
-                                <Ionicons name="sparkles" size={24} color="#38BDF8" />
-                              </View>
-                            )}
-                            <View style={styles.habitTextContainer}>
-                              <Text style={[styles.habitTitle, isDark && { color: '#e5e7eb' }]} numberOfLines={2}>
-                                {habit.title}
-                              </Text>
-                              {habit.description ? (
-                                <Text
-                                  style={[styles.habitDescription, isDark && { color: '#9ca3af' }]}
-                                  numberOfLines={3}
-                                >
-                                  {habit.description}
+                            size={20}
+                            color={accent}
+                          />
+                        </View>
+                        <Text style={[styles.categoryTitle, isDark && { color: '#e5e7eb' }]}>{displayCategory}</Text>
+                      </View>
+                      <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={isDark ? '#9ca3af' : '#6b7280'}
+                      />
+                    </Pressable>
+
+                    {isExpanded ? (
+                      <View style={styles.habitsGrid}>
+                        {categoryHabits.map((habit) => (
+                          <Pressable
+                            key={habit.id}
+                            style={[styles.habitItem, isDark && { backgroundColor: '#0b1120' }]}
+                            onPress={() => {
+                              setSelectedHabit(habit);
+                              if (!isChangingHabit) {
+                                setEditingActivity(null);
+                                setEditingSchedule(null);
+                              }
+                              setShowHabitModal(false);
+                              setTimeout(() => setShowFormModal(true), 150);
+                              setIsChangingHabit(false);
+                            }}
+                          >
+                            <View style={styles.habitCardContent}>
+                              {habit.icon ? (
+                                <Image
+                                  source={{ uri: habit.icon }}
+                                  style={styles.habitCardImage}
+                                  progressiveRenderingEnabled
+                                  fadeDuration={150}
+                                />
+                              ) : (
+                                <View style={styles.habitImagePlaceholder}>
+                                  <Ionicons name="sparkles" size={24} color="#38BDF8" />
+                                </View>
+                              )}
+                              <View style={styles.habitTextContainer}>
+                                <Text style={[styles.habitTitle, isDark && { color: '#e5e7eb' }]} numberOfLines={2}>
+                                  {habit.title}
                                 </Text>
-                              ) : null}
+                                {habit.description ? (
+                                  <Text
+                                    style={[styles.habitDescription, isDark && { color: '#9ca3af' }]}
+                                    numberOfLines={3}
+                                  >
+                                    {habit.description}
+                                  </Text>
+                                ) : null}
+                              </View>
                             </View>
-                          </View>
-                        </Pressable>
-                      ))}
-                    </View>
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
                   </View>
                   );
                 })}
@@ -3558,9 +3566,16 @@ const styles = StyleSheet.create({
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  categoryHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     gap: 8,
+    flex: 1,
+    paddingRight: 8,
   },
   categoryIconContainer: {
     width: 36,

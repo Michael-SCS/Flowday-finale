@@ -11,7 +11,10 @@ export default function AuthErrorScreen() {
       <Text style={styles.subtitle}>
         Puede que tu cuenta haya sido eliminada, o que la sesión haya expirado. Por favor vuelve a iniciar sesión para continuar.
       </Text>
-      <Pressable style={styles.button} onPress={() => navigation.navigate('Login')}>
+      <Pressable
+        style={styles.button}
+        onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
+      >
         <Text style={styles.buttonText}>Volver a iniciar sesión</Text>
       </Pressable>
     </View>

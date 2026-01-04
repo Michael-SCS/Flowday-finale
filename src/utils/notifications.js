@@ -1,21 +1,54 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-// Configuramos cómo se muestran las notificaciones cuando llegan
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    // `shouldShowAlert` está deprecado en SDK 53+.
-    // Usamos las nuevas banderas para que se muestre el banner/lista
-    // cuando la notificación llegue en primer o segundo plano.
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+let _notificationsModule = null;
+let _handlerConfigured = false;
+
+async function getNotificationsModule() {
+  // In Expo Go (SDK 53+), remote push support was removed and the module can log errors.
+  // We lazy-load and gracefully no-op so the app doesn't get stuck on a blank screen.
+  if (_notificationsModule) return _notificationsModule;
+  try {
+    const mod = await import('expo-notifications');
+    _notificationsModule = mod;
+    return mod;
+  } catch (e) {
+    console.warn('[notifications] expo-notifications not available', e);
+    _notificationsModule = null;
+    return null;
+  }
+}
+
+async function ensureHandlerConfigured() {
+  if (_handlerConfigured) return;
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return;
+
+  try {
+    // Configuramos cómo se muestran las notificaciones cuando llegan
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        // `shouldShowAlert` está deprecado en SDK 53+.
+        // Usamos las nuevas banderas para que se muestre el banner/lista
+        // cuando la notificación llegue en primer o segundo plano.
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch (e) {
+    console.warn('[notifications] Error configuring handler', e);
+  } finally {
+    _handlerConfigured = true;
+  }
+}
 
 export async function requestNotificationPermissions() {
   try {
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) return false;
+    await ensureHandlerConfigured();
+
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') {
       const { status: newStatus } = await Notifications.requestPermissionsAsync();
@@ -101,6 +134,9 @@ export async function scheduleReminderForActivity({ date, time, title, body }) {
   }
 
   try {
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) return;
+
     const ok = await requestNotificationPermissions();
     if (!ok) return;
 

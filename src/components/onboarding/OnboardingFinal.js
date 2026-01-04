@@ -31,8 +31,52 @@ export default function OnboardingFinal({ navigation }) {
   useEffect(() => {
     (async () => {
       try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) throw new Error('Usuario no autenticado');
+        // Ensure RootNavigator stays on onboarding while auth changes happen.
+        try { await AsyncStorage.setItem('onboarding_in_progress', 'true'); } catch {}
+
+        // Read locally-collected onboarding auth info
+        let authPayload = null;
+        try {
+          const raw = await AsyncStorage.getItem('onboarding_auth_payload');
+          if (raw) authPayload = JSON.parse(raw);
+        } catch {
+          authPayload = null;
+        }
+
+        const email = authPayload?.email ? String(authPayload.email).trim() : '';
+        const password = authPayload?.password ? String(authPayload.password) : '';
+
+        if (!email || !password) {
+          throw new Error('Faltan los datos de registro. Vuelve al paso anterior.');
+        }
+
+        // Create account only at the end of onboarding.
+        // If the user already exists, fall back to sign-in.
+        let user = null;
+        try {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+          if (signUpError) throw signUpError;
+          user = signUpData?.user ?? null;
+        } catch (e) {
+          const msg = (e && (e.message || e.error_description)) ? String(e.message || e.error_description) : String(e);
+          // Common case when retrying: user already exists.
+          const looksLikeExists = msg.toLowerCase().includes('already') || msg.toLowerCase().includes('exists') || msg.toLowerCase().includes('registered');
+          if (!looksLikeExists) throw e;
+
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInError) throw signInError;
+          user = signInData?.user ?? null;
+        }
+
+        // Ensure we have a session user (some projects require email confirmation).
+        if (!user) {
+          const sess = await supabase.auth.getSession();
+          user = sess?.data?.session?.user ?? null;
+        }
+
+        if (!user) {
+          throw new Error('No se pudo iniciar sesión. Revisa tu correo si tu proyecto requiere confirmación por email.');
+        }
 
         // Read locally-collected onboarding profile info
         let profilePayload = null;
@@ -50,7 +94,7 @@ export default function OnboardingFinal({ navigation }) {
             apellido: profilePayload.apellido || '',
             edad: typeof profilePayload.edad === 'number' ? profilePayload.edad : null,
             genero: profilePayload.genero || null,
-            email: user.email,
+            email: user.email || email,
             language: language,
           };
 
@@ -72,6 +116,7 @@ export default function OnboardingFinal({ navigation }) {
         try { await AsyncStorage.setItem('device_onboarding_shown', 'true'); } catch {}
         try { await AsyncStorage.removeItem('onboarding_in_progress'); } catch {}
         try { await AsyncStorage.removeItem('onboarding_profile_payload'); } catch {}
+        try { await AsyncStorage.removeItem('onboarding_auth_payload'); } catch {}
 
             // Ahora que AuthGate expone un Stack raíz con la pantalla 'App', resetear a 'App'
             try {

@@ -5,8 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../auth/AuthProvider';
 import AppNavigator from './AppNavigator';
 import OnboardingNavigator from './OnboardingNavigator';
-import AuthErrorScreen from './AuthErrorScreen';
-import LoginScreen from './LoginScreen';
+import AuthNavigator from './AuthNavigator';
 
 const Stack = createNativeStackNavigator();
 
@@ -14,16 +13,11 @@ export default function RootNavigator({ navigationTheme }) {
   const { user, loading, authInvalid } = useAuth();
   const navRef = useRef(null);
   const [navReady, setNavReady] = useState(false);
-  const [deviceOnboardingChecked, setDeviceOnboardingChecked] = useState(false);
-  const [deviceOnboardingNeeded, setDeviceOnboardingNeeded] = useState(false);
   const [onboardingInProgress, setOnboardingInProgress] = useState(false);
 
   const refreshFlags = async () => {
-    const v = await AsyncStorage.getItem('device_onboarding_shown');
     const inProgress = await AsyncStorage.getItem('onboarding_in_progress');
-    setDeviceOnboardingNeeded(v !== 'true');
     setOnboardingInProgress(inProgress === 'true');
-    setDeviceOnboardingChecked(true);
   };
 
   useEffect(() => {
@@ -32,11 +26,7 @@ export default function RootNavigator({ navigationTheme }) {
       try {
         await refreshFlags();
       } catch {
-        if (mounted) {
-          setDeviceOnboardingNeeded(false);
-          setOnboardingInProgress(false);
-          setDeviceOnboardingChecked(true);
-        }
+        if (mounted) setOnboardingInProgress(false);
       }
     })();
 
@@ -84,13 +74,14 @@ export default function RootNavigator({ navigationTheme }) {
 
   const desiredRoot = useMemo(() => {
     if (onboardingInProgress) return 'Onboarding';
-    if (!user || authInvalid) return deviceOnboardingNeeded ? 'Onboarding' : 'Login';
+    if (!user || authInvalid) return 'Auth';
     return 'App';
-  }, [onboardingInProgress, user, authInvalid, deviceOnboardingNeeded]);
+  }, [onboardingInProgress, user, authInvalid]);
 
   useEffect(() => {
     if (!navReady) return;
-    const current = navRef.current?.getCurrentRoute?.()?.name;
+    const rootState = navRef.current?.getRootState?.();
+    const current = rootState?.routes?.[rootState.index]?.name;
     if (!current || current === desiredRoot) return;
     try {
       navRef.current?.resetRoot({ index: 0, routes: [{ name: desiredRoot }] });
@@ -98,18 +89,20 @@ export default function RootNavigator({ navigationTheme }) {
   }, [navReady, desiredRoot]);
 
   if (loading) return null;
-  if (!deviceOnboardingChecked) return null;
 
   return (
     <NavigationContainer
       ref={navRef}
       onReady={() => setNavReady(true)}
+      onStateChange={() => {
+        // Keep desiredRoot in sync with AsyncStorage flags when screens navigate.
+        refreshFlags().catch(() => {});
+      }}
       theme={navigationTheme}
     >
       <Stack.Navigator initialRouteName={desiredRoot} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="AuthError" component={AuthErrorScreen} />
+        <Stack.Screen name="Auth" component={AuthNavigator} />
         <Stack.Screen name="App" component={AppNavigator} />
       </Stack.Navigator>
     </NavigationContainer>

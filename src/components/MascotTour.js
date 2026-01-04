@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettings } from '../utils/settingsContext';
+import { useAuth } from '../auth/AuthProvider';
 import imgIcon from '../../assets/icon.png';
 import imgMascotaCalendario from '../../assets/mascota_calendario.png';
 import imgMascotaPomodoro from '../../assets/mascota_pomodoro.png';
@@ -12,8 +13,10 @@ const STORAGE_KEY = 'fluu_hasSeenMascotTour';
 
 export default function MascotTour({ visible, onClose, onRequestTabChange }) {
   const { language } = useSettings();
+  const { user } = useAuth();
   const isEn = language === 'en';
   const [step, setStep] = useState(0);
+  const storageKey = user?.id ? `${STORAGE_KEY}_${user.id}` : null;
 
   const steps = isEn
     ? [
@@ -114,7 +117,9 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
 
   async function finishTour() {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, 'true');
+      if (storageKey) {
+        await AsyncStorage.setItem(storageKey, 'true');
+      }
     } catch (e) {
       // ignore storage errors, tour will just aparecer otra vez
     }
