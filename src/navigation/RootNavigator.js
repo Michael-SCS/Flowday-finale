@@ -16,7 +16,19 @@ export default function RootNavigator({ navigationTheme }) {
   const [onboardingInProgress, setOnboardingInProgress] = useState(false);
 
   const refreshFlags = async () => {
-    const inProgress = await AsyncStorage.getItem('onboarding_in_progress');
+    const [inProgress, deviceShown] = await Promise.all([
+      AsyncStorage.getItem('onboarding_in_progress'),
+      AsyncStorage.getItem('device_onboarding_shown'),
+    ]);
+
+    // First app open on this device: start the onboarding/registration flow
+    // instead of sending the user to Login.
+    if (deviceShown !== 'true' && inProgress !== 'true') {
+      try { await AsyncStorage.setItem('onboarding_in_progress', 'true'); } catch {}
+      setOnboardingInProgress(true);
+      return;
+    }
+
     setOnboardingInProgress(inProgress === 'true');
   };
 
@@ -51,26 +63,7 @@ export default function RootNavigator({ navigationTheme }) {
     };
   }, [user, authInvalid]);
 
-  useEffect(() => {
-    if (!onboardingInProgress) return;
-    let cancelled = false;
-    const id = setInterval(async () => {
-      try {
-        const inProgress = await AsyncStorage.getItem('onboarding_in_progress');
-        if (cancelled) return;
-        if (inProgress !== 'true') {
-          setOnboardingInProgress(false);
-        }
-      } catch {
-        // ignore
-      }
-    }, 400);
-
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [onboardingInProgress]);
+  // No polling timers: flags are refreshed on auth/nav changes.
 
   const desiredRoot = useMemo(() => {
     if (onboardingInProgress) return 'Onboarding';

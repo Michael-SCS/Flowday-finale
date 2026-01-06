@@ -28,7 +28,7 @@ const slides = [
   },
 ];
 
-export default function OnboardingSlides({ navigation }) {
+export default function OnboardingSlides({ navigation, route }) {
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatRef = useRef(null);
   const [index, setIndex] = useState(0);
@@ -38,7 +38,26 @@ export default function OnboardingSlides({ navigation }) {
     // Mark onboarding as completed for this device so it doesn't show again.
     try { await AsyncStorage.setItem('device_onboarding_shown', 'true'); } catch {}
     try { await AsyncStorage.setItem('onboarding_version', ONBOARDING_VERSION); } catch {}
-    try { await AsyncStorage.removeItem('onboarding_in_progress'); } catch {}
+    // If we're continuing into the onboarding flow (e.g. Register), keep the flag.
+    // Otherwise clear it so RootNavigator can leave the onboarding stack.
+    const next = route?.params?.next;
+    if (!next || !next.screen) {
+      try { await AsyncStorage.removeItem('onboarding_in_progress'); } catch {}
+    }
+
+    if (next && next.screen) {
+      try {
+        navigation.replace(next.screen, next.params || undefined);
+        return;
+      } catch {
+        try {
+          navigation.navigate(next.screen, next.params || undefined);
+          return;
+        } catch {
+          // fall through
+        }
+      }
+    }
 
     // Reset to Login on the root navigator.
     try {

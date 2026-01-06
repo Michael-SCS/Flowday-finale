@@ -51,22 +51,20 @@ function addDays(base, days) {
 // REQUIERE que la tabla profiles tenga al menos las columnas:
 // pro (bool), pro_trial_used (bool), pro_until (timestamp), pro_lifetime (bool)
 export async function fetchProStatus() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const user = sessionData?.session?.user ?? null;
 
-  if (userError || !user) {
+  if (!user) {
     return {
       isPro: false,
       trialUsed: false,
       proUntil: null,
       isLifetime: false,
-      error: userError || null,
+      error: null,
     };
   }
 
-  const { data, error } = await supabase
+  const { data: profileData, error } = await supabase
     .from('profiles')
     .select('pro, pro_trial_used, pro_until, pro_lifetime')
     .eq('id', user.id)
@@ -82,10 +80,10 @@ export async function fetchProStatus() {
     };
   }
 
-  const isPro = Boolean(data?.pro);
-  const trialUsed = Boolean(data?.pro_trial_used);
-  const isLifetime = Boolean(data?.pro_lifetime);
-  const proUntil = data?.pro_until ? new Date(data.pro_until) : null;
+  const isPro = Boolean(profileData?.pro);
+  const trialUsed = Boolean(profileData?.pro_trial_used);
+  const isLifetime = Boolean(profileData?.pro_lifetime);
+  const proUntil = profileData?.pro_until ? new Date(profileData.pro_until) : null;
 
   return {
     isPro,
@@ -104,13 +102,11 @@ export async function applyProPlan(planId) {
     throw new Error(`Plan PRO desconocido: ${planId}`);
   }
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const user = sessionData?.session?.user ?? null;
 
-  if (userError || !user) {
-    throw userError || new Error('Usuario no autenticado');
+  if (!user) {
+    throw new Error('Usuario no autenticado');
   }
 
   // Cargamos el estado actual para poder extender períodos si ya es PRO

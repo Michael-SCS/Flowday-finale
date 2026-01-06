@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image, Alert, Switch } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,7 +19,8 @@ import { cancelAllScheduledNotifications } from '../utils/notifications';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const { signOut } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { user: authUser, session, loading: authLoading, signOut } = useAuth();
   const {
     themeColor,
     themeMode,
@@ -157,14 +158,19 @@ export default function ProfileScreen() {
       setLoading(true);
       setError(null);
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      // Session-first: don't rely on cached context values that can temporarily be null.
+      const { data: sessData, error: sessError } = await supabase.auth.getSession();
+      const sessionUser = sessData?.session?.user ?? null;
+      const uid = sessionUser?.id ?? authUser?.id ?? session?.user?.id ?? null;
 
-      if (userError || !user) {
-        // Don't force sign-out here. A transient error (network) can make getUser fail.
-        // Root navigation will handle auth state; this screen just shows an error.
+      if (sessError) {
+        const details = [sessError.message, sessError.details, sessError.hint].filter(Boolean).join('\n');
+        setError(`${t('profile.loadUserError')}\n\n${details}`);
+        setProfile(null);
+        return;
+      }
+
+      if (!uid) {
         setError(t('profile.loadUserError'));
         setProfile(null);
         return;
@@ -172,20 +178,22 @@ export default function ProfileScreen() {
 
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .select('id, nombre, apellido, edad, genero, email, language')
-        .eq('id', user.id)
+        .select(
+          'id, nombre, apellido, edad, genero, email, language, notifications_enabled, last_active_at, pro, pro_trial_used, pro_until, pro_lifetime'
+        )
+        .eq('id', uid)
         .maybeSingle();
 
       if (profileError) {
-        setError(t('profile.loadProfileError'));
+        const details = [profileError.message, profileError.details, profileError.hint].filter(Boolean).join('\n');
+        setError(`${t('profile.loadProfileError')}\n\n${details}`);
         setProfile(null);
         return;
       }
 
       if (!data) {
-        // Don't sign out if the profile row is missing.
-        // Show a clear message instead.
-        setError(t('profile.noProfileConfigured'));
+        const emailHint = sessionUser?.email ? `\n\nEmail: ${sessionUser.email}` : '';
+        setError(`${t('profile.noProfileConfigured')}\n\nUID: ${uid}${emailHint}`);
         setProfile(null);
         return;
       }
@@ -210,8 +218,10 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
+    // Always attempt a session-first profile load; loadProfile() will end loading deterministically.
     loadProfile();
-  }, []);
+  }, [authLoading]);
 
   useEffect(() => {
     if (!showPro) return;
@@ -291,6 +301,19 @@ export default function ProfileScreen() {
       setError(null);
       setSuccessMessage(null);
 
+      const { data: sessData, error: sessError } = await supabase.auth.getSession();
+      const sessionUser = sessData?.session?.user ?? null;
+      const uid = sessionUser?.id ?? authUser?.id ?? session?.user?.id ?? null;
+      if (sessError) {
+        const details = [sessError.message, sessError.details, sessError.hint].filter(Boolean).join('\n');
+        setError(`${t('profile.loadUserError')}\n\n${details}`);
+        return;
+      }
+      if (!uid) {
+        setError(t('profile.loadUserError'));
+        return;
+      }
+
       const edadNumber = edad ? parseInt(edad, 10) : null;
 
       const { data, error: updateError } = await supabase
@@ -302,12 +325,15 @@ export default function ProfileScreen() {
           genero: genero || null,
           language: languageValue || 'es',
         })
-        .eq('id', profile.id)
-        .select('id, nombre, apellido, edad, genero, email, language')
+        .eq('id', uid)
+        .select(
+          'id, nombre, apellido, edad, genero, email, language, notifications_enabled, last_active_at, pro, pro_trial_used, pro_until, pro_lifetime'
+        )
         .maybeSingle();
 
       if (updateError) {
-        setError(t('profile.updateError'));
+        const details = [updateError.message, updateError.details, updateError.hint].filter(Boolean).join('\n');
+        setError(`${t('profile.updateError')}\n\n${details}`);
         return;
       }
 
@@ -348,9 +374,10 @@ export default function ProfileScreen() {
       setSuccessMessage(null);
 
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
 
+      const user = currentSession?.user ?? null;
       if (!user) {
         try {
           await signOut();
@@ -770,7 +797,13 @@ export default function ProfileScreen() {
           onRequestClose={() => setShowSettingsModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, isDark && { backgroundColor: '#020617' }]}>
+            <SafeAreaView
+              edges={['bottom']}
+              style={[
+                styles.modalContent,
+                isDark && { backgroundColor: '#020617' },
+              ]}
+            >
               <View style={styles.modalHeader}>
                 <View style={styles.modalHandle} />
                 <View style={styles.modalTitleRow}>
@@ -790,7 +823,10 @@ export default function ProfileScreen() {
               <View style={styles.settingsBody}>
                 <ScrollView
                   style={styles.modalScroll}
-                  contentContainerStyle={styles.modalScrollContent}
+                  contentContainerStyle={[
+                    styles.modalScrollContent,
+                    { paddingBottom: 20 + (insets?.bottom || 0) },
+                  ]}
                   showsVerticalScrollIndicator
                 >
                   {/* INFORMACIÓN PERSONAL */}
@@ -1149,11 +1185,17 @@ export default function ProfileScreen() {
                     </Pressable>
                   </View>
 
-                  <View style={{ height: 100 }} />
+                  <View style={{ height: 100 + (insets?.bottom || 0) }} />
                 </ScrollView>
 
                 {/* BOTÓN GUARDAR FLOTANTE */}
-                <View style={[styles.floatingButtonContainer, isDark && { backgroundColor: '#020617', borderTopColor: '#1e293b' }] }>
+                <View
+                  style={[
+                    styles.floatingButtonContainer,
+                    { paddingBottom: 16 + (insets?.bottom || 0) },
+                    isDark && { backgroundColor: '#020617', borderTopColor: '#1e293b' },
+                  ]}
+                >
                   <Pressable
                     style={[
                       styles.saveButton,
@@ -1170,7 +1212,7 @@ export default function ProfileScreen() {
                   </Pressable>
                 </View>
               </View>
-            </View>
+            </SafeAreaView>
           </View>
         </Modal>
 
@@ -1281,10 +1323,16 @@ export default function ProfileScreen() {
                     </View>
                   </View>
 
-                  <View style={{ height: 100 }} />
+                  <View style={{ height: 100 + (insets?.bottom || 0) }} />
                 </ScrollView>
 
-                <View style={[styles.floatingButtonContainer, isDark && { backgroundColor: '#020617', borderTopColor: '#1e293b' }]}>
+                <View
+                  style={[
+                    styles.floatingButtonContainer,
+                    { paddingBottom: 16 + (insets?.bottom || 0) },
+                    isDark && { backgroundColor: '#020617', borderTopColor: '#1e293b' },
+                  ]}
+                >
                   <Pressable
                     style={[
                       styles.saveButton,

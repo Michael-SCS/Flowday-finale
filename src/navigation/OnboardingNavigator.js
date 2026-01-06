@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import OnboardingSlides from '../components/onboarding/OnboardingSlides';
 import AppSettings from '../components/onboarding/AppSettings';
 import RegisterForm from '../components/onboarding/RegisterForm';
 import ProfileForm from '../components/onboarding/ProfileForm';
@@ -18,7 +19,7 @@ export default function OnboardingNavigator({ navigation }) {
         // (e.g. after signup) don't reset the root to the App mid-flow.
         const inProgress = await AsyncStorage.getItem('onboarding_in_progress');
         const sess = await supabase.auth.getSession();
-        const user = sess?.data?.session?.user ?? (await supabase.auth.getUser()).data.user;
+        const user = sess?.data?.session?.user ?? null;
         if (!mounted) return;
 
         // If onboarding is in progress, don't kick the user into the App.
@@ -39,7 +40,12 @@ export default function OnboardingNavigator({ navigation }) {
   }, [navigation]);
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="Slides" screenOptions={{ headerShown: false }}>
+      <Stack.Screen
+        name="Slides"
+        component={OnboardingSlides}
+        initialParams={{ next: { screen: 'AppSettings', params: { from: 'first_open' } } }}
+      />
       <Stack.Screen name="AppSettings" component={AppSettings} />
       <Stack.Screen name="RegisterForm" component={RegisterForm} />
       <Stack.Screen name="Profile" component={ProfileForm} />

@@ -4,8 +4,8 @@ export async function saveMarketTemplate({
   title,
   items,
 }) {
-  const user = (await supabase.auth.getUser())
-    .data.user;
+  const { data } = await supabase.auth.getSession();
+  const user = data?.session?.user ?? null;
 
   if (!user) return;
 
@@ -38,7 +38,8 @@ export async function saveMarketTemplate({
     .insert(itemsToInsert);
 }
 export async function getMarketTemplates() {
-  const user = (await supabase.auth.getUser()).data.user;
+  const { data } = await supabase.auth.getSession();
+  const user = data?.session?.user ?? null;
 
   if (!user) return [];
 

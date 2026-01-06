@@ -5,9 +5,36 @@ import { generateInitialHabits } from '../../utils/initialHabits';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettings } from '../../utils/settingsContext';
 
+const TOUR_PENDING_KEY = 'fluu_mascotTourPending';
+
 export default function OnboardingFinal({ navigation }) {
   const [loading, setLoading] = useState(true);
   const { language } = useSettings();
+
+  const updateProfileBestEffort = async (userId, patch) => {
+    // Profile row is created by a DB trigger; never INSERT/UPSERT from the frontend.
+    // Best-effort only: do not block onboarding if this fails.
+    try {
+      await supabase.from('profiles').update(patch).eq('id', userId);
+    } catch {
+      // ignore
+    }
+  };
+
+  const ensureSessionUser = async (email, password) => {
+    const { data: sess0 } = await supabase.auth.getSession();
+    const sessUser0 = sess0?.session?.user ?? null;
+    if (sessUser0) return sessUser0;
+
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) throw signInError;
+
+    const u = signInData?.user ?? null;
+    if (u) return u;
+
+    const { data: sess1 } = await supabase.auth.getSession();
+    return sess1?.session?.user ?? null;
+  };
 
   const safeResetToApp = () => {
     try {
@@ -50,11 +77,39 @@ export default function OnboardingFinal({ navigation }) {
           throw new Error('Faltan los datos de registro. Vuelve al paso anterior.');
         }
 
+        // Read locally-collected onboarding profile info (to attach as Auth metadata)
+        let profilePayload = null;
+        try {
+          const raw = await AsyncStorage.getItem('onboarding_profile_payload');
+          if (raw) profilePayload = JSON.parse(raw);
+        } catch {
+          profilePayload = null;
+        }
+
+        const metadata = profilePayload
+          ? {
+              nombre: profilePayload.nombre || null,
+              apellido: profilePayload.apellido || null,
+              edad: typeof profilePayload.edad === 'number' ? profilePayload.edad : null,
+              genero: profilePayload.genero || null,
+            }
+          : null;
+
         // Create account only at the end of onboarding.
         // If the user already exists, fall back to sign-in.
         let user = null;
         try {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            ...(metadata
+              ? {
+                  options: {
+                    data: metadata,
+                  },
+                }
+              : {}),
+          });
           if (signUpError) throw signUpError;
           user = signUpData?.user ?? null;
         } catch (e) {
@@ -68,38 +123,23 @@ export default function OnboardingFinal({ navigation }) {
           user = signInData?.user ?? null;
         }
 
-        // Ensure we have a session user (some projects require email confirmation).
-        if (!user) {
-          const sess = await supabase.auth.getSession();
-          user = sess?.data?.session?.user ?? null;
-        }
+        // Ensure we have an authenticated session (login must not be blocked).
+        user = await ensureSessionUser(email, password);
 
         if (!user) {
-          throw new Error('No se pudo iniciar sesión. Revisa tu correo si tu proyecto requiere confirmación por email.');
-        }
-
-        // Read locally-collected onboarding profile info
-        let profilePayload = null;
-        try {
-          const raw = await AsyncStorage.getItem('onboarding_profile_payload');
-          if (raw) profilePayload = JSON.parse(raw);
-        } catch {
-          profilePayload = null;
+          throw new Error('No se pudo iniciar sesión. Intenta de nuevo.');
         }
 
         if (profilePayload) {
           const payload = {
-            id: user.id,
             nombre: profilePayload.nombre || '',
             apellido: profilePayload.apellido || '',
             edad: typeof profilePayload.edad === 'number' ? profilePayload.edad : null,
             genero: profilePayload.genero || null,
-            email: user.email || email,
             language: language,
           };
 
-          const { error: profileError } = await supabase.from('profiles').upsert(payload);
-          if (profileError) throw profileError;
+          await updateProfileBestEffort(user.id, payload);
         }
 
         const { error } = await supabase.from('user_onboarding').upsert({
@@ -110,6 +150,9 @@ export default function OnboardingFinal({ navigation }) {
         if (error) throw error;
 
         await generateInitialHabits(user.id);
+
+        // Only brand-new users should auto-see the mascot tour.
+        try { await AsyncStorage.setItem(`${TOUR_PENDING_KEY}_${user.id}`, 'true'); } catch {}
 
         // Marcar localmente que en este dispositivo ya se mostró el onboarding
         // y finalizar el estado en progreso (esto evita que se reinicie el flujo).

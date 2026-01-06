@@ -973,6 +973,7 @@ const styles = StyleSheet.create({
   presetsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 10,
   },
   presetButton: {

@@ -10,6 +10,7 @@ import imgMascotaFinal from '../../assets/mascota_final.png';
 import imgLogin from '../../assets/login.png';
 
 const STORAGE_KEY = 'fluu_hasSeenMascotTour';
+const PENDING_KEY = 'fluu_mascotTourPending';
 
 export default function MascotTour({ visible, onClose, onRequestTabChange }) {
   const { language } = useSettings();
@@ -17,6 +18,7 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
   const isEn = language === 'en';
   const [step, setStep] = useState(0);
   const storageKey = user?.id ? `${STORAGE_KEY}_${user.id}` : null;
+  const pendingKey = user?.id ? `${PENDING_KEY}_${user.id}` : null;
 
   const steps = isEn
     ? [
@@ -119,6 +121,11 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
     try {
       if (storageKey) {
         await AsyncStorage.setItem(storageKey, 'true');
+      }
+
+      // Clear the auto-show flag; the tour should only auto-open right after Register.
+      if (pendingKey) {
+        await AsyncStorage.removeItem(pendingKey);
       }
     } catch (e) {
       // ignore storage errors, tour will just aparecer otra vez

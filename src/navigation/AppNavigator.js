@@ -19,6 +19,7 @@ import { useAuth } from '../auth/AuthProvider';
 
 const Tab = createBottomTabNavigator();
 const TOUR_STORAGE_KEY = 'fluu_hasSeenMascotTour';
+const TOUR_PENDING_KEY = 'fluu_mascotTourPending';
 
 export default function TabNavigator() {
   const insets = useSafeAreaInsets();
@@ -35,6 +36,11 @@ export default function TabNavigator() {
     return `${TOUR_STORAGE_KEY}_${user.id}`;
   }, [user?.id]);
 
+  const tourPendingKey = useMemo(() => {
+    if (!user?.id) return null;
+    return `${TOUR_PENDING_KEY}_${user.id}`;
+  }, [user?.id]);
+
   const tourValue = useMemo(
     () => ({
       showTour,
@@ -47,28 +53,37 @@ export default function TabNavigator() {
   useEffect(() => {
     let mounted = true;
 
-    if (!tourStorageKey) {
+    if (!tourStorageKey || !tourPendingKey) {
       setShowTour(false);
       return () => {
         mounted = false;
       };
     }
 
-    AsyncStorage.getItem(tourStorageKey)
-      .then((value) => {
+    // Only auto-show the mascot tour when the user is coming from Register/Onboarding
+    // (pending flag set). Returning users who log in should not see it again.
+    AsyncStorage.multiGet([tourStorageKey, tourPendingKey])
+      .then((pairs) => {
         if (!mounted) return;
-        if (!value) {
+        const map = new Map(pairs);
+        const hasSeen = map.get(tourStorageKey);
+        const pending = map.get(tourPendingKey);
+
+        if (pending === 'true' && !hasSeen) {
           setShowTour(true);
+        } else {
+          setShowTour(false);
         }
       })
       .catch(() => {
         if (!mounted) return;
+        setShowTour(false);
       });
 
     return () => {
       mounted = false;
     };
-  }, [tourStorageKey]);
+  }, [tourStorageKey, tourPendingKey]);
 
   return (
     <TourProvider value={tourValue}>

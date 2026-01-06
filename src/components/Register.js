@@ -17,6 +17,9 @@ import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const TOUR_PENDING_KEY = 'fluu_mascotTourPending';
 
 /* ======================
    HELPERS
@@ -49,6 +52,7 @@ export default function Register({ navigation }) {
   // Datos de cuenta
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordTouched, setPasswordTouched] = useState(false);
   const [showPassword, setShowPassword] =
     useState(false);
 
@@ -57,8 +61,7 @@ export default function Register({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [showLegalModal, setShowLegalModal] = useState(false);
-  const [legalModalType, setLegalModalType] = useState('terms'); // 'terms' | 'privacy'
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
 
   useEffect(() => {
     if (
@@ -74,53 +77,110 @@ export default function Register({ navigation }) {
     return genderKeys.map((k) => t(`profile.genderOptions.${k}`));
   }, [t]);
 
+  const goToLogin = () => {
+    const canNavigate = (nav, name) => {
+      const state = nav?.getState?.();
+      return Array.isArray(state?.routeNames) && state.routeNames.includes(name);
+    };
+
+    if (canNavigate(navigation, 'Login')) {
+      navigation.navigate('Login');
+      return;
+    }
+
+    const parent = navigation?.getParent?.();
+    const root = parent?.getParent?.() || parent;
+    if (canNavigate(root, 'Auth')) {
+      root.navigate('Auth', { screen: 'Login' });
+    }
+  };
+
   async function handleRegister() {
     setError('');
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError(error.message);
+    const trimmedPassword = String(password || '');
+    if (trimmedPassword.length < 8) {
+      setPasswordTouched(true);
+      setError('La contraseña debe tener al menos 8 caracteres.');
       setLoading(false);
       return;
     }
 
-    const user = data?.user ?? null;
-
-    // If Supabase returns a user (auto-login), proceed to create profile and go to onboarding.
-    if (user) {
-      await supabase.from('profiles').insert({
-        id: user.id,
-        nombre: capitalizeWords(nombre),
-        apellido: capitalizeWords(apellido),
-        edad: edad ? parseInt(edad) : null,
-        genero,
+    try {
+      const { data, error } = await supabase.auth.signUp({
         email,
-        language,
+        password,
+        options: {
+          data: {
+            nombre: capitalizeWords(nombre) || null,
+            apellido: capitalizeWords(apellido) || null,
+            edad: edad ? parseInt(edad, 10) : null,
+            genero: genero || null,
+          },
+        },
       });
 
-      setLoading(false);
-      // If register happened outside onboarding, go directly to app
+      if (error) throw error;
+
+      // Ensure we have a session; some setups return user but no session.
+      let sessionUser = null;
+      try {
+        const { data: sess0 } = await supabase.auth.getSession();
+        sessionUser = sess0?.session?.user ?? null;
+      } catch {
+        sessionUser = null;
+      }
+
+      if (!sessionUser) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+        sessionUser = signInData?.user ?? null;
+      }
+
+      if (!sessionUser) {
+        throw new Error('No se pudo iniciar sesión. Intenta de nuevo.');
+      }
+
+      // Profile row is created by a DB trigger; never INSERT from the frontend.
+      // Best-effort: update profile fields without blocking the user.
+      try {
+        await supabase
+          .from('profiles')
+          .update({
+            nombre: capitalizeWords(nombre),
+            apellido: capitalizeWords(apellido),
+            edad: edad ? parseInt(edad, 10) : null,
+            genero,
+            language,
+          })
+          .eq('id', sessionUser.id);
+      } catch {
+        // Do not block access if profile update fails.
+      }
+
+      // Only brand-new users coming from Register should auto-see the mascot tour.
+      try {
+        await AsyncStorage.setItem(`${TOUR_PENDING_KEY}_${sessionUser.id}`, 'true');
+      } catch {
+        // ignore
+      }
+
+      // Go directly to app
       try {
         navigation.reset({ index: 0, routes: [{ name: 'App', state: { index: 0, routes: [{ name: 'Calendar' }] } }] });
-      } catch (e) {
-        // fallback
+      } catch {
         try { navigation.navigate('App'); } catch {}
       }
-      return;
+    } catch (e) {
+      const message =
+        e && typeof e === 'object' && (e.message || e.error_description)
+          ? String(e.message || e.error_description)
+          : 'No se pudo crear la cuenta. Intenta de nuevo.';
+      setError(message);
+    } finally {
+      setLoading(false);
     }
-
-    // If there's no user returned, most likely the project requires email confirmation.
-    // Show friendly instruction and send user to Login.
-    setLoading(false);
-    setError('Revisa tu correo para confirmar la cuenta. Después podrás iniciar sesión.');
-    try {
-      navigation.navigate('Login');
-    } catch (e) {}
   }
 
   return (
@@ -274,6 +334,7 @@ export default function Register({ navigation }) {
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
+                    onBlur={() => setPasswordTouched(true)}
                   />
                   <Pressable
                     onPress={() =>
@@ -291,64 +352,9 @@ export default function Register({ navigation }) {
                     />
                   </Pressable>
                 </View>
-              </View>
-
-              {/* BLOQUE LEGAL: TÉRMINOS Y PRIVACIDAD */}
-              <View style={styles.legalCard}>
-                <Text style={styles.legalTitle}>
-                  {t('register.legalTitle')}
-                </Text>
-                <Text style={styles.legalNote}>
-                  {t('register.privacyShort')}
-                </Text>
-
-                <View style={styles.acceptRow}>
-                  <Pressable
-                    style={styles.checkbox}
-                    onPress={() => setAcceptedTerms(!acceptedTerms)}
-                  >
-                    <Ionicons
-                      name={
-                        acceptedTerms
-                          ? 'checkbox'
-                          : 'square-outline'
-                      }
-                      size={20}
-                      color={
-                        acceptedTerms
-                          ? '#4c1d95'
-                          : '#6b7280'
-                      }
-                    />
-                  </Pressable>
-                  <Text style={styles.acceptText}>
-                    {t('register.acceptLabel')}
-                  </Text>
-                </View>
-
-                <View style={styles.legalLinksRow}>
-                  <Pressable
-                    onPress={() => {
-                      setLegalModalType('terms');
-                      setShowLegalModal(true);
-                    }}
-                  >
-                    <Text style={styles.legalLink}>
-                      {t('register.viewTerms')}
-                    </Text>
-                  </Pressable>
-                  <Text style={styles.legalDot}>·</Text>
-                  <Pressable
-                    onPress={() => {
-                      setLegalModalType('privacy');
-                      setShowLegalModal(true);
-                    }}
-                  >
-                    <Text style={styles.legalLink}>
-                      {t('register.viewPrivacy')}
-                    </Text>
-                  </Pressable>
-                </View>
+                {passwordTouched && String(password || '').length > 0 && String(password || '').length < 8 ? (
+                  <Text style={styles.inlineError}>La contraseña debe tener al menos 8 caracteres.</Text>
+                ) : null}
               </View>
             </>
           )}
@@ -356,6 +362,32 @@ export default function Register({ navigation }) {
           {error ? (
             <Text style={styles.error}>{error}</Text>
           ) : null}
+
+          {step === 2 && (
+            <View style={styles.legalCard}>
+              <Text style={styles.legalTitle}>{t('profile.privacyPolicy')}</Text>
+              <Text style={styles.legalNote}>{t('register.policyHelper')}</Text>
+
+              <View style={styles.acceptRow}>
+                <Pressable
+                  style={styles.checkbox}
+                  onPress={() => setAcceptedTerms(!acceptedTerms)}
+                >
+                  <Ionicons
+                    name={acceptedTerms ? 'checkbox' : 'square-outline'}
+                    size={20}
+                    color={acceptedTerms ? '#4c1d95' : '#6b7280'}
+                  />
+                </Pressable>
+                <Text style={styles.acceptText}>
+                  {t('register.policyAcceptPrefix') || 'Acepto la '}
+                  <Text style={styles.inlinePolicyLink} onPress={() => setShowPolicyModal(true)}>
+                    {t('register.policyAcceptLink') || 'Política de tratamiento de datos, uso y privacidad'}
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          )}
 
           <View style={styles.actionsRow}>
             {step === 2 && (
@@ -415,11 +447,13 @@ export default function Register({ navigation }) {
             </Pressable>
           </View>
 
-          <Pressable onPress={() => navigation.goBack()}>
-            <Text style={styles.link}>
-              {t('register.goToLogin') || 'Ya tengo una cuenta'}
-            </Text>
-          </Pressable>
+          {step === 2 && (
+            <Pressable onPress={goToLogin}>
+              <Text style={styles.link}>
+                {t('register.goToLogin') || '¿Ya tienes cuenta? Inicia sesión'}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </KeyboardAwareScrollView>
 
@@ -459,39 +493,59 @@ export default function Register({ navigation }) {
         </Pressable>
       </Modal>
 
-      {/* MODAL TÉRMINOS / PRIVACIDAD */}
+      {/* MODAL POLÍTICA (mismo contenido que Perfil) */}
       <Modal
-        visible={showLegalModal}
+        visible={showPolicyModal}
         transparent
-        animationType="fade"
-        onRequestClose={() => setShowLegalModal(false)}
+        animationType="slide"
+        onRequestClose={() => setShowPolicyModal(false)}
       >
         <Pressable
           style={styles.modalOverlay}
-          onPress={() => setShowLegalModal(false)}
+          onPress={() => setShowPolicyModal(false)}
         >
           <Pressable
             style={[styles.modalContent, { maxHeight: '75%' }]}
             onPress={(e) => e.stopPropagation()}
           >
             <Text style={styles.modalTitle}>
-              {legalModalType === 'terms'
-                ? t('register.legalModalTermsTitle')
-                : t('register.legalModalPrivacyTitle')}
+              {t('profile.privacyPolicy')}
             </Text>
             <KeyboardAwareScrollView
               style={{ maxHeight: '70%' }}
               showsVerticalScrollIndicator
             >
-              <Text style={styles.modalBodyText}>
-                {legalModalType === 'terms'
-                  ? t('register.termsContent')
-                  : t('register.privacyContent')}
-              </Text>
+              <Text style={styles.modalBodyText}>{t('profile.privacyIntro')}</Text>
+
+              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyUseOfDataTitle')}</Text>
+              <Text style={styles.modalBodyText}>{t('profile.privacyUseOfDataText')}</Text>
+              <Text style={styles.modalBodyText}>• {t('profile.privacyUseOfDataBullet1')}</Text>
+              <Text style={styles.modalBodyText}>• {t('profile.privacyUseOfDataBullet2')}</Text>
+              <Text style={styles.modalBodyText}>• {t('profile.privacyUseOfDataBullet3')}</Text>
+
+              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacySharingTitle')}</Text>
+              <Text style={styles.modalBodyText}>{t('profile.privacySharingText')}</Text>
+
+              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyLiabilityTitle')}</Text>
+              <Text style={styles.modalBodyText}>{t('profile.privacyLiabilityText')}</Text>
+
+              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyNotAdviceTitle')}</Text>
+              <Text style={styles.modalBodyText}>{t('profile.privacyNotAdviceText')}</Text>
+
+              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyRightsTitle')}</Text>
+              <Text style={styles.modalBodyText}>{t('profile.privacyRightsText')}</Text>
+
+              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyMinorsTitle')}</Text>
+              <Text style={styles.modalBodyText}>{t('profile.privacyMinorsText')}</Text>
+
+              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyChangesTitle')}</Text>
+              <Text style={styles.modalBodyText}>{t('profile.privacyChangesText')}</Text>
+
+              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyAcceptanceText')}</Text>
             </KeyboardAwareScrollView>
             <Pressable
               style={styles.modalPrimary}
-              onPress={() => setShowLegalModal(false)}
+              onPress={() => setShowPolicyModal(false)}
             >
               <Text style={styles.modalPrimaryText}>
                 {t('profile.policyAccept')}
@@ -670,6 +724,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+  inlineError: {
+    color: '#ef4444',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: -6,
+    marginBottom: 8,
+  },
   languageBtn: {
     width: '100%',
     backgroundColor: '#111827',
@@ -777,12 +838,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f3ff',
     borderWidth: 1,
     borderColor: '#e0e7ff',
+    alignItems: 'stretch',
   },
   legalTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#4c1d95',
     marginBottom: 4,
+    textAlign: 'center',
   },
   legalRecommended: {
     fontSize: 12,
@@ -814,33 +877,50 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   legalNote: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#6b7280',
     marginTop: 6,
+    textAlign: 'justify',
+    alignSelf: 'stretch',
   },
   acceptRow: {
+    width: '100%',
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: 8,
+    justifyContent: 'flex-start',
+    flexWrap: 'wrap',
   },
   checkbox: {
     marginRight: 8,
+    marginTop: 2,
+    flexShrink: 0,
   },
   acceptText: {
     flex: 1,
-    fontSize: 11,
+    minWidth: 0,
+    fontSize: 10,
     color: '#4b5563',
+    textAlign: 'justify',
+    alignSelf: 'stretch',
+  },
+  inlinePolicyLink: {
+    color: '#4c1d95',
+    fontWeight: '700',
   },
   legalLinksRow: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 6,
     flexWrap: 'wrap',
+    justifyContent: 'flex-start',
   },
   legalLink: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#4c1d95',
     fontWeight: '600',
+    textAlign: 'center',
   },
   legalDot: {
     marginHorizontal: 6,

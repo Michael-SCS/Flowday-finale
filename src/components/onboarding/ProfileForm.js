@@ -68,23 +68,22 @@ export default function ProfileForm({ navigation, route }) {
       try {
         let user = null;
 
-        const { data: { user: u }, error: authError } = await supabase.auth.getUser();
-        if (authError || !u) throw new Error('Usuario no autenticado');
-        user = u;
+        const { data: sessData } = await supabase.auth.getSession();
+        user = sessData?.session?.user ?? null;
+        if (!user) throw new Error('Usuario no autenticado');
 
         if (!user) throw new Error('Usuario no autenticado');
 
         const payload = {
-          id: user.id,
           nombre: profilePayload.nombre || '',
           apellido: profilePayload.apellido || '',
           edad: profilePayload.edad || null,
           genero: profilePayload.genero || null,
-          email: user.email,
           language: language,
         };
 
-        const { error } = await supabase.from('profiles').upsert(payload);
+        // Profile row is created by a DB trigger; never INSERT/UPSERT from the frontend.
+        const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
         if (error) throw error;
 
         try {

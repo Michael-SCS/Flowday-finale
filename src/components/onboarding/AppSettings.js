@@ -137,7 +137,7 @@ export default function AppSettings({ navigation, route }) {
               {t('profile.appearanceMode')}
             </Text>
           </View>
-          <View style={styles.row}>
+          <View style={styles.optionsGrid}>
             <Option onPress={() => setThemeMode('light')} active={currentThemeMode === 'light'}>
               ☀️ {t('profile.appearanceLight')}
             </Option>
@@ -183,6 +183,7 @@ export default function AppSettings({ navigation, route }) {
             backgroundColor: accent,
             opacity: loading ? 0.7 : 1,
             shadowColor: accent,
+            marginBottom: 12 + (insets?.bottom || 0),
           }
         ]} 
         onPress={finish} 
