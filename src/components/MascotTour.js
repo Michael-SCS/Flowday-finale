@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 999,
-    backgroundColor: '#38BDF8',
+    backgroundColor: '#A8D8F0',
     flexShrink: 0,
   },
   primaryText: {
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   dotActive: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: '#A8D8F0',
     width: 18,
   },
   dotInactive: {

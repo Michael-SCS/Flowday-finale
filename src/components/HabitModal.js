@@ -82,7 +82,7 @@ export default function HabitModal({ onSelect, onClose }) {
                     />
                   ) : (
                     <View style={styles.iconPlaceholder}>
-                      <Ionicons name="sparkles" size={20} color="#38BDF8" />
+                      <Ionicons name="sparkles" size={20} color="#A8D8F0" />
                     </View>
                   )}
                   <View style={styles.itemTextContainer}>

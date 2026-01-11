@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   loginPromptLink: {
-    color: '#38BDF8',
+    color: '#A8D8F0',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e5e7eb',
   },
   stepDotActive: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: '#A8D8F0',
   },
   stepLine: {
     flex: 1,
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
   stepLineActive: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: '#A8D8F0',
   },
   stepLabel: {
     fontSize: 13,
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
   },
   primary: {
     flex: 1,
-    backgroundColor: '#38BDF8',
+    backgroundColor: '#A8D8F0',
     padding: 16,
     borderRadius: 18,
     marginTop: 8,
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   link: {
     textAlign: 'center',
     marginTop: 16,
-    color: '#38BDF8',
+    color: '#A8D8F0',
     fontWeight: '600',
   },
   error: {

@@ -44,14 +44,14 @@ const FREQUENCIES = [
 ];
 
 const COLOR_OPTIONS = [
-  '#38BDF8', // blue
-  '#FB7185', // pink
-  '#FACC15', // yellow
-  '#A855F7', // purple
-  '#14B8A6', // teal
-  '#10B981', // green
-  '#FB923C', // orange
-  '#EF4444', // red
+  '#A8D8F0', // blue
+  '#F5B3C1', // pink
+  '#FEE8A8', // yellow
+  '#D4B5E8', // purple
+  '#A8DDD4', // teal
+  '#A8E6C1', // green
+  '#FFDCB3', // orange
+  '#F5B3A3', // red
 ];
 
 function getContrastColorLocal(hex) {
@@ -130,7 +130,7 @@ export default function HabitFormModal({
   const [durationMinutes, setDurationMinutes] = useState(null);
   const [durationPickerValue, setDurationPickerValue] = useState('');
 
-  const [selectedColor, setSelectedColor] = useState('#38BDF8');
+  const [selectedColor, setSelectedColor] = useState('#A8D8F0');
   const [marketAddVisible, setMarketAddVisible] = useState(false);
   const [marketAddFieldKey, setMarketAddFieldKey] = useState(null);
   const [vitaminsAddVisible, setVitaminsAddVisible] = useState(false);

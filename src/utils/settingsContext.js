@@ -25,11 +25,11 @@ const SettingsContext = createContext({
 });
 
 const THEME_PALETTE = {
-  blue: '#38BDF8',
-  pink: '#FB7185',
-  yellow: '#FACC15',
-  purple: '#A855F7',
-  teal: '#14B8A6',
+  blue: '#A8D8F0',
+  pink: '#F5B3C1',
+  yellow: '#FEE8A8',
+  purple: '#D4B5E8',
+  teal: '#A8DDD4',
 };
 
 export function getAccentColor(themeColor) {

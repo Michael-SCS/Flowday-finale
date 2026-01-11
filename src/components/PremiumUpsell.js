@@ -338,12 +338,12 @@ const styles = StyleSheet.create({
   },
   planCardEmphasis: {
     borderWidth: 2,
-    borderColor: '#FACC15',
+    borderColor: '#FEE8A8',
     backgroundColor: '#fffbeb',
   },
   planCardSelected: {
     borderWidth: 2,
-    borderColor: '#FACC15',
+    borderColor: '#FEE8A8',
     backgroundColor: '#fffbeb',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

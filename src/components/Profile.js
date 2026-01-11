@@ -971,11 +971,11 @@ export default function ProfileScreen() {
                         <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.interfaceColor')}</Text>
                         <View style={styles.colorGrid}>
                           {[
-                            { key: 'blue', label: t('profile.colorBlue'), color: '#38BDF8' },
-                            { key: 'pink', label: t('profile.colorPink'), color: '#FB7185' },
-                            { key: 'yellow', label: t('profile.colorYellow'), color: '#FACC15' },
-                            { key: 'purple', label: t('profile.colorPurple'), color: '#A855F7' },
-                            { key: 'teal', label: t('profile.colorTeal'), color: '#14B8A6' },
+                            { key: 'blue', label: t('profile.colorBlue'), color: '#A8D8F0' },
+                            { key: 'pink', label: t('profile.colorPink'), color: '#F5B3C1' },
+                            { key: 'yellow', label: t('profile.colorYellow'), color: '#FEE8A8' },
+                            { key: 'purple', label: t('profile.colorPurple'), color: '#D4B5E8' },
+                            { key: 'teal', label: t('profile.colorTeal'), color: '#A8DDD4' },
                           ].map((opt) => {
                             const isActive = opt.key === themeColor;
                             return (
