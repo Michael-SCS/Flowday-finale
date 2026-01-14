@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import OnboardingSlides from '../components/onboarding/OnboardingSlides';
 import AppSettings from '../components/onboarding/AppSettings';
 import RegisterForm from '../components/onboarding/RegisterForm';
 import ProfileForm from '../components/onboarding/ProfileForm';
@@ -40,13 +39,8 @@ export default function OnboardingNavigator({ navigation }) {
   }, [navigation]);
 
   return (
-    <Stack.Navigator initialRouteName="Slides" screenOptions={{ headerShown: false }}>
-      <Stack.Screen
-        name="Slides"
-        component={OnboardingSlides}
-        initialParams={{ next: { screen: 'AppSettings', params: { from: 'first_open' } } }}
-      />
-      <Stack.Screen name="AppSettings" component={AppSettings} />
+    <Stack.Navigator initialRouteName="AppSettings" screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AppSettings" component={AppSettings} initialParams={{ from: 'first_open' }} />
       <Stack.Screen name="RegisterForm" component={RegisterForm} />
       <Stack.Screen name="Profile" component={ProfileForm} />
       <Stack.Screen name="Final" component={OnboardingFinal} />

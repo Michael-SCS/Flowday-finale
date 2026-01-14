@@ -7,7 +7,9 @@ import {
   Pressable,
   StyleSheet,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSettings } from '../utils/settingsContext';
@@ -39,16 +41,17 @@ export default function MarketAddModal({ visible, onClose, onAdd }) {
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.wrapper}
         >
-          <View style={[styles.card, isDark && styles.cardDark]}>
-            <View style={styles.header}>
-              <Text style={[styles.title, isDark && styles.titleDark]}>Agregar producto</Text>
-              <Pressable onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={22} color={isDark ? '#cbd5e1' : '#374151'} />
-              </Pressable>
-            </View>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View style={[styles.card, isDark && styles.cardDark]}>
+              <View style={styles.header}>
+                <Text style={[styles.title, isDark && styles.titleDark]}>Agregar producto</Text>
+                <Pressable onPress={onClose} style={styles.closeBtn}>
+                  <Ionicons name="close" size={22} color={isDark ? '#cbd5e1' : '#374151'} />
+                </Pressable>
+              </View>
 
             <View style={styles.field}>
               <Text style={[styles.label, isDark && styles.labelDark]}>Nombre</Text>
@@ -95,7 +98,8 @@ export default function MarketAddModal({ visible, onClose, onAdd }) {
                 <Text style={styles.confirmText}>Agregar</Text>
               </Pressable>
             </View>
-          </View>
+            </View>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -109,7 +113,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   wrapper: {
+    flex: 1,
     padding: 16,
+    justifyContent: 'flex-end',
   },
   card: {
     borderRadius: 16,

@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 999,
-    backgroundColor: '#A8D8F0',
+    backgroundColor: '#22c55e',
     flexShrink: 0,
   },
   primaryText: {

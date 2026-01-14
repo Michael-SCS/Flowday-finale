@@ -25,12 +25,17 @@ const SettingsContext = createContext({
 });
 
 const THEME_PALETTE = {
-  blue: '#A8D8F0',
-  pink: '#F5B3C1',
-  yellow: '#FEE8A8',
-  purple: '#D4B5E8',
-  teal: '#A8DDD4',
+  blue: '#4F7DF3',
+  pink: '#EC6BAA',
+  green: '#2ECC71',
+  purple: '#7B61FF',
+  orange: '#FF8A3D',
 };
+
+function normalizeThemeColor(value) {
+  const v = String(value || '').trim();
+  return THEME_PALETTE[v] ? v : 'blue';
+}
 
 export function getAccentColor(themeColor) {
   return THEME_PALETTE[themeColor] || THEME_PALETTE.blue;
@@ -98,7 +103,17 @@ export function SettingsProvider({ children }) {
           AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY),
           AsyncStorage.getItem(TIME_FORMAT_KEY),
         ]);
-        if (storedTheme) setThemeColorState(storedTheme);
+        if (storedTheme) {
+          const next = normalizeThemeColor(storedTheme);
+          setThemeColorState(next);
+          if (next !== storedTheme) {
+            try {
+              await AsyncStorage.setItem(THEME_KEY, next);
+            } catch {
+              // ignore
+            }
+          }
+        }
         if (storedThemeMode === 'dark' || storedThemeMode === 'light') {
           setThemeModeState(storedThemeMode);
         }
@@ -168,8 +183,9 @@ export function SettingsProvider({ children }) {
 
   const setThemeColor = async (value) => {
     try {
-      setThemeColorState(value);
-      await AsyncStorage.setItem(THEME_KEY, value);
+      const next = normalizeThemeColor(value);
+      setThemeColorState(next);
+      await AsyncStorage.setItem(THEME_KEY, next);
     } catch {
       // ignorar error de persistencia
     }

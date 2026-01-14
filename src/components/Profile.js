@@ -48,6 +48,8 @@ export default function ProfileScreen() {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showQuickLanguageModal, setShowQuickLanguageModal] = useState(false);
+  const [showQuickTimeFormatModal, setShowQuickTimeFormatModal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   const [statsLoading, setStatsLoading] = useState(false);
@@ -65,6 +67,12 @@ export default function ProfileScreen() {
   const genderOptions = genderKeys.map((k) => t(`profile.genderOptions.${k}`));
 
   const supportedLanguageKeys = ['es', 'en', 'pt', 'fr'];
+
+  const safeT = (key, fallback) => {
+    const value = t(key);
+    if (value && value !== key) return value;
+    return fallback;
+  };
 
   async function sendFeedbackInApp(message) {
     const trimmed = String(message || '').trim();
@@ -151,6 +159,39 @@ export default function ProfileScreen() {
     const label = t(key);
     if (label && label !== key) return label;
     return normalized.toUpperCase();
+  };
+
+  const quickLanguageOptions = [
+    { key: 'es', label: t('profile.languageEs'), flag: '🇪🇸' },
+    { key: 'en', label: t('profile.languageEn'), flag: '🇺🇸' },
+    { key: 'pt', label: t('profile.languagePt'), flag: '🇧🇷' },
+    { key: 'fr', label: t('profile.languageFr'), flag: '🇫🇷' },
+  ].map((opt) => ({
+    ...opt,
+    label: opt.label && opt.label !== `profile.language${opt.key.charAt(0).toUpperCase() + opt.key.slice(1)}`
+      ? opt.label
+      : opt.key.toUpperCase(),
+  }));
+
+  const quickTimeFormatOptions = [
+    { key: 'system', label: safeT('profile.timeFormatSystem', 'Sistema'), icon: 'settings-outline' },
+    { key: '12h', label: safeT('profile.timeFormat12h', '12h'), icon: 'sunny-outline' },
+    { key: '24h', label: safeT('profile.timeFormat24h', '24h'), icon: 'moon-outline' },
+  ];
+
+  const formatLastActive = (value) => {
+    if (!value) return null;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    try {
+      return new Intl.DateTimeFormat(language || 'es', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+      }).format(d);
+    } catch {
+      return d.toLocaleDateString();
+    }
   };
 
   const loadProfile = async () => {
@@ -443,11 +484,12 @@ export default function ProfileScreen() {
                 themeMode === 'dark' && { backgroundColor: 'rgba(2,6,23,0.75)' },
               ]}
             />
+
             <Pressable
-              style={[styles.settingsIconButton, { backgroundColor: accent }]}
+              style={[styles.settingsIconButton, { backgroundColor: `${accent}DD` }]}
               onPress={() => setShowSettingsModal(true)}
             >
-              <Ionicons name="settings-sharp" size={20} color="#fff" />
+              <Ionicons name="settings-outline" size={22} color="#fff" />
             </Pressable>
           </View>
 
@@ -537,9 +579,226 @@ export default function ProfileScreen() {
                         <Text style={[styles.preferenceText, { color: accent }]}>{getLanguageLabel(language)}</Text>
                       </View>
                     </View>
+
+                    {profile?.last_active_at ? (
+                      <View style={styles.metaRow}>
+                        <View style={[styles.metaPill, { backgroundColor: isDark ? '#0b1220' : '#f1f5f9' }]}>
+                          <Ionicons name="pulse-outline" size={14} color={isDark ? '#94a3b8' : '#64748b'} />
+                          <Text style={[styles.metaPillText, isDark && { color: '#cbd5e1' }]}>
+                            {safeT('profile.lastActive', 'Última actividad')}: {formatLastActive(profile.last_active_at) || '-'}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
                   </View>
 
                   {/* hint removed per request */}
+                </View>
+
+                {/* AJUSTES RÁPIDOS */}
+                <View style={[styles.sectionCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
+                  <View style={styles.sectionHeader}>
+                    <View style={[styles.sectionHeaderIcon, { backgroundColor: `${accent}20` }]}>
+                      <Ionicons name="options" size={18} color={accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}>
+                        {safeT('profile.quickSettingsTitle', 'Ajustes rápidos')}
+                      </Text>
+                      <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}>
+                        {safeT('profile.quickSettingsSubtitle', 'Personaliza sin abrir el modal')}
+                      </Text>
+                    </View>
+                    <Pressable
+                      style={[styles.sectionHeaderAction, { borderColor: `${accent}55` }]}
+                      onPress={() => setShowSettingsModal(true)}
+                    >
+                      <Text style={[styles.sectionHeaderActionText, { color: accent }]}>
+                        {safeT('profile.moreSettingsButton', 'Más ajustes')}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={16} color={accent} />
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.quickSettingsRows}>
+                    <View style={[styles.quickSettingRow, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' }]}>
+                      <View style={styles.quickSettingLeft}>
+                        <View style={[styles.quickSettingIcon, { backgroundColor: `${accent}15` }]}>
+                          <Ionicons name={isDark ? 'moon' : 'sunny'} size={18} color={accent} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.quickSettingTitle, isDark && { color: '#e5e7eb' }]}>
+                            {safeT('profile.appearanceMode', 'Modo')}
+                          </Text>
+                          <Text style={[styles.quickSettingSubtitle, isDark && { color: '#94a3b8' }]}>
+                            {isDark ? safeT('profile.appearanceDark', 'Oscuro') : safeT('profile.appearanceLight', 'Claro')}
+                          </Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={isDark}
+                        onValueChange={(v) => setThemeMode(v ? 'dark' : 'light')}
+                        trackColor={{ false: '#e5e7eb', true: `${accent}66` }}
+                        thumbColor={isDark ? accent : '#9ca3af'}
+                      />
+                    </View>
+
+                    <View style={[styles.quickSettingRow, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' }]}>
+                      <View style={styles.quickSettingLeft}>
+                        <View style={[styles.quickSettingIcon, { backgroundColor: `${accent}15` }]}>
+                          <Ionicons name="notifications" size={18} color={accent} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.quickSettingTitle, isDark && { color: '#e5e7eb' }]}>
+                            {safeT('profile.notificationsTitle', 'Notificaciones')}
+                          </Text>
+                          <Text style={[styles.quickSettingSubtitle, isDark && { color: '#94a3b8' }]}>
+                            {notificationsEnabled ? safeT('profile.notificationsOn', 'Activadas') : safeT('profile.notificationsOff', 'Desactivadas')}
+                          </Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={!!notificationsEnabled}
+                        onValueChange={async (v) => {
+                          await setNotificationsEnabled(!!v);
+                          if (!v) {
+                            await cancelAllScheduledNotifications();
+                          }
+                        }}
+                        trackColor={{ false: '#e5e7eb', true: `${accent}66` }}
+                        thumbColor={notificationsEnabled ? accent : '#9ca3af'}
+                      />
+                    </View>
+
+                    <Pressable
+                      style={[styles.quickSettingRow, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' }]}
+                      onPress={() => setShowQuickLanguageModal(true)}
+                    >
+                      <View style={styles.quickSettingLeft}>
+                        <View style={[styles.quickSettingIcon, { backgroundColor: `${accent}15` }]}>
+                          <Ionicons name="language" size={18} color={accent} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.quickSettingTitle, isDark && { color: '#e5e7eb' }]}>
+                            {safeT('profile.appLanguage', 'Idioma')}
+                          </Text>
+                          <Text style={[styles.quickSettingSubtitle, isDark && { color: '#94a3b8' }]}>
+                            {getLanguageLabel(languageValue || language)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={isDark ? '#94a3b8' : '#64748b'} />
+                    </Pressable>
+
+                    <Pressable
+                      style={[styles.quickSettingRow, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' }]}
+                      onPress={() => setShowQuickTimeFormatModal(true)}
+                    >
+                      <View style={styles.quickSettingLeft}>
+                        <View style={[styles.quickSettingIcon, { backgroundColor: `${accent}15` }]}>
+                          <Ionicons name="time" size={18} color={accent} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.quickSettingTitle, isDark && { color: '#e5e7eb' }]}>
+                            {safeT('profile.timeFormatTitle', 'Formato de hora')}
+                          </Text>
+                          <Text style={[styles.quickSettingSubtitle, isDark && { color: '#94a3b8' }]}>
+                            {timeFormat === '12h'
+                              ? '12h'
+                              : timeFormat === '24h'
+                                ? '24h'
+                                : safeT('profile.timeFormatSystem', 'Sistema')}
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={isDark ? '#94a3b8' : '#64748b'} />
+                    </Pressable>
+                  </View>
+                </View>
+
+                {/* CUENTA */}
+                <View style={[styles.sectionCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
+                  <View style={styles.sectionHeader}>
+                    <View style={[styles.sectionHeaderIcon, { backgroundColor: `${accent}20` }]}>
+                      <Ionicons name="person-circle" size={18} color={accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}>
+                        {safeT('profile.accountTitle', 'Cuenta')}
+                      </Text>
+                      <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}>
+                        {safeT('profile.accountSubtitle', 'Soporte, privacidad y seguridad')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Pressable
+                    style={[styles.rowButton, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' }]}
+                    onPress={() => setShowFeedbackModal(true)}
+                  >
+                    <View style={styles.rowButtonLeft}>
+                      <View style={[styles.rowButtonIcon, { backgroundColor: `${accent}15` }]}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={18} color={accent} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.rowButtonTitle, isDark && { color: '#e5e7eb' }]}>
+                          {safeT('profile.feedbackTitle', 'Feedback')}
+                        </Text>
+                        <Text style={[styles.rowButtonSubtitle, isDark && { color: '#94a3b8' }]}>
+                          {safeT('profile.feedbackOpen', 'Cuéntanos tu experiencia')}
+                        </Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={isDark ? '#94a3b8' : '#64748b'} />
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.rowButton, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' }]}
+                    onPress={() => setShowPolicyModal(true)}
+                  >
+                    <View style={styles.rowButtonLeft}>
+                      <View style={[styles.rowButtonIcon, { backgroundColor: `${accent}15` }]}>
+                        <Ionicons name="shield-checkmark-outline" size={18} color={accent} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.rowButtonTitle, isDark && { color: '#e5e7eb' }]}>
+                          {safeT('profile.privacyPolicy', 'Política de privacidad')}
+                        </Text>
+                        <Text style={[styles.rowButtonSubtitle, isDark && { color: '#94a3b8' }]}>
+                          {safeT('profile.privacyOpenHint', 'Cómo usamos tus datos')}
+                        </Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={isDark ? '#94a3b8' : '#64748b'} />
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.rowButton,
+                      isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' },
+                    ]}
+                    onPress={handleDeleteAccount}
+                    disabled={deletingAccount}
+                  >
+                    <View style={styles.rowButtonLeft}>
+                      <View style={[styles.rowButtonIcon, { backgroundColor: '#ef444420' }]}>
+                        {deletingAccount ? (
+                          <ActivityIndicator size="small" color="#ef4444" />
+                        ) : (
+                          <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.rowButtonTitle, { color: '#ef4444' }]}>
+                          {safeT('profile.deleteAccount', 'Eliminar cuenta')}
+                        </Text>
+                        <Text style={[styles.rowButtonSubtitle, isDark && { color: '#94a3b8' }]}>
+                          {safeT('profile.deleteAccountMessageShort', 'Esta acción es permanente')}
+                        </Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={isDark ? '#94a3b8' : '#64748b'} />
+                  </Pressable>
                 </View>
 
                 {/* ESTADÍSTICAS PRO */}
@@ -971,11 +1230,11 @@ export default function ProfileScreen() {
                         <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.interfaceColor')}</Text>
                         <View style={styles.colorGrid}>
                           {[
-                            { key: 'blue', label: t('profile.colorBlue'), color: '#A8D8F0' },
-                            { key: 'pink', label: t('profile.colorPink'), color: '#F5B3C1' },
-                            { key: 'yellow', label: t('profile.colorYellow'), color: '#FEE8A8' },
-                            { key: 'purple', label: t('profile.colorPurple'), color: '#D4B5E8' },
-                            { key: 'teal', label: t('profile.colorTeal'), color: '#A8DDD4' },
+                            { key: 'blue', label: t('profile.colorBlue'), color: '#4F7DF3' },
+                            { key: 'pink', label: t('profile.colorPink'), color: '#EC6BAA' },
+                            { key: 'green', label: t('profile.colorGreen'), color: '#2ECC71' },
+                            { key: 'purple', label: t('profile.colorPurple'), color: '#7B61FF' },
+                            { key: 'orange', label: t('profile.colorOrange'), color: '#FF8A3D' },
                           ].map((opt) => {
                             const isActive = opt.key === themeColor;
                             return (
@@ -1270,6 +1529,137 @@ export default function ProfileScreen() {
           </Pressable>
         </Modal>
 
+        {/* QUICK MODAL: IDIOMA */}
+        <Modal
+          visible={showQuickLanguageModal}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowQuickLanguageModal(false)}
+        >
+          <Pressable
+            style={styles.modalOverlayCenter}
+            onPress={() => setShowQuickLanguageModal(false)}
+          >
+            <Pressable
+              style={[styles.quickSelectModal, isDark && { backgroundColor: '#020617' }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.quickSelectHeader}>
+                <View style={[styles.quickSelectIcon, { backgroundColor: `${accent}20` }]}>
+                  <Ionicons name="language" size={22} color={accent} />
+                </View>
+                <Text style={[styles.quickSelectTitle, isDark && { color: '#e5e7eb' }]}>
+                  {safeT('profile.appLanguage', 'Idioma')}
+                </Text>
+              </View>
+
+              <View style={styles.quickSelectList}>
+                {quickLanguageOptions.map((opt, index) => {
+                  const active = opt.key === (languageValue || language);
+                  return (
+                    <Pressable
+                      key={opt.key}
+                      style={[
+                        styles.quickSelectItem,
+                        index !== quickLanguageOptions.length - 1 && styles.quickSelectItemBorder,
+                        active && [styles.quickSelectItemActive, { backgroundColor: `${accent}10` }],
+                      ]}
+                      onPress={async () => {
+                        setLanguageValue(opt.key);
+                        setLanguage(opt.key);
+                        setShowQuickLanguageModal(false);
+                        try {
+                          await clearHabitCache();
+                        } catch {
+                        }
+                      }}
+                    >
+                      <View style={styles.quickSelectItemLeft}>
+                        <Text style={styles.quickSelectFlag}>{opt.flag}</Text>
+                        <Text
+                          style={[
+                            styles.quickSelectItemText,
+                            isDark && { color: '#cbd5e1' },
+                            active && [styles.quickSelectItemTextActive, { color: accent }],
+                          ]}
+                        >
+                          {opt.label}
+                        </Text>
+                      </View>
+                      {active && <Ionicons name="checkmark-circle" size={20} color={accent} />}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* QUICK MODAL: FORMATO DE HORA */}
+        <Modal
+          visible={showQuickTimeFormatModal}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowQuickTimeFormatModal(false)}
+        >
+          <Pressable
+            style={styles.modalOverlayCenter}
+            onPress={() => setShowQuickTimeFormatModal(false)}
+          >
+            <Pressable
+              style={[styles.quickSelectModal, isDark && { backgroundColor: '#020617' }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.quickSelectHeader}>
+                <View style={[styles.quickSelectIcon, { backgroundColor: `${accent}20` }]}>
+                  <Ionicons name="time" size={22} color={accent} />
+                </View>
+                <Text style={[styles.quickSelectTitle, isDark && { color: '#e5e7eb' }]}>
+                  {safeT('profile.timeFormatTitle', 'Formato de hora')}
+                </Text>
+              </View>
+
+              <View style={styles.quickSelectList}>
+                {quickTimeFormatOptions.map((opt, index) => {
+                  const active = opt.key === timeFormat;
+                  return (
+                    <Pressable
+                      key={opt.key}
+                      style={[
+                        styles.quickSelectItem,
+                        index !== quickTimeFormatOptions.length - 1 && styles.quickSelectItemBorder,
+                        active && [styles.quickSelectItemActive, { backgroundColor: `${accent}10` }],
+                      ]}
+                      onPress={() => {
+                        setTimeFormat(opt.key);
+                        setShowQuickTimeFormatModal(false);
+                      }}
+                    >
+                      <View style={styles.quickSelectItemLeft}>
+                        <Ionicons
+                          name={opt.icon}
+                          size={18}
+                          color={active ? accent : isDark ? '#cbd5e1' : '#64748b'}
+                        />
+                        <Text
+                          style={[
+                            styles.quickSelectItemText,
+                            isDark && { color: '#cbd5e1' },
+                            active && [styles.quickSelectItemTextActive, { color: accent }],
+                          ]}
+                        >
+                          {opt.label}
+                        </Text>
+                      </View>
+                      {active && <Ionicons name="checkmark-circle" size={20} color={accent} />}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
         {/* MODAL FEEDBACK */}
         <Modal
           visible={showFeedbackModal}
@@ -1398,7 +1788,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 60,
-    background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.1))',
+    backgroundColor: 'rgba(0,0,0,0.12)',
   },
   settingsIconButton: {
     position: 'absolute',
@@ -1458,6 +1848,154 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 32,
+  },
+
+  // SECTION CARDS (MAIN SCREEN)
+  sectionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  sectionHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#0f172a',
+  },
+  sectionHeaderSubtitle: {
+    marginTop: 2,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  sectionHeaderAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    backgroundColor: '#ffffff',
+  },
+  sectionHeaderActionText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  quickSettingsRows: {
+    gap: 10,
+  },
+  quickSettingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  quickSettingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  quickSettingIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickSettingTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0f172a',
+  },
+  quickSettingSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+
+  rowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    marginBottom: 10,
+  },
+  rowButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  rowButtonIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowButtonTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0f172a',
+  },
+  rowButtonSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+
+  metaRow: {
+    marginTop: 6,
+  },
+  metaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  metaPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
   },
 
   // ERROR CARD
@@ -1586,6 +2124,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  moreSettingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    marginTop: 16,
+  },
+  moreSettingsButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
   hintBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1710,6 +2263,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  modalOverlayCenter: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
   },
   modalContent: {
     flex: 1,
@@ -2105,6 +2665,74 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 24,
     elevation: 12,
+  },
+
+  // QUICK SELECT MODALS
+  quickSelectModal: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 14,
+  },
+  quickSelectHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  quickSelectIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickSelectTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0f172a',
+  },
+  quickSelectList: {
+    gap: 0,
+  },
+  quickSelectItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 14,
+  },
+  quickSelectItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  quickSelectItemActive: {
+    borderBottomWidth: 0,
+  },
+  quickSelectItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  quickSelectItemText: {
+    fontSize: 15,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  quickSelectItemTextActive: {
+    fontWeight: '900',
+  },
+  quickSelectFlag: {
+    fontSize: 18,
   },
   genderModalHeader: {
     alignItems: 'center',

@@ -552,7 +552,7 @@ export default function HabitFormModal({
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.overlay}
     >
       <Pressable style={styles.backdrop} onPress={onClose} />

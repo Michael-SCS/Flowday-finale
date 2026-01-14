@@ -330,11 +330,15 @@ export default function Register({ navigation }) {
                 </Text>
                 <View style={styles.passwordBox}>
                   <TextInput
-                    style={styles.passwordInput}
+                    style={[styles.passwordInput, !showPassword && styles.passwordMasked]}
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
                     onBlur={() => setPasswordTouched(true)}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="password"
+                    autoComplete="password"
                   />
                   <Pressable
                     onPress={() =>
@@ -673,7 +677,10 @@ const styles = StyleSheet.create({
   passwordInput: {
     flex: 1,
     paddingVertical: 14,
+    color: '#111827',
+    fontSize: 16,
   },
+  passwordMasked: Platform.OS === 'android' ? { fontFamily: 'sans-serif' } : {},
   actionsRow: {
     width: '100%',
     flexDirection: 'row',

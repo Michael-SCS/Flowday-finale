@@ -21,15 +21,22 @@ export default function RootNavigator({ navigationTheme }) {
       AsyncStorage.getItem('device_onboarding_shown'),
     ]);
 
-    // First app open on this device: start the onboarding/registration flow
-    // instead of sending the user to Login.
-    if (deviceShown !== 'true' && inProgress !== 'true') {
-      try { await AsyncStorage.setItem('onboarding_in_progress', 'true'); } catch {}
+    // Explicit in-progress flag always wins (e.g. user tapped "create account").
+    if (inProgress === 'true') {
       setOnboardingInProgress(true);
       return;
     }
 
-    setOnboardingInProgress(inProgress === 'true');
+    // First install / first open on this device, unauthenticated: start onboarding.
+    if ((!user || authInvalid) && deviceShown !== 'true') {
+      try {
+        await AsyncStorage.setItem('onboarding_in_progress', 'true');
+      } catch {}
+      setOnboardingInProgress(true);
+      return;
+    }
+
+    setOnboardingInProgress(false);
   };
 
   useEffect(() => {
@@ -46,8 +53,8 @@ export default function RootNavigator({ navigationTheme }) {
       mounted = false;
     };
   }, []);
-  
-  // Re-check flags when auth state changes (e.g. after signup/profile completion)
+
+  // Re-check flags when auth state changes.
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -62,8 +69,6 @@ export default function RootNavigator({ navigationTheme }) {
       mounted = false;
     };
   }, [user, authInvalid]);
-
-  // No polling timers: flags are refreshed on auth/nav changes.
 
   const desiredRoot = useMemo(() => {
     if (onboardingInProgress) return 'Onboarding';

@@ -163,14 +163,14 @@ export default function AppSettings({ navigation, route }) {
             <Option onPress={() => setThemeColor('pink')} active={themeColor === 'pink'} fullWidth>
               {t('profile.colorPink')}
             </Option>
-            <Option onPress={() => setThemeColor('yellow')} active={themeColor === 'yellow'} fullWidth>
-              {t('profile.colorYellow')}
+            <Option onPress={() => setThemeColor('green')} active={themeColor === 'green'} fullWidth>
+              {t('profile.colorGreen')}
             </Option>
             <Option onPress={() => setThemeColor('purple')} active={themeColor === 'purple'} fullWidth>
               {t('profile.colorPurple')}
             </Option>
-            <Option onPress={() => setThemeColor('teal')} active={themeColor === 'teal'} fullWidth>
-              {t('profile.colorTeal')}
+            <Option onPress={() => setThemeColor('orange')} active={themeColor === 'orange'} fullWidth>
+              {t('profile.colorOrange')}
             </Option>
           </View>
         </View>
@@ -194,6 +194,10 @@ export default function AppSettings({ navigation, route }) {
           {loading ? '⏳ ' + t('profile.saving') : '✓ ' + t('profile.save')}
         </Text>
       </TouchableOpacity>
+
+      <Text style={[styles.hint, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+        {t('onboarding.settingsCanChangeLater') || 'Esto se podrá cambiar más adelante en Ajustes.'}
+      </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -225,6 +229,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     fontWeight: '500',
+  },
+  hint: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '600',
+    marginTop: 4,
   },
   card: {
     borderRadius: 20,

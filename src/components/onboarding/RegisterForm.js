@@ -188,7 +188,11 @@ export default function RegisterForm({ navigation, route }) {
                   value={password} 
                   onChangeText={setPassword} 
                   onBlur={() => setPasswordTouched(true)}
-                  style={styles.input}
+                  style={[styles.input, !showPassword && styles.passwordMasked]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="password"
+                  autoComplete="password"
                 />
                 <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={styles.eyeButton}>
                   <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color="#6b7280" />
@@ -328,7 +332,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, 
     borderColor: '#e6eef9' 
   },
-  input: { flex: 1, paddingVertical: 10 },
+  input: { flex: 1, paddingVertical: 10, color: '#111827', fontSize: 16 },
+  passwordMasked: Platform.OS === 'android' ? { fontFamily: 'sans-serif' } : {},
   eyeButton: { padding: 6 },
   btn: { 
     backgroundColor: '#2563eb', 
