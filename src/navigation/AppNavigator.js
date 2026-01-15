@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,6 +21,36 @@ import { useAuth } from '../auth/AuthProvider';
 const Tab = createBottomTabNavigator();
 const TOUR_STORAGE_KEY = 'fluu_hasSeenMascotTour';
 const TOUR_PENDING_KEY = 'fluu_mascotTourPending';
+
+const TAB_COLORS = {
+  Calendar: '#3b82f6',
+  Pomodoro: '#f97316',
+  Perfil: '#a855f7',
+  Estadísticas: '#22c55e',
+};
+
+function getTabColor(routeName, fallback) {
+  return TAB_COLORS[routeName] || fallback;
+}
+
+function TabIcon({ name, focused, tabColor, size, isDark }) {
+  const iconColor = focused ? tabColor : isDark ? `${tabColor}CC` : `${tabColor}B3`;
+
+  return (
+    <View
+      style={{
+        width: 44,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'transparent',
+      }}
+    >
+      <Ionicons name={name} size={size} color={iconColor} />
+    </View>
+  );
+}
 
 export default function TabNavigator() {
   const insets = useSafeAreaInsets();
@@ -94,6 +125,10 @@ export default function TabNavigator() {
         headerShown: false,
         tabBarActiveTintColor: accent,
         tabBarInactiveTintColor: isDark ? '#64748b' : '#94A3B8',
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '800',
+        },
         tabBarStyle: {
           height: 60 + insets.bottom,   // 🔥 CLAVE
           paddingBottom: insets.bottom, // 🔥 CLAVE
@@ -107,10 +142,18 @@ export default function TabNavigator() {
         name="Calendar"
         component={CalendarScreen}
         options={{
-          tabBarLabel: t('calendar.title'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
-          ),
+          tabBarLabel: ({ focused }) => {
+            const tabColor = getTabColor('Calendar', accent);
+            return (
+              <Text style={{ color: focused ? tabColor : isDark ? '#64748b' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
+                {t('calendar.title')}
+              </Text>
+            );
+          },
+          tabBarIcon: ({ focused, size }) => {
+            const tabColor = getTabColor('Calendar', accent);
+            return <TabIcon name="calendar-outline" focused={focused} tabColor={tabColor} size={size} isDark={isDark} />;
+          },
         }}
       />
 
@@ -118,10 +161,18 @@ export default function TabNavigator() {
         name="Pomodoro"
         component={PomodoroScreen}
         options={{
-          tabBarLabel: t('pomodoro.title'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="timer-outline" size={size} color={color} />
-          ),
+          tabBarLabel: ({ focused }) => {
+            const tabColor = getTabColor('Pomodoro', accent);
+            return (
+              <Text style={{ color: focused ? tabColor : isDark ? '#64748b' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
+                {t('pomodoro.title')}
+              </Text>
+            );
+          },
+          tabBarIcon: ({ focused, size }) => {
+            const tabColor = getTabColor('Pomodoro', accent);
+            return <TabIcon name="timer-outline" focused={focused} tabColor={tabColor} size={size} isDark={isDark} />;
+          },
         }}
       />
 
@@ -131,10 +182,18 @@ export default function TabNavigator() {
         name="Perfil"
         component={ProfileScreen}
         options={{
-          tabBarLabel: t('profile.personalInfo'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
+          tabBarLabel: ({ focused }) => {
+            const tabColor = getTabColor('Perfil', accent);
+            return (
+              <Text style={{ color: focused ? tabColor : isDark ? '#64748b' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
+                {t('profile.personalInfo')}
+              </Text>
+            );
+          },
+          tabBarIcon: ({ focused, size }) => {
+            const tabColor = getTabColor('Perfil', accent);
+            return <TabIcon name="person-outline" focused={focused} tabColor={tabColor} size={size} isDark={isDark} />;
+          },
         }}
       />
       {isPro === true && (
@@ -142,10 +201,18 @@ export default function TabNavigator() {
           name="Estadísticas"
           component={AdvancedStatsScreen}
           options={{
-            tabBarLabel: t('premium.statsTitle'),
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="stats-chart" size={size} color={color} />
-            ),
+            tabBarLabel: ({ focused }) => {
+              const tabColor = getTabColor('Estadísticas', accent);
+              return (
+                <Text style={{ color: focused ? tabColor : isDark ? '#64748b' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
+                  {t('premium.statsTitle')}
+                </Text>
+              );
+            },
+            tabBarIcon: ({ focused, size }) => {
+              const tabColor = getTabColor('Estadísticas', accent);
+              return <TabIcon name="stats-chart" focused={focused} tabColor={tabColor} size={size} isDark={isDark} />;
+            },
           }}
         />
       )}

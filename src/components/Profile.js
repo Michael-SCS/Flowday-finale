@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image, Alert, Switch } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Modal, Platform, Image, Alert, Switch, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../utils/supabase';
@@ -16,6 +16,10 @@ import { useProStatus } from '../utils/proStatus';
 import { loadActivities as loadUserActivities } from '../utils/localActivities';
 import { clearPomodoroStats } from '../utils/pomodoroStats';
 import { cancelAllScheduledNotifications } from '../utils/notifications';
+import MoodChart from './MoodChart';
+import MoodMessageBanner from './MoodMessageBanner';
+import { getDismissedMoodBannerDate, getMoodForDate, todayMoodKey } from '../utils/moodTracker';
+import { pickMoodMessage } from '../utils/moodMessages';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
@@ -51,6 +55,29 @@ export default function ProfileScreen() {
   const [showQuickLanguageModal, setShowQuickLanguageModal] = useState(false);
   const [showQuickTimeFormatModal, setShowQuickTimeFormatModal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const [dismissedMoodDate, setDismissedMoodDate] = useState(null);
+  const [todayMood, setTodayMood] = useState(null);
+  const [todayMoodMessage, setTodayMoodMessage] = useState(null);
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const COLLAPSE_DISTANCE = 120;
+  const clampedY = Animated.diffClamp(scrollY, 0, COLLAPSE_DISTANCE);
+  const avatarScale = clampedY.interpolate({
+    inputRange: [0, COLLAPSE_DISTANCE],
+    outputRange: [1, 0.72],
+    extrapolate: 'clamp',
+  });
+  const avatarOpacity = clampedY.interpolate({
+    inputRange: [0, COLLAPSE_DISTANCE * 0.9, COLLAPSE_DISTANCE],
+    outputRange: [1, 0.9, 0.85],
+    extrapolate: 'clamp',
+  });
+  const avatarTranslateY = clampedY.interpolate({
+    inputRange: [0, COLLAPSE_DISTANCE],
+    outputRange: [0, -18],
+    extrapolate: 'clamp',
+  });
 
   const [statsLoading, setStatsLoading] = useState(false);
   const [stats, setStats] = useState(null);
@@ -257,6 +284,46 @@ export default function ProfileScreen() {
       setLoading(false);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+
+      const refresh = async () => {
+        try {
+          const todayKey = todayMoodKey();
+          const [dismissed, entry] = await Promise.all([
+            getDismissedMoodBannerDate(),
+            getMoodForDate(todayKey),
+          ]);
+          if (!mounted) return;
+          setDismissedMoodDate(dismissed);
+          setTodayMood(entry);
+
+          const msg = entry?.score
+            ? pickMoodMessage({ score: entry.score, dateKey: todayKey, isToday: true, t, now: new Date() })
+            : null;
+          setTodayMoodMessage(msg);
+        } catch {
+          if (!mounted) return;
+          setDismissedMoodDate(null);
+          setTodayMood(null);
+          setTodayMoodMessage(null);
+        }
+      };
+
+      refresh();
+
+      const id = setInterval(() => {
+        refresh();
+      }, 30 * 60 * 1000);
+
+      return () => {
+        mounted = false;
+        clearInterval(id);
+      };
+    }, [t])
+  );
 
   useEffect(() => {
     if (authLoading) return;
@@ -470,52 +537,55 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, isDark && { backgroundColor: '#020617' }]}>
       <View style={[styles.container, isDark && { backgroundColor: '#020617' }]}>
-        {/* HEADER CON BANNER Y AVATAR */}
-        <View style={styles.headerSection}>
-          <View style={styles.bannerContainer}>
-            <Image
-              source={isDark ? require('../../assets/Banner_negro.png') : require('../../assets/Banner_blanco.png')}
-              style={styles.bannerImage}
-              resizeMode="cover"
-            />
-            <View
-              style={[
-                styles.bannerOverlay,
-                themeMode === 'dark' && { backgroundColor: 'rgba(2,6,23,0.75)' },
-              ]}
-            />
-
-            <Pressable
-              style={[styles.settingsIconButton, { backgroundColor: `${accent}DD` }]}
-              onPress={() => setShowSettingsModal(true)}
-            >
-              <Ionicons name="settings-outline" size={22} color="#fff" />
-            </Pressable>
-          </View>
-
-          <View style={styles.avatarSection}>
-            <View style={[styles.avatarContainer, { borderColor: accent, shadowColor: accent }]}>
-              <View style={[styles.avatarCircle, { backgroundColor: accent }]}>
-                <Image
-                      source={require('../../assets/login.png')}
-                  style={styles.avatarImage}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={accent} size="large" />
             <Text style={[styles.loadingText, isDark && { color: '#e5e7eb' }]}>{t('profile.loading')}</Text>
           </View>
         ) : (
-          <ScrollView 
+          <Animated.ScrollView 
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true }
+            )}
           >
+            {/* HEADER (SIN PORTADA) */}
+            <View style={styles.headerSection}>
+              <View style={styles.headerTopRow}>
+                <View style={{ flex: 1 }} />
+                <Pressable
+                  style={[styles.settingsIconButton, { backgroundColor: `${accent}DD` }]}
+                  onPress={() => setShowSettingsModal(true)}
+                >
+                  <Ionicons name="settings-outline" size={22} color="#fff" />
+                </Pressable>
+              </View>
+
+              <View style={styles.avatarSection}>
+                <Animated.View
+                  style={[
+                    {
+                      opacity: avatarOpacity,
+                      transform: [{ translateY: avatarTranslateY }, { scale: avatarScale }],
+                    },
+                  ]}
+                >
+                  <View style={[styles.avatarContainer, { borderColor: accent, shadowColor: accent }]}>
+                    <View style={[styles.avatarCircle, { backgroundColor: accent }]}>
+                      <Image
+                        source={require('../../assets/login.png')}
+                        style={styles.avatarImage}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  </View>
+                </Animated.View>
+              </View>
+            </View>
+
             {error && (
               <View style={[styles.errorCard, isDark && { backgroundColor: '#0b1120', borderColor: '#7f1d1d' }]}>
                 <Ionicons name="alert-circle" size={48} color="#ef4444" />
@@ -595,22 +665,42 @@ export default function ProfileScreen() {
                   {/* hint removed per request */}
                 </View>
 
+                {/* ESTADO DE ÁNIMO */}
+                <View style={[styles.sectionCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
+                  <MoodChart accent={accent} isDark={isDark} embedded />
+                </View>
+
+                {dismissedMoodDate === todayMoodKey() && todayMoodMessage ? (
+                  <View style={[styles.sectionCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
+                    <MoodMessageBanner
+                      title={t('mood.bannerTitle')}
+                      message={todayMoodMessage}
+                      emoji={todayMood?.emoji}
+                      accent={accent}
+                      isDark={isDark}
+                    />
+                  </View>
+                ) : null}
+
                 {/* AJUSTES RÁPIDOS */}
                 <View style={[styles.sectionCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
-                  <View style={styles.sectionHeader}>
-                    <View style={[styles.sectionHeaderIcon, { backgroundColor: `${accent}20` }]}>
-                      <Ionicons name="options" size={18} color={accent} />
+                  <View style={styles.quickSettingsHeader}>
+                    <View style={styles.quickSettingsHeaderTop}>
+                      <View style={[styles.sectionHeaderIcon, { backgroundColor: `${accent}20` }]}>
+                        <Ionicons name="options" size={18} color={accent} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}>
+                          {safeT('profile.quickSettingsTitle', 'Ajustes rápidos')}
+                        </Text>
+                        <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}>
+                          {safeT('profile.quickSettingsSubtitle', 'Personaliza sin abrir el modal')}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}>
-                        {safeT('profile.quickSettingsTitle', 'Ajustes rápidos')}
-                      </Text>
-                      <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}>
-                        {safeT('profile.quickSettingsSubtitle', 'Personaliza sin abrir el modal')}
-                      </Text>
-                    </View>
+
                     <Pressable
-                      style={[styles.sectionHeaderAction, { borderColor: `${accent}55` }]}
+                      style={[styles.quickSettingsHeaderAction, { borderColor: `${accent}55` }]}
                       onPress={() => setShowSettingsModal(true)}
                     >
                       <Text style={[styles.sectionHeaderActionText, { color: accent }]}>
@@ -870,7 +960,7 @@ export default function ProfileScreen() {
                 {/* BOTÓN CERRAR SESIÓN: eliminado -- los usuarios no pueden cerrar sesión */}
               </>
             )}
-          </ScrollView>
+          </Animated.ScrollView>
         )}
 
         {/* MODAL POLÍTICA */}
@@ -1773,27 +1863,14 @@ const styles = StyleSheet.create({
   headerSection: {
     marginBottom: 24,
   },
-  bannerContainer: {
-    width: '100%',
-    height: 160,
-    position: 'relative',
-  },
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  bannerOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: 'rgba(0,0,0,0.12)',
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: Platform.OS === 'ios' ? 8 : 4,
+    marginBottom: 12,
   },
   settingsIconButton: {
-    position: 'absolute',
-    right: 16,
-    top: Platform.OS === 'ios' ? 50 : 16,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -1807,7 +1884,7 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: 'center',
-    marginTop: -44,
+    marginTop: 0,
   },
   avatarContainer: {
     padding: 4,
@@ -1847,6 +1924,7 @@ const styles = StyleSheet.create({
   // SCROLL
   scrollContent: {
     paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 32,
   },
 
@@ -1901,6 +1979,29 @@ const styles = StyleSheet.create({
   sectionHeaderActionText: {
     fontSize: 12,
     fontWeight: '800',
+  },
+
+  quickSettingsHeader: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
+    marginBottom: 14,
+  },
+  quickSettingsHeaderTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  quickSettingsHeaderAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    backgroundColor: '#ffffff',
   },
 
   quickSettingsRows: {

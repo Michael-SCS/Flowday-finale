@@ -1,19 +1,29 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../auth/AuthProvider';
 import AppNavigator from './AppNavigator';
 import OnboardingNavigator from './OnboardingNavigator';
 import AuthNavigator from './AuthNavigator';
+import MoodCheckInModal from '../components/MoodCheckInModal';
+import { getLastPromptDate, saveMoodForToday, setLastPromptDate, todayMoodKey } from '../utils/moodTracker';
+import { useI18n } from '../utils/i18n';
 
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator({ navigationTheme }) {
   const { user, loading, authInvalid } = useAuth();
+  const { t } = useI18n();
   const navRef = useRef(null);
   const [navReady, setNavReady] = useState(false);
   const [onboardingInProgress, setOnboardingInProgress] = useState(false);
+  const [moodVisible, setMoodVisible] = useState(false);
+  const [moodSaving, setMoodSaving] = useState(false);
+
+  const accent = navigationTheme?.colors?.primary || '#7c3aed';
+  const isDark = !!navigationTheme?.dark;
 
   const refreshFlags = async () => {
     const [inProgress, deviceShown] = await Promise.all([
@@ -76,6 +86,35 @@ export default function RootNavigator({ navigationTheme }) {
     return 'App';
   }, [onboardingInProgress, user, authInvalid]);
 
+  const maybeShowMoodPrompt = useCallback(async () => {
+    // Only prompt inside the authenticated app experience.
+    if (desiredRoot !== 'App') return;
+    if (moodVisible || moodSaving) return;
+
+    const today = todayMoodKey();
+    const last = await getLastPromptDate();
+    if (last === today) return;
+
+    setMoodVisible(true);
+  }, [desiredRoot, moodVisible, moodSaving]);
+
+  useEffect(() => {
+    // First entry into the day (cold start / after login)
+    maybeShowMoodPrompt().catch(() => {});
+  }, [maybeShowMoodPrompt]);
+
+  useEffect(() => {
+    // Also check when app returns to foreground (covers "only once per day")
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      maybeShowMoodPrompt().catch(() => {});
+    });
+
+    return () => {
+      try { sub?.remove?.(); } catch {}
+    };
+  }, [maybeShowMoodPrompt]);
+
   useEffect(() => {
     if (!navReady) return;
     const rootState = navRef.current?.getRootState?.();
@@ -103,6 +142,28 @@ export default function RootNavigator({ navigationTheme }) {
         <Stack.Screen name="Auth" component={AuthNavigator} />
         <Stack.Screen name="App" component={AppNavigator} />
       </Stack.Navigator>
+
+      <MoodCheckInModal
+        visible={moodVisible}
+        accent={accent}
+        isDark={isDark}
+        title={t('mood.checkInTitle')}
+        subtitle={t('mood.checkInSubtitle')}
+        onSelect={async ({ score, emoji }) => {
+          if (moodSaving) return;
+          setMoodSaving(true);
+          try {
+            const today = todayMoodKey();
+            await Promise.all([
+              saveMoodForToday({ score, emoji }),
+              setLastPromptDate(today),
+            ]);
+            setMoodVisible(false);
+          } finally {
+            setMoodSaving(false);
+          }
+        }}
+      />
     </NavigationContainer>
   );
 }

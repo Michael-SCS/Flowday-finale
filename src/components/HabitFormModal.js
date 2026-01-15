@@ -82,6 +82,20 @@ function parseMoneyLike(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+function normalizeTemplateType(type) {
+  return String(type || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '');
+}
+
+function isBirthdayHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'birthday') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return titleLower.includes('cumple') || titleLower.includes('birthday') || titleLower.includes('anniversaire');
+}
+
 function formatMarketValue(value, currencySymbol) {
   const n = parseMoneyLike(value);
   if (n === null) return `${currencySymbol}${String(value ?? 0)}`;
@@ -128,13 +142,15 @@ export default function HabitFormModal({
   const [time, setTime] = useState(null);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState(null);
-  const [durationPickerValue, setDurationPickerValue] = useState('');
+  const [durationPickerValue, setDurationPickerValue] = useState('60');
 
   const [selectedColor, setSelectedColor] = useState('#A8D8F0');
   const [marketAddVisible, setMarketAddVisible] = useState(false);
   const [marketAddFieldKey, setMarketAddFieldKey] = useState(null);
   const [vitaminsAddVisible, setVitaminsAddVisible] = useState(false);
   const [vitaminsAddFieldKey, setVitaminsAddFieldKey] = useState(null);
+
+  const isBirthdayTemplate = useMemo(() => isBirthdayHabit(habit), [habit]);
 
   useEffect(() => {
     if (editingActivity && initialSchedule) {
@@ -155,7 +171,11 @@ export default function HabitFormModal({
       } else {
         setTime(null);
       }
-      if (typeof initialSchedule.durationMinutes === 'number') {
+      if (initialSchedule.allDay) {
+        setTime(null);
+        setDurationMinutes(null);
+        setDurationPickerValue('allDay');
+      } else if (typeof initialSchedule.durationMinutes === 'number') {
         setDurationMinutes(initialSchedule.durationMinutes);
         if ([10, 15, 30, 60].includes(initialSchedule.durationMinutes)) {
           setDurationPickerValue(String(initialSchedule.durationMinutes));
@@ -163,27 +183,44 @@ export default function HabitFormModal({
           setDurationPickerValue('custom');
         }
       } else {
-        setDurationMinutes(null);
-        setDurationPickerValue('');
+        setDurationMinutes(60);
+        setDurationPickerValue('60');
+      }
+
+      if (isBirthdayTemplate) {
+        setHasEndDate(false);
+        setEndDate(initialSchedule.startDate || baseDate);
       }
     } else {
       setStartDate(baseDate);
       setEndDate(baseDate);
       setHasEndDate(false);
-      setFrequency('once');
-      setDaysOfWeek([]);
-      // Por defecto, usar la hora actual del dispositivo
-      setTime(new Date());
-      setDurationMinutes(null);
-      setDurationPickerValue('');
+      if (isBirthdayTemplate) {
+        // Cumpleaños: sin horario + todo el día + anual por defecto
+        setFrequency('yearly');
+        setDaysOfWeek([]);
+        setTime(null);
+        setDurationMinutes(null);
+        setDurationPickerValue('allDay');
+      } else {
+        setFrequency('once');
+        setDaysOfWeek([]);
+        // Por defecto, usar la hora actual del dispositivo
+        setTime(new Date());
+        setDurationMinutes(60);
+        setDurationPickerValue('60');
+      }
     }
     // Notes/description section removed.
     setFormData(editingActivity?.data || {});
     // Inicializar color desde la actividad editada o desde la plantilla
-    const initialColor = editingActivity?.data?.color || habit?.color || '#38BDF8';
+    const initialColor =
+      editingActivity?.data?.color ||
+      habit?.color ||
+      (isBirthdayTemplate ? '#F5B3C1' : '#38BDF8');
     setSelectedColor(initialColor);
     setActivePicker(null);
-  }, [habit, baseDate, editingActivity, initialSchedule]);
+  }, [habit, baseDate, editingActivity, initialSchedule, isBirthdayTemplate]);
 
 
   const config = useMemo(() => {
@@ -195,6 +232,14 @@ export default function HabitFormModal({
       return null;
     }
   }, [habit]);
+
+  const birthdayTextField = useMemo(() => {
+    if (!isBirthdayTemplate) return null;
+    const fields = config?.fields;
+    if (!Array.isArray(fields) || fields.length === 0) return null;
+    const textField = fields.find((f) => String(f?.type || '').toLowerCase() === 'text');
+    return textField || null;
+  }, [config, isBirthdayTemplate]);
 
   function toggleDay(day) {
     setDaysOfWeek((prev) =>
@@ -503,17 +548,22 @@ export default function HabitFormModal({
         ).padStart(2, '0')}`
       : null;
 
+    const isAllDay = durationPickerValue === 'allDay';
+    const effectiveTimeString = isAllDay ? null : timeString;
+
     const DEFAULT_DURATION_IF_EMPTY_MINUTES = 60;
 
     const normalizedDuration =
-      typeof durationMinutes === 'number' && durationMinutes > 0
+      isAllDay
+        ? null
+        : typeof durationMinutes === 'number' && durationMinutes > 0
         ? durationMinutes
-        : timeString
+        : effectiveTimeString
           ? DEFAULT_DURATION_IF_EMPTY_MINUTES
           : null;
 
     let endTimeString = null;
-    if (time && normalizedDuration) {
+    if (time && normalizedDuration && !isAllDay) {
       const startTotalMinutes = time.getHours() * 60 + time.getMinutes();
       const total = startTotalMinutes + normalizedDuration;
       const endHour = Math.floor(total / 60) % 24;
@@ -540,10 +590,11 @@ export default function HabitFormModal({
       schedule: {
         // Use local date (not UTC) to avoid shifting the scheduled day on some devices/timezones.
         startDate: formatLocalYMD(startDate),
-        endDate: hasEndDate ? formatLocalYMD(endDate) : null,
+        endDate: isBirthdayTemplate ? null : hasEndDate ? formatLocalYMD(endDate) : null,
         frequency,
         daysOfWeek: frequency === 'weekly' ? daysOfWeek : [],
-        time: timeString,
+        allDay: isAllDay,
+        time: effectiveTimeString,
         durationMinutes: normalizedDuration,
         endTime: endTimeString,
       },
@@ -611,40 +662,44 @@ export default function HabitFormModal({
               </View>
             </Pressable>
 
-            <Pressable
-              style={styles.checkRow}
-              onPress={() => setHasEndDate((v) => !v)}
-            >
-              <Ionicons
-                name={hasEndDate ? 'checkbox' : 'square-outline'}
-                size={22}
-                color="#38BDF8"
-              />
-              <Text style={[styles.checkTxt, isDark && { color: '#e5e7eb' }]}>
-                {t('habitForm.hasEndDateQuestion')}
-              </Text>
-            </Pressable>
-
-            {hasEndDate && (
-              <Pressable
-                style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
-                onPress={() => setActivePicker('end')}
-              >
-                <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.endLabel')}</Text>
-                <View style={styles.boxRight}>
-                  <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
-                    {endDate.toLocaleDateString(
-                      language === 'en' ? 'en-US' : 'es-ES',
-                      {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      }
-                    )}
+            {!isBirthdayTemplate && (
+              <>
+                <Pressable
+                  style={styles.checkRow}
+                  onPress={() => setHasEndDate((v) => !v)}
+                >
+                  <Ionicons
+                    name={hasEndDate ? 'checkbox' : 'square-outline'}
+                    size={22}
+                    color="#38BDF8"
+                  />
+                  <Text style={[styles.checkTxt, isDark && { color: '#e5e7eb' }]}>
+                    {t('habitForm.hasEndDateQuestion')}
                   </Text>
-                  <Ionicons name="chevron-forward" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
-                </View>
-              </Pressable>
+                </Pressable>
+
+                {hasEndDate && (
+                  <Pressable
+                    style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
+                    onPress={() => setActivePicker('end')}
+                  >
+                    <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.endLabel')}</Text>
+                    <View style={styles.boxRight}>
+                      <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
+                        {endDate.toLocaleDateString(
+                          language === 'en' ? 'en-US' : 'es-ES',
+                          {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          }
+                        )}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
+                    </View>
+                  </Pressable>
+                )}
+              </>
             )}
 
             {activePicker && (
@@ -697,69 +752,248 @@ export default function HabitFormModal({
             )}
           </View>
 
+          {isBirthdayTemplate && birthdayTextField ? (
+            <View style={styles.section}>
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                {birthdayTextField.label}
+              </Text>
+              {renderField(birthdayTextField)}
+            </View>
+          ) : null}
+
           {/* HORARIO */}
-          <View style={styles.section}>
-            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
+          {durationPickerValue !== 'allDay' ? (
+            <View style={styles.section}>
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
 
-            <Pressable
-              style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
-              onPress={() => setTimePickerVisible(true)}
-            >
-              <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
-              <View style={styles.boxRight}>
-                <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
-                  {time
-                    ? formatTimeFromDate(time, { language, timeFormat })
-                    : 'Select the time'}
-                </Text>
-                <Ionicons name="time-outline" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
-              </View>
-            </Pressable>
+              <Pressable
+                style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
+                onPress={() => setTimePickerVisible(true)}
+              >
+                <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
+                <View style={styles.boxRight}>
+                  <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
+                    {time
+                      ? formatTimeFromDate(time, { language, timeFormat })
+                      : 'Select the time'}
+                  </Text>
+                  <Ionicons name="time-outline" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
+                </View>
+              </Pressable>
 
-            {timePickerVisible && (
-              <View style={styles.picker}>
-                <DateTimePicker
-                  value={time || new Date()}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-                  locale={
-                    Platform.OS === 'ios'
-                      ? language === 'en'
-                        ? 'en-US'
-                        : 'es-ES'
-                      : undefined
-                  }
-                  themeVariant={isDark ? 'dark' : 'light'}
-                  textColor={Platform.OS === 'ios' ? (isDark ? '#e5e7eb' : '#111827') : undefined}
-                  onChange={(_, date) => {
-                    if (!date) {
-                      if (Platform.OS === 'android') setTimePickerVisible(false);
-                      return;
+              {timePickerVisible && (
+                <View style={styles.picker}>
+                  <DateTimePicker
+                    value={time || new Date()}
+                    mode="time"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+                    locale={
+                      Platform.OS === 'ios'
+                        ? language === 'en'
+                          ? 'en-US'
+                          : 'es-ES'
+                        : undefined
                     }
-                    setTime(date);
-                    if (Platform.OS === 'android') setTimePickerVisible(false);
-                  }}
-                />
-              </View>
-            )}
+                    themeVariant={isDark ? 'dark' : 'light'}
+                    textColor={Platform.OS === 'ios' ? (isDark ? '#e5e7eb' : '#111827') : undefined}
+                    onChange={(_, date) => {
+                      if (!date) {
+                        if (Platform.OS === 'android') setTimePickerVisible(false);
+                        return;
+                      }
+                      setTime(date);
+                      if (Platform.OS === 'android') setTimePickerVisible(false);
+                    }}
+                  />
+                </View>
+              )}
 
-            {/* DURACIÓN */}
-            <View style={styles.durationSection}>
+              {/* DURACIÓN */}
+              <View style={styles.durationSection}>
+                <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.durationLabel')}</Text>
+                <View style={[styles.durationDropdownContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
+                  <Picker
+                    selectedValue={durationPickerValue}
+                    onValueChange={(value) => {
+                      const nextValue = value || '60';
+                      setDurationPickerValue(nextValue);
+
+                      if (nextValue === 'allDay') {
+                        setDurationMinutes(null);
+                        setTime(null);
+                        return;
+                      }
+
+                      if (nextValue === 'custom') {
+                        // mantener el valor actual o dejarlo en null hasta que el usuario escriba
+                        return;
+                      }
+
+                      const n = parseInt(nextValue, 10);
+                      if (!Number.isNaN(n)) {
+                        setDurationMinutes(n);
+                      }
+                    }}
+                    style={isDark ? { color: '#ffffff' } : undefined}
+                    itemStyle={Platform.OS === 'ios' && isDark ? { color: '#ffffff' } : undefined}
+                    dropdownIconColor={isDark ? '#9ca3af' : '#6b7280'}
+                    mode={Platform.OS === 'ios' ? 'dialog' : 'dropdown'}
+                  >
+                    <Picker.Item
+                      label="10 min"
+                      value="10"
+                      color={
+                        Platform.OS === 'ios'
+                          ? isDark
+                            ? '#ffffff'
+                            : undefined
+                          : isDark
+                            ? '#111827'
+                            : undefined
+                      }
+                    />
+                    <Picker.Item
+                      label="15 min"
+                      value="15"
+                      color={
+                        Platform.OS === 'ios'
+                          ? isDark
+                            ? '#ffffff'
+                            : undefined
+                          : isDark
+                            ? '#111827'
+                            : undefined
+                      }
+                    />
+                    <Picker.Item
+                      label="30 min"
+                      value="30"
+                      color={
+                        Platform.OS === 'ios'
+                          ? isDark
+                            ? '#ffffff'
+                            : undefined
+                          : isDark
+                            ? '#111827'
+                            : undefined
+                      }
+                    />
+                    <Picker.Item
+                      label="60 min"
+                      value="60"
+                      color={
+                        Platform.OS === 'ios'
+                          ? isDark
+                            ? '#ffffff'
+                            : undefined
+                          : isDark
+                            ? '#111827'
+                            : undefined
+                      }
+                    />
+                    <Picker.Item
+                      label={t('habitForm.durationAllDay') || 'Todo el día'}
+                      value="allDay"
+                      color={
+                        Platform.OS === 'ios'
+                          ? isDark
+                            ? '#ffffff'
+                            : undefined
+                          : isDark
+                            ? '#111827'
+                            : undefined
+                      }
+                    />
+                    <Picker.Item
+                      label={t('habitForm.durationCustom')}
+                      value="custom"
+                      color={
+                        Platform.OS === 'ios'
+                          ? isDark
+                            ? '#ffffff'
+                            : undefined
+                          : isDark
+                            ? '#111827'
+                            : undefined
+                      }
+                    />
+                  </Picker>
+                </View>
+
+                {time && (
+                  <Text style={[styles.sublabel, { marginTop: 8 }, isDark && { color: '#9ca3af' }]}>
+                    {(() => {
+                      const startH = String(time.getHours()).padStart(2, '0');
+                      const startM = String(time.getMinutes()).padStart(2, '0');
+                      const startStr = `${startH}:${startM}`;
+                      const effectiveDuration =
+                        typeof durationMinutes === 'number' && durationMinutes > 0
+                          ? durationMinutes
+                          : 60;
+                      const startTotal = time.getHours() * 60 + time.getMinutes();
+                      const total = startTotal + effectiveDuration;
+                      const endH = String(Math.floor(total / 60) % 24).padStart(2, '0');
+                      const endM = String(total % 60).padStart(2, '0');
+                      const endStr = `${endH}:${endM}`;
+                      return `${startStr} - ${endStr}`;
+                    })()}
+                  </Text>
+                )}
+
+                {durationPickerValue === 'custom' && (
+                  <View style={styles.durationCustomWrapper}>
+                    <Text style={[styles.durationCustomLabel, isDark && { color: '#e5e7eb' }]}>
+                        {t('habitForm.durationCustom')}
+                      </Text>
+                    <TextInput
+                      style={[styles.durationInput, isDark && styles.inputDark]}
+                      keyboardType="numeric"
+                      placeholder={t('habitForm.durationCustomPlaceholder')}
+                      placeholderTextColor={isDark ? '#ffffff' : '#9ca3af'}
+                      value={
+                        typeof durationMinutes === 'number' &&
+                        ![10, 15, 30, 60].includes(durationMinutes)
+                          ? String(durationMinutes)
+                          : ''
+                      }
+                      onChangeText={(v) => {
+                        const n = parseInt(v, 10);
+                        if (Number.isNaN(n)) {
+                          setDurationMinutes(null);
+                        } else {
+                          setDurationMinutes(n);
+                        }
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+
+            </View>
+          ) : (
+            <View style={styles.section}>
               <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.durationLabel')}</Text>
               <View style={[styles.durationDropdownContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
                 <Picker
                   selectedValue={durationPickerValue}
                   onValueChange={(value) => {
-                    setDurationPickerValue(value);
-                    if (value === '') {
+                    const nextValue = value || '60';
+                    setDurationPickerValue(nextValue);
+
+                    if (nextValue === 'allDay') {
                       setDurationMinutes(null);
-                    } else if (value === 'custom') {
+                      setTime(null);
+                      return;
+                    }
+
+                    if (nextValue === 'custom') {
                       // mantener el valor actual o dejarlo en null hasta que el usuario escriba
-                    } else {
-                      const n = parseInt(value, 10);
-                      if (!Number.isNaN(n)) {
-                        setDurationMinutes(n);
-                      }
+                      return;
+                    }
+
+                    const n = parseInt(nextValue, 10);
+                    if (!Number.isNaN(n)) {
+                      setDurationMinutes(n);
                     }
                   }}
                   style={isDark ? { color: '#ffffff' } : undefined}
@@ -767,19 +1001,6 @@ export default function HabitFormModal({
                   dropdownIconColor={isDark ? '#9ca3af' : '#6b7280'}
                   mode={Platform.OS === 'ios' ? 'dialog' : 'dropdown'}
                 >
-                  <Picker.Item
-                    label={t('habitForm.durationSelectPlaceholder')}
-                    value=""
-                    color={
-                      Platform.OS === 'ios'
-                        ? isDark
-                          ? '#ffffff'
-                          : undefined
-                        : isDark
-                          ? '#111827'
-                          : undefined
-                    }
-                  />
                   <Picker.Item
                     label="10 min"
                     value="10"
@@ -833,6 +1054,19 @@ export default function HabitFormModal({
                     }
                   />
                   <Picker.Item
+                    label={t('habitForm.durationAllDay') || 'Todo el día'}
+                    value="allDay"
+                    color={
+                      Platform.OS === 'ios'
+                        ? isDark
+                          ? '#ffffff'
+                          : undefined
+                        : isDark
+                          ? '#111827'
+                          : undefined
+                    }
+                  />
+                  <Picker.Item
                     label={t('habitForm.durationCustom')}
                     value="custom"
                     color={
@@ -847,63 +1081,8 @@ export default function HabitFormModal({
                   />
                 </Picker>
               </View>
-
-              {durationPickerValue === '' && (
-                <Text style={[styles.sublabel, { marginTop: 8 }, isDark && { color: '#9ca3af' }]}>
-                  {t('habitForm.durationDefaultHint')}
-                </Text>
-              )}
-
-              {time && (
-                <Text style={[styles.sublabel, { marginTop: 8 }, isDark && { color: '#9ca3af' }]}>
-                  {(() => {
-                    const startH = String(time.getHours()).padStart(2, '0');
-                    const startM = String(time.getMinutes()).padStart(2, '0');
-                    const startStr = `${startH}:${startM}`;
-                    const effectiveDuration =
-                      typeof durationMinutes === 'number' && durationMinutes > 0
-                        ? durationMinutes
-                        : 60;
-                    const startTotal = time.getHours() * 60 + time.getMinutes();
-                    const total = startTotal + effectiveDuration;
-                    const endH = String(Math.floor(total / 60) % 24).padStart(2, '0');
-                    const endM = String(total % 60).padStart(2, '0');
-                    const endStr = `${endH}:${endM}`;
-                    return `${startStr} - ${endStr}`;
-                  })()}
-                </Text>
-              )}
-
-              {durationPickerValue === 'custom' && (
-                <View style={styles.durationCustomWrapper}>
-                  <Text style={[styles.durationCustomLabel, isDark && { color: '#e5e7eb' }]}>
-                      {t('habitForm.durationCustom')}
-                    </Text>
-                  <TextInput
-                    style={[styles.durationInput, isDark && styles.inputDark]}
-                    keyboardType="numeric"
-                    placeholder={t('habitForm.durationCustomPlaceholder')}
-                    placeholderTextColor={isDark ? '#ffffff' : '#9ca3af'}
-                    value={
-                      typeof durationMinutes === 'number' &&
-                      ![10, 15, 30, 60].includes(durationMinutes)
-                        ? String(durationMinutes)
-                        : ''
-                    }
-                    onChangeText={(v) => {
-                      const n = parseInt(v, 10);
-                      if (Number.isNaN(n)) {
-                        setDurationMinutes(null);
-                      } else {
-                        setDurationMinutes(n);
-                      }
-                    }}
-                  />
-                </View>
-              )}
             </View>
-
-          </View>
+          )}
 
           {/* FRECUENCIA */}
           <View style={[styles.section, styles.frequencySection]}>
@@ -963,15 +1142,16 @@ export default function HabitFormModal({
           </View>
 
           {/* CAMPOS PERSONALIZADOS */}
-          {config?.fields?.map((field) => (
-            <View key={field.key} style={styles.section}>
-              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
-                {field.type === 'market' ? '🛒' : field.type === 'checklist' ? '✅' : '✏️'}{' '}
-                {field.label}
-              </Text>
-              {renderField(field)}
-            </View>
-          ))}
+          {!isBirthdayTemplate &&
+            config?.fields?.map((field) => (
+              <View key={field.key} style={styles.section}>
+                <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                  {field.type === 'market' ? '🛒' : field.type === 'checklist' ? '✅' : '✏️'}{' '}
+                  {field.label}
+                </Text>
+                {renderField(field)}
+              </View>
+            ))}
 
           {/* COLOR */}
           <View style={styles.section}>

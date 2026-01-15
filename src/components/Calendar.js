@@ -41,6 +41,9 @@ import {
 } from '../utils/localActivities';
 import { scheduleReminderForActivity } from '../utils/notifications';
 import { formatTimeFromHHmm } from '../utils/timeFormat';
+import { getDismissedMoodBannerDate, getMoodForDate, setDismissedMoodBannerDate } from '../utils/moodTracker';
+import { pickMoodMessage } from '../utils/moodMessages';
+import MoodMessageBanner from './MoodMessageBanner';
 
 // Función para obtener la fecha local correctamente
 function getTodayLocal() {
@@ -217,6 +220,43 @@ function hasTimeConflictForDate(existingActivities, candidate, editingActivityId
   return false;
 }
 
+function getTimeConflictsForDate(existingActivities, candidate, editingActivityId) {
+  const candidateStart = timeStringToMinutes(candidate?.time);
+  if (candidateStart == null) return [];
+
+  const DEFAULT_DURATION_IF_EMPTY_MINUTES = 60;
+
+  const candidateDuration =
+    typeof candidate?.durationMinutes === 'number' && candidate.durationMinutes > 0
+      ? candidate.durationMinutes
+      : DEFAULT_DURATION_IF_EMPTY_MINUTES;
+  const candidateEnd = candidateStart + candidateDuration;
+
+  const conflicts = [];
+  for (const act of existingActivities || []) {
+    if (editingActivityId && act.id === editingActivityId) continue;
+    const otherStart = timeStringToMinutes(act.time);
+    if (otherStart == null) continue;
+
+    const otherDuration =
+      typeof act.durationMinutes === 'number' && act.durationMinutes > 0
+        ? act.durationMinutes
+        : DEFAULT_DURATION_IF_EMPTY_MINUTES;
+    const otherEnd = otherStart + otherDuration;
+
+    if (candidateStart < otherEnd && candidateEnd > otherStart) conflicts.push(act);
+  }
+
+  return conflicts;
+}
+
+function removeTimeConflictsFromDay(list, candidate, editingActivityId) {
+  const conflicts = getTimeConflictsForDate(list || [], candidate, editingActivityId);
+  if (!conflicts.length) return list || [];
+  const conflictIds = new Set(conflicts.map((c) => c.id));
+  return (list || []).filter((a) => !conflictIds.has(a.id));
+}
+
 function formatLocalDate(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -376,6 +416,9 @@ export default function Calendar() {
   const [vitaminsAddVisible, setVitaminsAddVisible] = useState(false);
   const [vitaminsAddContext, setVitaminsAddContext] = useState(null);
   const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedMood, setSelectedMood] = useState(null);
+  const [moodMessage, setMoodMessage] = useState(null);
+  const [dismissedMoodDate, setDismissedMoodDate] = useState(null);
   const [activities, setActivities] = useState({});
   const [habits, setHabits] = useState([]);
   const [habitsLoading, setHabitsLoading] = useState(true);
@@ -388,6 +431,51 @@ export default function Calendar() {
   const [expandedHabitCategory, setExpandedHabitCategory] = useState(null);
 
   const habitModalCategoryListRef = useRef(null);
+
+  const refreshMoodForSelectedDate = useCallback(() => {
+    let mounted = true;
+    (async () => {
+      const dismissed = await getDismissedMoodBannerDate();
+      const entry = await getMoodForDate(selectedDate);
+      if (!mounted) return;
+      setDismissedMoodDate(dismissed);
+      setSelectedMood(entry);
+
+      const msg = entry?.score
+        ? pickMoodMessage({
+          score: entry.score,
+          dateKey: selectedDate,
+          isToday: selectedDate === today,
+          t,
+          now: new Date(),
+        })
+        : null;
+
+      // If user dismissed for this date, hide it in Calendar.
+      setMoodMessage(dismissed === selectedDate ? null : msg);
+    })().catch(() => {
+      if (!mounted) return;
+      setSelectedMood(null);
+      setMoodMessage(null);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedDate, t]);
+
+  useEffect(() => {
+    return refreshMoodForSelectedDate();
+  }, [refreshMoodForSelectedDate]);
+
+  useEffect(() => {
+    if (selectedDate !== today) return;
+    const id = setInterval(() => {
+      // Rotate messages during the day.
+      refreshMoodForSelectedDate();
+    }, 30 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [refreshMoodForSelectedDate, selectedDate]);
 
   const habitCategoriesData = useMemo(() => {
     const order = [];
@@ -754,8 +842,19 @@ export default function Calendar() {
         const dateKey = targetDateKey;
 
           if (updated[dateKey]) {
+          if (payload?.replaceTimeConflicts && schedule?.time) {
+            updated[dateKey] = removeTimeConflictsFromDay(
+              updated[dateKey],
+              {
+                time: schedule.time,
+                durationMinutes: schedule.durationMinutes,
+              },
+              targetId
+            );
+          }
+
           if (schedule?.time && !payload?.allowTimeConflict) {
-            const hasConflict = hasTimeConflictForDate(
+            const conflicts = getTimeConflictsForDate(
               updated[dateKey],
               {
                 time: schedule.time,
@@ -764,48 +863,33 @@ export default function Calendar() {
               targetId
             );
 
-            if (hasConflict) {
-              const suggestions = suggestTimesForDay(
-                updated[dateKey] || [],
-                {
-                  time: schedule.time,
-                  durationMinutes: schedule.durationMinutes,
-                },
-                targetId
-              );
-
-              const maxButtons = Platform.OS === 'ios' ? 2 : 4;
-              const keepLabel =
-                t('calendar.keepSameTime') || (language === 'es' ? 'Dejar igual' : 'Keep time');
-              const buttons = [
-                {
-                  text: keepLabel,
-                  onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
-                },
-                ...(suggestions || []).slice(0, maxButtons).map((timeStr) => ({
-                text: timeStr,
-                onPress: () => {
-                  const nextEnd = computeEndTimeString(timeStr, schedule?.durationMinutes);
-                  handleSaveHabit({
-                    ...payload,
-                    schedule: {
-                      ...payload.schedule,
-                      time: timeStr,
-                      endTime: nextEnd,
-                    },
-                  });
-                },
-              })),
-              ];
-
-              buttons.push({ text: t('calendar.cancel') || 'Cancelar', style: 'cancel' });
-
+            if (conflicts.length) {
+              const first = conflicts[0];
+              const existingLabel =
+                t('calendar.timeConflictExistingActivity') ||
+                (language === 'es' ? 'Actividad en ese horario:' : 'Existing activity:');
               Alert.alert(
                 t('calendar.timeConflictTitle'),
-                suggestions.length
-                  ? `${t('calendar.timeConflictMessage')}\n\n${t('calendar.timeSuggestionsPick')}`
-                  : t('calendar.timeConflictMessage'),
-                buttons
+                `${t('calendar.timeConflictMessage')}\n\n${existingLabel} ${first?.title || ''}`,
+                [
+                  {
+                    text:
+                      t('calendar.timeConflictReplace') ||
+                      (language === 'es' ? 'Reemplazar' : 'Replace'),
+                    onPress: () =>
+                      handleSaveHabit({
+                        ...payload,
+                        replaceTimeConflicts: true,
+                      }),
+                  },
+                  {
+                    text:
+                      t('calendar.timeConflictKeepBoth') ||
+                      (language === 'es' ? 'Mantener ambas' : 'Schedule anyway'),
+                    onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
+                  },
+                  { text: t('calendar.cancel') || 'Cancelar', style: 'cancel' },
+                ]
               );
               return;
             }
@@ -818,6 +902,10 @@ export default function Calendar() {
               habit_id: habit.id,
               title: habit.title,
               icon: habit.icon,
+              allDay:
+                typeof schedule?.allDay === 'boolean'
+                  ? schedule.allDay
+                  : act.allDay ?? false,
               time: schedule?.time ?? act.time ?? null,
               durationMinutes:
                 typeof schedule?.durationMinutes === 'number'
@@ -917,51 +1005,58 @@ export default function Calendar() {
         datesToCreate = datesToCreate.filter((d) => d <= schedule.endDate);
       }
 
+      if (payload?.replaceTimeConflicts && schedule.time) {
+        const candidate = {
+          time: schedule.time,
+          durationMinutes: schedule.durationMinutes,
+        };
+        datesToCreate.forEach((date) => {
+          if (!updated[date]) return;
+          updated[date] = removeTimeConflictsFromDay(updated[date], candidate, null);
+        });
+      }
+
       if (schedule.time && !payload?.allowTimeConflict) {
         const candidate = {
           time: schedule.time,
           durationMinutes: schedule.durationMinutes,
         };
 
-        const hasConflictSomeDay = datesToCreate.some((date) =>
-          hasTimeConflictForDate(updated[date] || [], candidate, null)
-        );
+        let firstConflict = null;
+        for (const date of datesToCreate) {
+          const conflicts = getTimeConflictsForDate(updated[date] || [], candidate, null);
+          if (conflicts.length) {
+            firstConflict = { date, act: conflicts[0] };
+            break;
+          }
+        }
 
-        if (hasConflictSomeDay) {
-          const suggestions = suggestTimesForSeries(updated, datesToCreate, candidate);
-
-          const maxButtons = Platform.OS === 'ios' ? 2 : 4;
-          const keepLabel =
-            t('calendar.keepSameTime') || (language === 'es' ? 'Dejar igual' : 'Keep time');
-          const buttons = [
-            {
-              text: keepLabel,
-              onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
-            },
-            ...(suggestions || []).slice(0, maxButtons).map((timeStr) => ({
-            text: timeStr,
-            onPress: () => {
-              const nextEnd = computeEndTimeString(timeStr, schedule?.durationMinutes);
-              handleSaveHabit({
-                ...payload,
-                schedule: {
-                  ...payload.schedule,
-                  time: timeStr,
-                  endTime: nextEnd,
-                },
-              });
-            },
-          })),
-          ];
-
-          buttons.push({ text: t('calendar.cancel') || 'Cancelar', style: 'cancel' });
-
+        if (firstConflict) {
+          const existingLabel =
+            t('calendar.timeConflictExistingActivity') ||
+            (language === 'es' ? 'Actividad en ese horario:' : 'Existing activity:');
           Alert.alert(
             t('calendar.timeConflictTitle'),
-            suggestions.length
-              ? `${t('calendar.timeConflictMessage')}\n\n${t('calendar.timeSuggestionsPick')}`
-              : t('calendar.timeConflictMessage'),
-            buttons
+            `${t('calendar.timeConflictMessage')}\n\n${existingLabel} ${firstConflict.act?.title || ''}`,
+            [
+              {
+                text:
+                  t('calendar.timeConflictReplace') ||
+                  (language === 'es' ? 'Reemplazar' : 'Replace'),
+                onPress: () =>
+                  handleSaveHabit({
+                    ...payload,
+                    replaceTimeConflicts: true,
+                  }),
+              },
+              {
+                text:
+                  t('calendar.timeConflictKeepBoth') ||
+                  (language === 'es' ? 'Mantener ambas' : 'Schedule anyway'),
+                onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
+              },
+              { text: t('calendar.cancel') || 'Cancelar', style: 'cancel' },
+            ]
           );
           return;
         }
@@ -998,6 +1093,7 @@ export default function Calendar() {
           habit_id: habit.id,
           title: habit.title,
           icon: habit.icon,
+          allDay: !!schedule.allDay,
           time: schedule.time || null,
           durationMinutes:
             typeof schedule.durationMinutes === 'number'
@@ -1084,51 +1180,58 @@ export default function Calendar() {
       datesToCreate = datesToCreate.filter((d) => d <= schedule.endDate);
     }
 
+    if (payload?.replaceTimeConflicts && schedule.time) {
+      const candidate = {
+        time: schedule.time,
+        durationMinutes: schedule.durationMinutes,
+      };
+      datesToCreate.forEach((date) => {
+        if (!updated[date]) return;
+        updated[date] = removeTimeConflictsFromDay(updated[date], candidate, null);
+      });
+    }
+
     if (schedule.time && !payload?.allowTimeConflict) {
       const candidate = {
         time: schedule.time,
         durationMinutes: schedule.durationMinutes,
       };
 
-      const hasConflictSomeDay = datesToCreate.some((date) =>
-        hasTimeConflictForDate(updated[date] || [], candidate, null)
-      );
+      let firstConflict = null;
+      for (const date of datesToCreate) {
+        const conflicts = getTimeConflictsForDate(updated[date] || [], candidate, null);
+        if (conflicts.length) {
+          firstConflict = { date, act: conflicts[0] };
+          break;
+        }
+      }
 
-      if (hasConflictSomeDay) {
-        const suggestions = suggestTimesForSeries(updated, datesToCreate, candidate);
-
-        const maxButtons = Platform.OS === 'ios' ? 2 : 4;
-        const keepLabel =
-          t('calendar.keepSameTime') || (language === 'es' ? 'Dejar igual' : 'Keep time');
-        const buttons = [
-          {
-            text: keepLabel,
-            onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
-          },
-          ...(suggestions || []).slice(0, maxButtons).map((timeStr) => ({
-          text: timeStr,
-          onPress: () => {
-            const nextEnd = computeEndTimeString(timeStr, schedule?.durationMinutes);
-            handleSaveHabit({
-              ...payload,
-              schedule: {
-                ...payload.schedule,
-                time: timeStr,
-                endTime: nextEnd,
-              },
-            });
-          },
-        })),
-        ];
-
-        buttons.push({ text: t('calendar.cancel') || 'Cancelar', style: 'cancel' });
-
+      if (firstConflict) {
+        const existingLabel =
+          t('calendar.timeConflictExistingActivity') ||
+          (language === 'es' ? 'Actividad en ese horario:' : 'Existing activity:');
         Alert.alert(
           t('calendar.timeConflictTitle'),
-          suggestions.length
-            ? `${t('calendar.timeConflictMessage')}\n\n${t('calendar.timeSuggestionsPick')}`
-            : t('calendar.timeConflictMessage'),
-          buttons
+          `${t('calendar.timeConflictMessage')}\n\n${existingLabel} ${firstConflict.act?.title || ''}`,
+          [
+            {
+              text:
+                t('calendar.timeConflictReplace') ||
+                (language === 'es' ? 'Reemplazar' : 'Replace'),
+              onPress: () =>
+                handleSaveHabit({
+                  ...payload,
+                  replaceTimeConflicts: true,
+                }),
+            },
+            {
+              text:
+                t('calendar.timeConflictKeepBoth') ||
+                (language === 'es' ? 'Mantener ambas' : 'Schedule anyway'),
+              onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
+            },
+            { text: t('calendar.cancel') || 'Cancelar', style: 'cancel' },
+          ]
         );
         return;
       }
@@ -1160,7 +1263,10 @@ export default function Calendar() {
     if (!allowDuplicate) {
       const hasDuplicateSameDay = datesToCreate.some((date) => {
         const dayActs = updated[date] || [];
-        return dayActs.some((act) => act.habit_id === habit.id);
+        const candidateTime = schedule?.time ?? null;
+        return dayActs.some(
+          (act) => act.habit_id === habit.id && (act.time ?? null) === candidateTime
+        );
       });
 
       if (hasDuplicateSameDay) {
@@ -1195,6 +1301,7 @@ export default function Calendar() {
         habit_id: habit.id,
         title: habit.title,
         icon: habit.icon,
+        allDay: !!schedule.allDay,
         time: schedule.time || null,
         durationMinutes:
           typeof schedule.durationMinutes === 'number'
@@ -1600,6 +1707,7 @@ export default function Calendar() {
     const scheduleWithTime = inferredSchedule
       ? {
           ...inferredSchedule,
+          allDay: !!activity.allDay,
           time: activity.time || null,
           durationMinutes: activity.durationMinutes || null,
           endTime: activity.endTime || null,
@@ -1609,6 +1717,7 @@ export default function Calendar() {
           endDate: null,
           frequency: 'once',
           daysOfWeek: [],
+          allDay: !!activity.allDay,
           time: activity.time || null,
           durationMinutes: activity.durationMinutes || null,
           endTime: activity.endTime || null,
@@ -1859,6 +1968,7 @@ export default function Calendar() {
         title: habitTemplate.title,
         icon: habitTemplate.icon,
         description: weeklyPriorityText || habitTemplate.description || null,
+        allDay: false,
         time: null,
         durationMinutes: null,
         endTime: null,
@@ -1977,6 +2087,10 @@ export default function Calendar() {
   const selectedDayActsSorted = useMemo(() => {
     if (!selectedDayActs?.length) return [];
     return [...selectedDayActs].sort((a, b) => {
+      const aAllDay = !!a?.allDay;
+      const bAllDay = !!b?.allDay;
+      if (aAllDay && !bAllDay) return -1;
+      if (!aAllDay && bAllDay) return 1;
       const aMin = timeStringToMinutes(a?.time) ?? Number.POSITIVE_INFINITY;
       const bMin = timeStringToMinutes(b?.time) ?? Number.POSITIVE_INFINITY;
       return aMin - bMin;
@@ -2007,6 +2121,27 @@ export default function Calendar() {
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
           >
+            {moodMessage ? (
+              <View style={{ marginBottom: 12 }}>
+                <MoodMessageBanner
+                  title={t('mood.bannerTitle')}
+                  message={moodMessage}
+                  emoji={selectedMood?.emoji}
+                  accent={accent}
+                  isDark={isDark}
+                  onClose={async () => {
+                    try {
+                      await setDismissedMoodBannerDate(selectedDate);
+                      setDismissedMoodDate(selectedDate);
+                      setMoodMessage(null);
+                    } catch {
+                      // best-effort
+                      setMoodMessage(null);
+                    }
+                  }}
+                />
+              </View>
+            ) : null}
             {selectedDayActsSorted.length ? (
               selectedDayActsSorted.map((activity) => {
                 // IMPORTANTE: Agregamos la fecha al objeto activity
@@ -2051,6 +2186,9 @@ export default function Calendar() {
                 const displayTitle = getDisplayTitle(activityWithDate);
 
                 const timeRangeText = (() => {
+                  if (activityWithDate.allDay) {
+                    return t('calendar.allDayLabel') || t('habitForm.durationAllDay') || 'Todo el día';
+                  }
                   if (!activityWithDate.time) return null;
                   const start = formatTimeFromHHmm(activityWithDate.time, {
                     language,
@@ -2099,8 +2237,19 @@ export default function Calendar() {
 
                   if (resolvedType) {
                     const prefix = t(prefixKeyByType[resolvedType]);
-                    if (resolvedType === 'book' || resolvedType === 'call') {
-                      friendlySubtitle = `${prefix} ${answer}`.trim();
+                    if (resolvedType === 'birthday') {
+                      const safePrefix =
+                        prefix ||
+                        (language === 'es'
+                          ? '🎉 Hoy celebramos el cumpleaños de'
+                          : '🎉 Today we celebrate the birthday of');
+
+                      friendlySubtitle = (
+                        <>
+                          {String(safePrefix).trim()}{' '}
+                          <Text style={{ fontWeight: '900' }}>{answer}</Text>
+                        </>
+                      );
                     } else {
                       friendlySubtitle = `${prefix} ${answer}`.trim();
                     }
@@ -2339,11 +2488,32 @@ export default function Calendar() {
                       <Text style={{ fontSize: 15, color: '#111827' }}>
                         {getDisplayTitle({ ...act, date: moveTasksDate })}
                       </Text>
-                      {act.time && (
-                        <Text style={{ fontSize: 13, color: '#6b7280' }}>
-                          {act.time}
-                        </Text>
-                      )}
+                      {(() => {
+                        const moveTimeText = (() => {
+                          if (act.allDay) {
+                            return (
+                              t('calendar.allDayLabel') ||
+                              t('habitForm.durationAllDay') ||
+                              'Todo el día'
+                            );
+                          }
+                          if (!act.time) return null;
+                          const start = formatTimeFromHHmm(act.time, { language, timeFormat });
+                          if (act.endTime && act.endTime !== act.time) {
+                            const end = formatTimeFromHHmm(act.endTime, { language, timeFormat });
+                            return `${start} - ${end}`;
+                          }
+                          return start;
+                        })();
+
+                        if (!moveTimeText) return null;
+
+                        return (
+                          <Text style={{ fontSize: 13, color: '#6b7280' }}>
+                            {moveTimeText}
+                          </Text>
+                        );
+                      })()}
                     </View>
                   </Pressable>
                 ))}
@@ -3214,6 +3384,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
+
 
   // Date Header
   dateHeader: {
