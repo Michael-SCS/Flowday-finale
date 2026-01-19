@@ -44,6 +44,73 @@ export default function ProfileScreen() {
   const showPro = false;
   const accent = getAccentColor(themeColor);
   const isDark = themeMode === 'dark';
+  const isGuest = !(session?.user?.id || authUser?.id);
+
+  const startOnboardingSignup = useCallback(async ({ from = 'profile_guest' } = {}) => {
+    try { await AsyncStorage.setItem('onboarding_in_progress', 'true'); } catch {}
+
+    // Walk up to the root navigator (Stack) so we can reset reliably.
+    let nav = navigation;
+    for (let i = 0; i < 6; i += 1) {
+      const parent = nav?.getParent?.();
+      if (!parent) break;
+      nav = parent;
+    }
+
+    try {
+      nav.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Onboarding',
+            state: {
+              index: 0,
+              routes: [{ name: 'RegisterForm', params: { from } }],
+            },
+          },
+        ],
+      });
+      return;
+    } catch {}
+
+    try {
+      nav.navigate('Onboarding', { screen: 'RegisterForm', params: { from } });
+    } catch {}
+  }, [navigation]);
+
+  useEffect(() => {
+    if (!isGuest) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const key = 'guest_register_prompt_shown';
+        const shown = await AsyncStorage.getItem(key);
+        if (cancelled) return;
+        if (shown === 'true') return;
+
+        Alert.alert(
+          safeT('profile.guestModeTitle', 'Modo invitado'),
+          safeT('profile.guestModeMessage', 'Puedes usar la app sin cuenta. Si te registras, podrás sincronizar y guardar tu perfil.'),
+          [
+            { text: safeT('profile.guestModeLater', 'Más tarde'), style: 'cancel' },
+            {
+              text: safeT('profile.guestModeRegister', 'Registrarme'),
+              onPress: () => startOnboardingSignup({ from: 'profile_guest_prompt' }),
+            },
+          ]
+        );
+
+        try { await AsyncStorage.setItem(key, 'true'); } catch {}
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isGuest, startOnboardingSignup]);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
@@ -104,6 +171,14 @@ export default function ProfileScreen() {
   async function sendFeedbackInApp(message) {
     const trimmed = String(message || '').trim();
     if (!trimmed) return;
+
+    if (isGuest) {
+      Alert.alert(
+        safeT('profile.feedbackTitle', 'Feedback'),
+        safeT('profile.guestRequiresAccount', 'Crea una cuenta o inicia sesión para enviar feedback desde la app.')
+      );
+      return;
+    }
 
     setFeedbackSending(true);
     try {
@@ -239,8 +314,26 @@ export default function ProfileScreen() {
       }
 
       if (!uid) {
-        setError(t('profile.loadUserError'));
-        setProfile(null);
+        // Guest mode: don't show an error, just render a local profile shell.
+        setProfile({
+          id: null,
+          nombre: safeT('profile.guestName', 'Invitado'),
+          apellido: null,
+          edad: null,
+          genero: null,
+          email: safeT('profile.guestEmail', 'Modo invitado'),
+          language: languageValue || language || 'es',
+          notifications_enabled: !!notificationsEnabled,
+          last_active_at: null,
+          pro: false,
+          pro_trial_used: false,
+          pro_until: null,
+          pro_lifetime: false,
+        });
+        setNombre('');
+        setApellido('');
+        setEdad('');
+        setGenero('');
         return;
       }
 
@@ -404,6 +497,15 @@ export default function ProfileScreen() {
 
   const handleSave = async () => {
     if (!profile) return;
+
+    if (isGuest) {
+      Alert.alert(
+        safeT('profile.settingsTitle', 'Ajustes'),
+        safeT('profile.guestRequiresAccount', 'Crea una cuenta o inicia sesión para guardar tu perfil y sincronizar.')
+      );
+      return;
+    }
+
     try {
       setSaving(true);
       setError(null);
@@ -522,6 +624,15 @@ export default function ProfileScreen() {
 
   const handleDeleteAccount = () => {
     if (deletingAccount) return;
+
+    if (isGuest) {
+      Alert.alert(
+        safeT('profile.deleteAccountTitle', 'Eliminar cuenta'),
+        safeT('profile.guestNoAccountToDelete', 'Estás en modo invitado. No hay una cuenta para eliminar.')
+      );
+      return;
+    }
+
     Alert.alert(
       t('profile.deleteAccountTitle'),
       t('profile.deleteAccountMessage'),
@@ -603,6 +714,44 @@ export default function ProfileScreen() {
 
             {profile && !error && (
               <>
+                {isGuest && (
+                  <View style={[styles.sectionCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={[styles.sectionHeaderIcon, { backgroundColor: `${accent}20` }]}>
+                        <Ionicons name="person-add-outline" size={18} color={accent} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}>
+                          {safeT('profile.guestCtaTitle', 'Crea tu cuenta')}
+                        </Text>
+                        <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}>
+                          {safeT('profile.guestCtaSubtitle', 'Sincroniza tu progreso y guarda tu perfil')}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Pressable
+                      style={[styles.retryButton, { backgroundColor: accent, marginTop: 12 }]}
+                      onPress={() => {
+                        Alert.alert(
+                          safeT('profile.guestModeTitle', 'Modo invitado'),
+                          safeT('profile.guestModeMessage', 'Puedes usar la app sin cuenta. Si te registras, podrás sincronizar y guardar tu perfil.'),
+                          [
+                            { text: safeT('profile.guestModeLater', 'Más tarde'), style: 'cancel' },
+                            {
+                              text: safeT('profile.guestModeRegister', 'Registrarme'),
+                              onPress: () => startOnboardingSignup({ from: 'profile_guest_cta' }),
+                            },
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="log-in-outline" size={18} color="#fff" />
+                      <Text style={styles.retryButtonText}>{safeT('profile.guestCtaButton', 'Registrarme')}</Text>
+                    </Pressable>
+                  </View>
+                )}
+
                 {/* CARD PRINCIPAL DEL PERFIL */}
                 <View style={[styles.mainProfileCard, isDark && { backgroundColor: '#020617' }]}>
                   <View style={styles.profileInfo}>
@@ -824,7 +973,16 @@ export default function ProfileScreen() {
 
                   <Pressable
                     style={[styles.rowButton, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' }]}
-                    onPress={() => setShowFeedbackModal(true)}
+                    onPress={() => {
+                      if (isGuest) {
+                        Alert.alert(
+                          safeT('profile.feedbackTitle', 'Feedback'),
+                          safeT('profile.guestRequiresAccount', 'Crea una cuenta o inicia sesión para enviar feedback desde la app.')
+                        );
+                        return;
+                      }
+                      setShowFeedbackModal(true);
+                    }}
                   >
                     <View style={styles.rowButtonLeft}>
                       <View style={[styles.rowButtonIcon, { backgroundColor: `${accent}15` }]}>
@@ -862,33 +1020,35 @@ export default function ProfileScreen() {
                     <Ionicons name="chevron-forward" size={18} color={isDark ? '#94a3b8' : '#64748b'} />
                   </Pressable>
 
-                  <Pressable
-                    style={[
-                      styles.rowButton,
-                      isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' },
-                    ]}
-                    onPress={handleDeleteAccount}
-                    disabled={deletingAccount}
-                  >
-                    <View style={styles.rowButtonLeft}>
-                      <View style={[styles.rowButtonIcon, { backgroundColor: '#ef444420' }]}>
-                        {deletingAccount ? (
-                          <ActivityIndicator size="small" color="#ef4444" />
-                        ) : (
-                          <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                        )}
+                  {!isGuest && (
+                    <Pressable
+                      style={[
+                        styles.rowButton,
+                        isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' },
+                      ]}
+                      onPress={handleDeleteAccount}
+                      disabled={deletingAccount}
+                    >
+                      <View style={styles.rowButtonLeft}>
+                        <View style={[styles.rowButtonIcon, { backgroundColor: '#ef444420' }]}>
+                          {deletingAccount ? (
+                            <ActivityIndicator size="small" color="#ef4444" />
+                          ) : (
+                            <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.rowButtonTitle, { color: '#ef4444' }]}>
+                            {safeT('profile.deleteAccount', 'Eliminar cuenta')}
+                          </Text>
+                          <Text style={[styles.rowButtonSubtitle, isDark && { color: '#94a3b8' }]}>
+                            {safeT('profile.deleteAccountMessageShort', 'Esta acción es permanente')}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.rowButtonTitle, { color: '#ef4444' }]}>
-                          {safeT('profile.deleteAccount', 'Eliminar cuenta')}
-                        </Text>
-                        <Text style={[styles.rowButtonSubtitle, isDark && { color: '#94a3b8' }]}>
-                          {safeT('profile.deleteAccountMessageShort', 'Esta acción es permanente')}
-                        </Text>
-                      </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={isDark ? '#94a3b8' : '#64748b'} />
-                  </Pressable>
+                      <Ionicons name="chevron-forward" size={18} color={isDark ? '#94a3b8' : '#64748b'} />
+                    </Pressable>
+                  )}
                 </View>
 
                 {/* ESTADÍSTICAS PRO */}

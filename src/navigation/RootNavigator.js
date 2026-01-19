@@ -22,6 +22,9 @@ export default function RootNavigator({ navigationTheme }) {
   const [moodVisible, setMoodVisible] = useState(false);
   const [moodSaving, setMoodSaving] = useState(false);
 
+  // Guest mode: allow full app entry without requiring auth.
+  // Users can still navigate to Auth to create an account later.
+
   const accent = navigationTheme?.colors?.primary || '#7c3aed';
   const isDark = !!navigationTheme?.dark;
 
@@ -37,13 +40,13 @@ export default function RootNavigator({ navigationTheme }) {
       return;
     }
 
-    // First install / first open on this device, unauthenticated: start onboarding.
-    if ((!user || authInvalid) && deviceShown !== 'true') {
+    // Guest-first experience: do not force onboarding when unauthenticated.
+    // Keep onboarding only when explicitly started via onboarding_in_progress.
+    if (deviceShown !== 'true') {
+      // Mark as shown so we don't repeatedly re-evaluate first-run flows.
       try {
-        await AsyncStorage.setItem('onboarding_in_progress', 'true');
+        await AsyncStorage.setItem('device_onboarding_shown', 'true');
       } catch {}
-      setOnboardingInProgress(true);
-      return;
     }
 
     setOnboardingInProgress(false);
@@ -82,7 +85,6 @@ export default function RootNavigator({ navigationTheme }) {
 
   const desiredRoot = useMemo(() => {
     if (onboardingInProgress) return 'Onboarding';
-    if (!user || authInvalid) return 'Auth';
     return 'App';
   }, [onboardingInProgress, user, authInvalid]);
 

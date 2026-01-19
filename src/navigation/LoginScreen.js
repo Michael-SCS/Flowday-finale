@@ -115,7 +115,7 @@ export default function LoginScreen() {
       // Ignorar error y permitir navegación
     }
 
-    // Start the onboarding signup flow (AppSettings -> RegisterForm -> Profile -> Final).
+    // Start the onboarding signup flow (RegisterForm -> Profile -> Final).
     try { await AsyncStorage.setItem('onboarding_in_progress', 'true'); } catch {}
 
     const parent = navigation.getParent?.();
@@ -131,7 +131,7 @@ export default function LoginScreen() {
               index: 0,
               routes: [
                 {
-                  name: 'AppSettings',
+                  name: 'RegisterForm',
                   params: { from: 'login_no_account' },
                 },
               ],
@@ -142,7 +142,7 @@ export default function LoginScreen() {
     } catch {
       const nav = parent || navigation;
       nav.navigate('Onboarding', {
-        screen: 'AppSettings',
+        screen: 'RegisterForm',
         params: { from: 'login_no_account' },
       });
     }
