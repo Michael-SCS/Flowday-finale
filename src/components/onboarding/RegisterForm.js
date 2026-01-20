@@ -117,6 +117,31 @@ export default function RegisterForm({ navigation, route }) {
     }
   }
 
+  const goToApp = async () => {
+    // User decided not to continue onboarding signup.
+    try {
+      await AsyncStorage.multiRemove(['onboarding_in_progress', 'onboarding_auth_payload']);
+    } catch {
+      // ignore
+    }
+
+    // Move to the RootNavigator stack and open the App.
+    const root = navigation?.getParent?.();
+    try {
+      root?.reset?.({ index: 0, routes: [{ name: 'App' }] });
+      return;
+    } catch {
+      // ignore
+    }
+
+    try {
+      root?.navigate?.('App');
+      return;
+    } catch {
+      // ignore
+    }
+  };
+
   const goToLogin = () => {
     const canNavigate = (nav, name) => {
       const state = nav?.getState?.();
@@ -149,6 +174,10 @@ export default function RegisterForm({ navigation, route }) {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.innerWrapper}>
+          <Pressable onPress={goToApp} style={styles.backButton} hitSlop={10}>
+            <Ionicons name="arrow-back" size={22} color="#111827" />
+          </Pressable>
+
           {!keyboardVisible && (
             <Animated.Image 
               source={mascotImages[mascotIndex]} 
@@ -160,8 +189,8 @@ export default function RegisterForm({ navigation, route }) {
           <Animated.View style={[styles.card, { opacity: cardOpacity, transform: [{ translateY: cardTranslate }] }]}>
             {!keyboardVisible && (
               <>
-                <Text style={styles.welcome}>{t('register.welcome')}</Text>
-                <Text style={styles.title}>{t('register.step1Title')}</Text>
+                <Text style={styles.title}>{t('register.title') || 'Crear cuenta'}</Text>
+                <Text style={styles.subtitle}>{t('register.subtitle') || 'Ingresa tu correo y contraseña'}</Text>
               </>
             )}
 
@@ -204,8 +233,6 @@ export default function RegisterForm({ navigation, route }) {
             </View>
 
             <View style={styles.policyCard}>
-              <Text style={styles.policyTitle}>{t('profile.privacyPolicy')}</Text>
-              <Text style={styles.policyHelper}>{t('register.policyHelper')}</Text>
               <View style={styles.acceptRow}>
                 <Pressable onPress={() => setAcceptedPolicy((v) => !v)} style={styles.checkbox}>
                   <Ionicons
@@ -309,6 +336,18 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   mascot: { width: 160, height: 160, marginBottom: 8 },
+  backButton: {
+    alignSelf: 'flex-start',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e6eef9',
+    marginBottom: 10,
+  },
   card: { 
     width: '100%', 
     backgroundColor: '#fff', 
@@ -319,8 +358,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12, 
     elevation: 6 
   },
-  welcome: { fontSize: 14, textAlign: 'center', color: '#374151', marginBottom: 12, lineHeight: 20 },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
+  subtitle: { fontSize: 13, textAlign: 'center', color: '#6b7280', marginTop: -6, marginBottom: 12, lineHeight: 18 },
   field: { width: '100%', marginBottom: 12 },
   label: { alignSelf: 'flex-start', marginBottom: 6, color: '#374151', fontWeight: '600' },
   inputRow: { 
@@ -357,8 +396,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'stretch',
   },
-  policyTitle: { fontSize: 13, fontWeight: '800', marginBottom: 6, color: '#111827', textAlign: 'center' },
-  policyHelper: { fontSize: 12, color: '#374151', marginBottom: 10, lineHeight: 18, textAlign: 'justify', alignSelf: 'stretch' },
   acceptRow: { width: '100%', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'flex-start', flexWrap: 'wrap', marginBottom: 8 },
   checkbox: { marginRight: 8, marginTop: 2, flexShrink: 0 },
   acceptText: { flex: 1, minWidth: 0, fontSize: 12, color: '#374151', lineHeight: 18, textAlign: 'justify', alignSelf: 'stretch' },

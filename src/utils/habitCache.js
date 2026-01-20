@@ -119,13 +119,10 @@ function localizeTemplates(templates, language) {
 
 async function getUserCacheKeys(language = 'es') {
   const userId = getCurrentUserId();
-  if (!userId) {
-    return { user: null, cacheKey: null, cacheTimeKey: null };
-  }
-
-  const suffix = `_${userId}`;
+  // Guest mode: cache templates on-device so the app can show habits without auth.
+  const suffix = userId ? `_${userId}` : '_GUEST';
   return {
-    user: { id: userId },
+    user: { id: userId || 'GUEST' },
     cacheKey: `${CACHE_KEY_BASE}${suffix}_${language}`,
     cacheTimeKey: `${CACHE_TIME_KEY_BASE}${suffix}_${language}`,
   };
@@ -227,9 +224,6 @@ async function fetchTemplatesForLanguage(lang) {
 export async function loadHabitTemplates(appLanguage = 'es') {
   const lang = SUPPORTED_LANGUAGES.includes(appLanguage) ? appLanguage : 'en';
 
-  const { user } = await getUserCacheKeys(lang);
-  if (!user) return [];
-
   // 1️⃣ Devolver cache inmediato si existe
   const cached = await getCachedHabits(lang);
   if (cached) {
@@ -255,9 +249,6 @@ export async function loadHabitTemplates(appLanguage = 'es') {
 ====================== */
 async function refreshInBackground(language = 'es') {
   const lang = SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
-
-  const { user } = await getUserCacheKeys(lang);
-  if (!user) return;
 
   const refresh = await shouldRefresh(lang);
   if (!refresh) return;

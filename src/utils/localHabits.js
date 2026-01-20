@@ -5,7 +5,8 @@ const KEY = 'FLUU_CUSTOM_HABITS';
 
 async function getUserKey() {
   const userId = getCurrentUserId();
-  if (!userId) return null;
+  // Guest mode: still allow creating/reading local custom habits on-device.
+  if (!userId) return `${KEY}_GUEST`;
   return userScopedKey(KEY, userId);
 }
 

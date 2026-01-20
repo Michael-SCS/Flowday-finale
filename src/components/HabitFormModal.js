@@ -18,7 +18,6 @@ import VitaminsAddModal from './VitaminsAddModal';
 import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
 import { formatTimeFromDate } from '../utils/timeFormat';
-import { Picker } from '@react-native-picker/picker';
 import { translateHabitCategory } from '../utils/habitCategories';
 
 /* ======================
@@ -121,6 +120,8 @@ export default function HabitFormModal({
 
   const isDark = themeMode === 'dark';
 
+  const isBirthdayTemplate = useMemo(() => isBirthdayHabit(habit), [habit]);
+
   const baseDate = useMemo(() => {
     if (selectedDate instanceof Date) return selectedDate;
     if (typeof selectedDate === 'string') {
@@ -141,16 +142,34 @@ export default function HabitFormModal({
   const [formData, setFormData] = useState({});
   const [time, setTime] = useState(null);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
-  const [durationMinutes, setDurationMinutes] = useState(null);
-  const [durationPickerValue, setDurationPickerValue] = useState('60');
 
   const [selectedColor, setSelectedColor] = useState('#A8D8F0');
+  const [headerColorPreviewEnabled, setHeaderColorPreviewEnabled] = useState(false);
+
   const [marketAddVisible, setMarketAddVisible] = useState(false);
   const [marketAddFieldKey, setMarketAddFieldKey] = useState(null);
   const [vitaminsAddVisible, setVitaminsAddVisible] = useState(false);
   const [vitaminsAddFieldKey, setVitaminsAddFieldKey] = useState(null);
 
-  const isBirthdayTemplate = useMemo(() => isBirthdayHabit(habit), [habit]);
+  const headerBg = useMemo(() => {
+    if (!headerColorPreviewEnabled) return isDark ? '#020617' : '#ffffff';
+    return selectedColor;
+  }, [headerColorPreviewEnabled, isDark, selectedColor]);
+
+  const headerFg = useMemo(() => {
+    if (!headerColorPreviewEnabled) return isDark ? '#e5e7eb' : '#111827';
+    return getContrastColorLocal(selectedColor);
+  }, [headerColorPreviewEnabled, isDark, selectedColor]);
+
+  const headerSubFg = useMemo(() => {
+    if (!headerColorPreviewEnabled) return isDark ? '#9ca3af' : '#6b7280';
+    return headerFg === '#ffffff' ? 'rgba(255,255,255,0.88)' : 'rgba(17,24,39,0.78)';
+  }, [headerColorPreviewEnabled, headerFg, isDark]);
+
+  const headerBorder = useMemo(() => {
+    if (!headerColorPreviewEnabled) return isDark ? '#0f172a' : '#e5e7eb';
+    return headerFg === '#ffffff' ? 'rgba(255,255,255,0.22)' : 'rgba(15,23,42,0.10)';
+  }, [headerColorPreviewEnabled, headerFg, isDark]);
 
   useEffect(() => {
     if (editingActivity && initialSchedule) {
@@ -172,19 +191,8 @@ export default function HabitFormModal({
         setTime(null);
       }
       if (initialSchedule.allDay) {
+        // Duración removida: tratamos allDay como sin hora.
         setTime(null);
-        setDurationMinutes(null);
-        setDurationPickerValue('allDay');
-      } else if (typeof initialSchedule.durationMinutes === 'number') {
-        setDurationMinutes(initialSchedule.durationMinutes);
-        if ([10, 15, 30, 60].includes(initialSchedule.durationMinutes)) {
-          setDurationPickerValue(String(initialSchedule.durationMinutes));
-        } else {
-          setDurationPickerValue('custom');
-        }
-      } else {
-        setDurationMinutes(60);
-        setDurationPickerValue('60');
       }
 
       if (isBirthdayTemplate) {
@@ -200,15 +208,11 @@ export default function HabitFormModal({
         setFrequency('yearly');
         setDaysOfWeek([]);
         setTime(null);
-        setDurationMinutes(null);
-        setDurationPickerValue('allDay');
       } else {
         setFrequency('once');
         setDaysOfWeek([]);
         // Por defecto, usar la hora actual del dispositivo
         setTime(new Date());
-        setDurationMinutes(60);
-        setDurationPickerValue('60');
       }
     }
     // Notes/description section removed.
@@ -219,6 +223,7 @@ export default function HabitFormModal({
       habit?.color ||
       (isBirthdayTemplate ? '#F5B3C1' : '#38BDF8');
     setSelectedColor(initialColor);
+    setHeaderColorPreviewEnabled(!!editingActivity?.data?.color);
     setActivePicker(null);
   }, [habit, baseDate, editingActivity, initialSchedule, isBirthdayTemplate]);
 
@@ -257,10 +262,16 @@ export default function HabitFormModal({
     switch (field.type) {
       case 'text':
       case 'number':
+        const placeholder =
+          isBirthdayTemplate &&
+          birthdayTextField &&
+          field.key === birthdayTextField.key
+            ? (t('specialHabits.birthday.placeholder') || 'Nombre de la persona')
+            : field.label;
         return (
           <TextInput
             style={[styles.input, isDark && styles.inputDark]}
-            placeholder={field.label}
+            placeholder={placeholder}
             placeholderTextColor="#9ca3af"
             keyboardType={field.type === 'number' ? 'numeric' : 'default'}
             value={value || ''}
@@ -548,30 +559,7 @@ export default function HabitFormModal({
         ).padStart(2, '0')}`
       : null;
 
-    const isAllDay = durationPickerValue === 'allDay';
-    const effectiveTimeString = isAllDay ? null : timeString;
-
-    const DEFAULT_DURATION_IF_EMPTY_MINUTES = 60;
-
-    const normalizedDuration =
-      isAllDay
-        ? null
-        : typeof durationMinutes === 'number' && durationMinutes > 0
-        ? durationMinutes
-        : effectiveTimeString
-          ? DEFAULT_DURATION_IF_EMPTY_MINUTES
-          : null;
-
-    let endTimeString = null;
-    if (time && normalizedDuration && !isAllDay) {
-      const startTotalMinutes = time.getHours() * 60 + time.getMinutes();
-      const total = startTotalMinutes + normalizedDuration;
-      const endHour = Math.floor(total / 60) % 24;
-      const endMin = total % 60;
-      endTimeString = `${String(endHour).padStart(2, '0')}:${String(
-        endMin
-      ).padStart(2, '0')}`;
-    }
+    const effectiveTimeString = timeString;
 
     const formatLocalYMD = (d) => {
       const year = d.getFullYear();
@@ -593,10 +581,10 @@ export default function HabitFormModal({
         endDate: isBirthdayTemplate ? null : hasEndDate ? formatLocalYMD(endDate) : null,
         frequency,
         daysOfWeek: frequency === 'weekly' ? daysOfWeek : [],
-        allDay: isAllDay,
+        allDay: false,
         time: effectiveTimeString,
-        durationMinutes: normalizedDuration,
-        endTime: endTimeString,
+        durationMinutes: null,
+        endTime: null,
       },
     });
   }
@@ -610,18 +598,22 @@ export default function HabitFormModal({
 
       <View style={[styles.sheet, isDark && { backgroundColor: '#020617' }]}>
         {/* HEADER SIMPLE */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: headerBg, borderBottomColor: headerBorder }]}>
           <View style={styles.headerLeft}>
               {onChangeHabit && (
                 <Pressable onPress={onChangeHabit} style={{ marginRight: 8 }}>
-                  <Ionicons name="arrow-back" size={20} color="#2563eb" />
+                  <Ionicons
+                    name="arrow-back"
+                    size={20}
+                    color={headerColorPreviewEnabled ? headerFg : '#2563eb'}
+                  />
                 </Pressable>
               )}
               <Image source={{ uri: habit.icon }} style={styles.icon} />
               <View>
-                <Text style={[styles.title, isDark && { color: '#e5e7eb' }]}>{habit.title}</Text>
+                <Text style={[styles.title, { color: headerFg }]}>{habit.title}</Text>
                 {habit.category && (
-                      <Text style={[styles.category, isDark && { color: '#9ca3af' }]}>
+                      <Text style={[styles.category, { color: headerSubFg }]}>
                         {translateHabitCategory(habit.category, language)}
                       </Text>
                     )}
@@ -629,7 +621,7 @@ export default function HabitFormModal({
             </View>
           <View style={styles.headerRight}>
             <Pressable onPress={onClose}>
-              <Ionicons name="close" size={28} color={isDark ? '#e5e7eb' : '#111'} />
+              <Ionicons name="close" size={28} color={headerFg} />
             </Pressable>
           </View>
         </View>
@@ -762,327 +754,49 @@ export default function HabitFormModal({
           ) : null}
 
           {/* HORARIO */}
-          {durationPickerValue !== 'allDay' ? (
-            <View style={styles.section}>
-              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
+          <View style={styles.section}>
+            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
 
-              <Pressable
-                style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
-                onPress={() => setTimePickerVisible(true)}
-              >
-                <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
-                <View style={styles.boxRight}>
-                  <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
-                    {time
-                      ? formatTimeFromDate(time, { language, timeFormat })
-                      : 'Select the time'}
-                  </Text>
-                  <Ionicons name="time-outline" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
-                </View>
-              </Pressable>
+            <Pressable
+              style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
+              onPress={() => setTimePickerVisible(true)}
+            >
+              <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
+              <View style={styles.boxRight}>
+                <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
+                  {time ? formatTimeFromDate(time, { language, timeFormat }) : 'Select the time'}
+                </Text>
+                <Ionicons name="time-outline" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
+              </View>
+            </Pressable>
 
-              {timePickerVisible && (
-                <View style={styles.picker}>
-                  <DateTimePicker
-                    value={time || new Date()}
-                    mode="time"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-                    locale={
-                      Platform.OS === 'ios'
-                        ? language === 'en'
-                          ? 'en-US'
-                          : 'es-ES'
-                        : undefined
-                    }
-                    themeVariant={isDark ? 'dark' : 'light'}
-                    textColor={Platform.OS === 'ios' ? (isDark ? '#e5e7eb' : '#111827') : undefined}
-                    onChange={(_, date) => {
-                      if (!date) {
-                        if (Platform.OS === 'android') setTimePickerVisible(false);
-                        return;
-                      }
-                      setTime(date);
+            {timePickerVisible && (
+              <View style={styles.picker}>
+                <DateTimePicker
+                  value={time || new Date()}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+                  locale={
+                    Platform.OS === 'ios'
+                      ? language === 'en'
+                        ? 'en-US'
+                        : 'es-ES'
+                      : undefined
+                  }
+                  themeVariant={isDark ? 'dark' : 'light'}
+                  textColor={Platform.OS === 'ios' ? (isDark ? '#e5e7eb' : '#111827') : undefined}
+                  onChange={(_, date) => {
+                    if (!date) {
                       if (Platform.OS === 'android') setTimePickerVisible(false);
-                    }}
-                  />
-                </View>
-              )}
-
-              {/* DURACIÓN */}
-              <View style={styles.durationSection}>
-                <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.durationLabel')}</Text>
-                <View style={[styles.durationDropdownContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
-                  <Picker
-                    selectedValue={durationPickerValue}
-                    onValueChange={(value) => {
-                      const nextValue = value || '60';
-                      setDurationPickerValue(nextValue);
-
-                      if (nextValue === 'allDay') {
-                        setDurationMinutes(null);
-                        setTime(null);
-                        return;
-                      }
-
-                      if (nextValue === 'custom') {
-                        // mantener el valor actual o dejarlo en null hasta que el usuario escriba
-                        return;
-                      }
-
-                      const n = parseInt(nextValue, 10);
-                      if (!Number.isNaN(n)) {
-                        setDurationMinutes(n);
-                      }
-                    }}
-                    style={isDark ? { color: '#ffffff' } : undefined}
-                    itemStyle={Platform.OS === 'ios' && isDark ? { color: '#ffffff' } : undefined}
-                    dropdownIconColor={isDark ? '#9ca3af' : '#6b7280'}
-                    mode={Platform.OS === 'ios' ? 'dialog' : 'dropdown'}
-                  >
-                    <Picker.Item
-                      label="10 min"
-                      value="10"
-                      color={
-                        Platform.OS === 'ios'
-                          ? isDark
-                            ? '#ffffff'
-                            : undefined
-                          : isDark
-                            ? '#111827'
-                            : undefined
-                      }
-                    />
-                    <Picker.Item
-                      label="15 min"
-                      value="15"
-                      color={
-                        Platform.OS === 'ios'
-                          ? isDark
-                            ? '#ffffff'
-                            : undefined
-                          : isDark
-                            ? '#111827'
-                            : undefined
-                      }
-                    />
-                    <Picker.Item
-                      label="30 min"
-                      value="30"
-                      color={
-                        Platform.OS === 'ios'
-                          ? isDark
-                            ? '#ffffff'
-                            : undefined
-                          : isDark
-                            ? '#111827'
-                            : undefined
-                      }
-                    />
-                    <Picker.Item
-                      label="60 min"
-                      value="60"
-                      color={
-                        Platform.OS === 'ios'
-                          ? isDark
-                            ? '#ffffff'
-                            : undefined
-                          : isDark
-                            ? '#111827'
-                            : undefined
-                      }
-                    />
-                    <Picker.Item
-                      label={t('habitForm.durationAllDay') || 'Todo el día'}
-                      value="allDay"
-                      color={
-                        Platform.OS === 'ios'
-                          ? isDark
-                            ? '#ffffff'
-                            : undefined
-                          : isDark
-                            ? '#111827'
-                            : undefined
-                      }
-                    />
-                    <Picker.Item
-                      label={t('habitForm.durationCustom')}
-                      value="custom"
-                      color={
-                        Platform.OS === 'ios'
-                          ? isDark
-                            ? '#ffffff'
-                            : undefined
-                          : isDark
-                            ? '#111827'
-                            : undefined
-                      }
-                    />
-                  </Picker>
-                </View>
-
-                {time && (
-                  <Text style={[styles.sublabel, { marginTop: 8 }, isDark && { color: '#9ca3af' }]}>
-                    {(() => {
-                      const startH = String(time.getHours()).padStart(2, '0');
-                      const startM = String(time.getMinutes()).padStart(2, '0');
-                      const startStr = `${startH}:${startM}`;
-                      const effectiveDuration =
-                        typeof durationMinutes === 'number' && durationMinutes > 0
-                          ? durationMinutes
-                          : 60;
-                      const startTotal = time.getHours() * 60 + time.getMinutes();
-                      const total = startTotal + effectiveDuration;
-                      const endH = String(Math.floor(total / 60) % 24).padStart(2, '0');
-                      const endM = String(total % 60).padStart(2, '0');
-                      const endStr = `${endH}:${endM}`;
-                      return `${startStr} - ${endStr}`;
-                    })()}
-                  </Text>
-                )}
-
-                {durationPickerValue === 'custom' && (
-                  <View style={styles.durationCustomWrapper}>
-                    <Text style={[styles.durationCustomLabel, isDark && { color: '#e5e7eb' }]}>
-                        {t('habitForm.durationCustom')}
-                      </Text>
-                    <TextInput
-                      style={[styles.durationInput, isDark && styles.inputDark]}
-                      keyboardType="numeric"
-                      placeholder={t('habitForm.durationCustomPlaceholder')}
-                      placeholderTextColor={isDark ? '#ffffff' : '#9ca3af'}
-                      value={
-                        typeof durationMinutes === 'number' &&
-                        ![10, 15, 30, 60].includes(durationMinutes)
-                          ? String(durationMinutes)
-                          : ''
-                      }
-                      onChangeText={(v) => {
-                        const n = parseInt(v, 10);
-                        if (Number.isNaN(n)) {
-                          setDurationMinutes(null);
-                        } else {
-                          setDurationMinutes(n);
-                        }
-                      }}
-                    />
-                  </View>
-                )}
-              </View>
-
-            </View>
-          ) : (
-            <View style={styles.section}>
-              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.durationLabel')}</Text>
-              <View style={[styles.durationDropdownContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}>
-                <Picker
-                  selectedValue={durationPickerValue}
-                  onValueChange={(value) => {
-                    const nextValue = value || '60';
-                    setDurationPickerValue(nextValue);
-
-                    if (nextValue === 'allDay') {
-                      setDurationMinutes(null);
-                      setTime(null);
                       return;
                     }
-
-                    if (nextValue === 'custom') {
-                      // mantener el valor actual o dejarlo en null hasta que el usuario escriba
-                      return;
-                    }
-
-                    const n = parseInt(nextValue, 10);
-                    if (!Number.isNaN(n)) {
-                      setDurationMinutes(n);
-                    }
+                    setTime(date);
+                    if (Platform.OS === 'android') setTimePickerVisible(false);
                   }}
-                  style={isDark ? { color: '#ffffff' } : undefined}
-                  itemStyle={Platform.OS === 'ios' && isDark ? { color: '#ffffff' } : undefined}
-                  dropdownIconColor={isDark ? '#9ca3af' : '#6b7280'}
-                  mode={Platform.OS === 'ios' ? 'dialog' : 'dropdown'}
-                >
-                  <Picker.Item
-                    label="10 min"
-                    value="10"
-                    color={
-                      Platform.OS === 'ios'
-                        ? isDark
-                          ? '#ffffff'
-                          : undefined
-                        : isDark
-                          ? '#111827'
-                          : undefined
-                    }
-                  />
-                  <Picker.Item
-                    label="15 min"
-                    value="15"
-                    color={
-                      Platform.OS === 'ios'
-                        ? isDark
-                          ? '#ffffff'
-                          : undefined
-                        : isDark
-                          ? '#111827'
-                          : undefined
-                    }
-                  />
-                  <Picker.Item
-                    label="30 min"
-                    value="30"
-                    color={
-                      Platform.OS === 'ios'
-                        ? isDark
-                          ? '#ffffff'
-                          : undefined
-                        : isDark
-                          ? '#111827'
-                          : undefined
-                    }
-                  />
-                  <Picker.Item
-                    label="60 min"
-                    value="60"
-                    color={
-                      Platform.OS === 'ios'
-                        ? isDark
-                          ? '#ffffff'
-                          : undefined
-                        : isDark
-                          ? '#111827'
-                          : undefined
-                    }
-                  />
-                  <Picker.Item
-                    label={t('habitForm.durationAllDay') || 'Todo el día'}
-                    value="allDay"
-                    color={
-                      Platform.OS === 'ios'
-                        ? isDark
-                          ? '#ffffff'
-                          : undefined
-                        : isDark
-                          ? '#111827'
-                          : undefined
-                    }
-                  />
-                  <Picker.Item
-                    label={t('habitForm.durationCustom')}
-                    value="custom"
-                    color={
-                      Platform.OS === 'ios'
-                        ? isDark
-                          ? '#ffffff'
-                          : undefined
-                        : isDark
-                          ? '#111827'
-                          : undefined
-                    }
-                  />
-                </Picker>
+                />
               </View>
-            </View>
-          )}
+            )}
+          </View>
 
           {/* FRECUENCIA */}
           <View style={[styles.section, styles.frequencySection]}>
@@ -1161,7 +875,10 @@ export default function HabitFormModal({
                 {COLOR_OPTIONS.map((c) => (
                   <Pressable
                     key={c}
-                    onPress={() => setSelectedColor(c)}
+                    onPress={() => {
+                      setSelectedColor(c);
+                      setHeaderColorPreviewEnabled(true);
+                    }}
                     style={[
                       styles.colorSwatch,
                       selectedColor === c && styles.colorSwatchSelected,

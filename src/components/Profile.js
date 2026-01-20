@@ -733,17 +733,7 @@ export default function ProfileScreen() {
                     <Pressable
                       style={[styles.retryButton, { backgroundColor: accent, marginTop: 12 }]}
                       onPress={() => {
-                        Alert.alert(
-                          safeT('profile.guestModeTitle', 'Modo invitado'),
-                          safeT('profile.guestModeMessage', 'Puedes usar la app sin cuenta. Si te registras, podrás sincronizar y guardar tu perfil.'),
-                          [
-                            { text: safeT('profile.guestModeLater', 'Más tarde'), style: 'cancel' },
-                            {
-                              text: safeT('profile.guestModeRegister', 'Registrarme'),
-                              onPress: () => startOnboardingSignup({ from: 'profile_guest_cta' }),
-                            },
-                          ]
-                        );
+                        startOnboardingSignup({ from: 'profile_guest_cta' });
                       }}
                     >
                       <Ionicons name="log-in-outline" size={18} color="#fff" />

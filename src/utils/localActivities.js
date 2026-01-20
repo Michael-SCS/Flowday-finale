@@ -5,7 +5,8 @@ const KEY = 'FLUU_ACTIVITIES';
 
 async function getUserKey() {
   const userId = getCurrentUserId();
-  if (!userId) return null;
+  // Guest mode: persist activities on-device even without an account.
+  if (!userId) return `${KEY}_GUEST`;
   return userScopedKey(KEY, userId);
 }
 

@@ -5,6 +5,7 @@ import {
   Text,
   StyleSheet,
   Pressable,
+  Animated,
   Image,
   FlatList,
   Alert,
@@ -24,6 +25,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable, ScrollView } from 'react-native-gesture-handler';
 import { ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { loadHabitTemplates } from '../utils/habitCache';
 import HabitFormModal from './HabitFormModal';
 import ChecklistTable from './ChecklistTable';
@@ -423,6 +426,17 @@ export default function Calendar() {
   const [habits, setHabits] = useState([]);
   const [habitsLoading, setHabitsLoading] = useState(true);
 
+  const CALENDAR_DRAG_HINT_KEY = 'FLUU_CALENDAR_DRAG_HINT_DISMISSED';
+  const CALENDAR_DRAG_HINT_COLLAPSE_KEY = 'FLUU_CALENDAR_DRAG_HINT_COLLAPSE_DISMISSED';
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
+  const [calendarDragHintVisible, setCalendarDragHintVisible] = useState(false);
+  const calendarDragHintAnim = useRef(new Animated.Value(0)).current;
+  const calendarDragHintLoopRef = useRef(null);
+
+  const [calendarDragHintCollapseVisible, setCalendarDragHintCollapseVisible] = useState(false);
+  const calendarDragHintCollapseAnim = useRef(new Animated.Value(0)).current;
+  const calendarDragHintCollapseLoopRef = useRef(null);
+
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [isChangingHabit, setIsChangingHabit] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -467,6 +481,154 @@ export default function Calendar() {
   useEffect(() => {
     return refreshMoodForSelectedDate();
   }, [refreshMoodForSelectedDate]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const [dismissedExpand, dismissedCollapse] = await Promise.all([
+          AsyncStorage.getItem(CALENDAR_DRAG_HINT_KEY),
+          AsyncStorage.getItem(CALENDAR_DRAG_HINT_COLLAPSE_KEY),
+        ]);
+        if (!mounted) return;
+        if (!dismissedExpand) {
+          // Small delay so it doesn't flash during initial layout.
+          setTimeout(() => {
+            if (!mounted) return;
+            setCalendarDragHintVisible(true);
+          }, 650);
+        }
+
+        if (!dismissedCollapse) {
+          // We only show this when the user expands to month; so just mark it as eligible.
+          // (Visibility is controlled by calendarExpanded.)
+          setCalendarDragHintCollapseVisible(false);
+        }
+      } catch {
+        // If storage fails, still show the hint (best effort).
+        if (!mounted) return;
+        setCalendarDragHintVisible(true);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const dismissCalendarDragHint = useCallback(async () => {
+    setCalendarDragHintVisible(false);
+    try {
+      await AsyncStorage.setItem(CALENDAR_DRAG_HINT_KEY, '1');
+    } catch {
+      // best-effort
+    }
+  }, []);
+
+  const dismissCalendarDragHintCollapse = useCallback(async () => {
+    setCalendarDragHintCollapseVisible(false);
+    try {
+      await AsyncStorage.setItem(CALENDAR_DRAG_HINT_COLLAPSE_KEY, '1');
+    } catch {
+      // best-effort
+    }
+  }, []);
+
+  const handleCalendarToggled = useCallback(
+    (isOpen) => {
+      const open = !!isOpen;
+      setCalendarExpanded(open);
+      if (open && calendarDragHintVisible) {
+        dismissCalendarDragHint();
+      }
+
+      // Show collapse hint once the user reaches month view (only if not dismissed).
+      if (open) {
+        (async () => {
+          try {
+            const dismissed = await AsyncStorage.getItem(CALENDAR_DRAG_HINT_COLLAPSE_KEY);
+            if (!dismissed) setCalendarDragHintCollapseVisible(true);
+          } catch {
+            setCalendarDragHintCollapseVisible(true);
+          }
+        })();
+      }
+
+      // If the user collapses back to week while the hint is visible, dismiss it permanently.
+      if (!open && calendarDragHintCollapseVisible) {
+        dismissCalendarDragHintCollapse();
+      }
+    },
+    [
+      calendarDragHintVisible,
+      dismissCalendarDragHint,
+      calendarDragHintCollapseVisible,
+      dismissCalendarDragHintCollapse,
+    ]
+  );
+
+  const shouldShowCalendarDragHint = calendarDragHintVisible && !calendarExpanded;
+  const shouldShowCalendarDragHintCollapse = calendarDragHintCollapseVisible && calendarExpanded;
+
+  useEffect(() => {
+    if (!shouldShowCalendarDragHint) {
+      calendarDragHintLoopRef.current?.stop?.();
+      calendarDragHintAnim.setValue(0);
+      return;
+    }
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(calendarDragHintAnim, {
+          toValue: 4,
+          duration: 650,
+          useNativeDriver: true,
+        }),
+        Animated.timing(calendarDragHintAnim, {
+          toValue: 0,
+          duration: 650,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    calendarDragHintLoopRef.current = loop;
+    loop.start();
+
+    return () => {
+      loop.stop();
+    };
+  }, [calendarDragHintAnim, shouldShowCalendarDragHint]);
+
+  useEffect(() => {
+    if (!shouldShowCalendarDragHintCollapse) {
+      calendarDragHintCollapseLoopRef.current?.stop?.();
+      calendarDragHintCollapseAnim.setValue(0);
+      return;
+    }
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(calendarDragHintCollapseAnim, {
+          toValue: -4,
+          duration: 650,
+          useNativeDriver: true,
+        }),
+        Animated.timing(calendarDragHintCollapseAnim, {
+          toValue: 0,
+          duration: 650,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    calendarDragHintCollapseLoopRef.current = loop;
+    loop.start();
+
+    return () => {
+      loop.stop();
+    };
+  }, [calendarDragHintCollapseAnim, shouldShowCalendarDragHintCollapse]);
 
   useEffect(() => {
     if (selectedDate !== today) return;
@@ -605,7 +767,7 @@ export default function Calendar() {
                       />
                     ) : (
                       <View style={styles.habitImagePlaceholder}>
-                        <Ionicons name="sparkles" size={24} color="#38BDF8" />
+                        <Ionicons name="sparkles" size={22} color="#38BDF8" />
                       </View>
                     )}
                     <View style={styles.habitTextContainer}>
@@ -734,6 +896,15 @@ export default function Calendar() {
     loadHabits();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      // When user creates a habit/activity elsewhere and comes back,
+      // refresh immediately so the new habit appears without needing to restart.
+      loadActivities();
+      loadHabits();
+    }, [language])
+  );
+
   // Recargar hábitos cuando cambie el idioma de la app
   useEffect(() => {
     loadHabits();
@@ -774,10 +945,11 @@ export default function Calendar() {
 
   async function saveActivities(data) {
     try {
+      // Optimistic UI: update state first so changes appear instantly.
+      setActivities({ ...data });
+
       await saveUserActivities(data);
-      // IMPORTANTE: Actualizar el estado DESPUÉS de guardar
-      setActivities({ ...data }); // Crear nuevo objeto para forzar re-render
-      console.log('💾 Estado actualizado (por usuario):', Object.keys(data).length, 'fechas');
+      console.log('💾 Guardado (por usuario):', Object.keys(data).length, 'fechas');
     } catch (error) {
       console.error('Error saving activities:', error);
     }
@@ -1105,7 +1277,7 @@ export default function Calendar() {
           completed: false,
         };
 
-        updated[date].push(newActivity);
+        updated[date] = [...updated[date], newActivity];
 
         // Solo programamos notificación para la siguiente ocurrencia futura
         if (newActivity.time && nextReminderDate && date === nextReminderDate) {
@@ -1313,7 +1485,7 @@ export default function Calendar() {
         completed: false,
       };
 
-      updated[date].push(newActivity);
+      updated[date] = [...updated[date], newActivity];
 
       // Solo programamos notificación para la siguiente ocurrencia futura
       if (newActivity.time && nextReminderDate && date === nextReminderDate) {
@@ -1883,7 +2055,7 @@ export default function Calendar() {
 
     if (!updated[nextKey]) updated[nextKey] = [];
     toMove.forEach((act) => {
-      updated[nextKey].push({ ...act, date: nextKey });
+      updated[nextKey] = [...updated[nextKey], { ...act, date: nextKey }];
     });
 
     saveActivities(updated);
@@ -1977,7 +2149,7 @@ export default function Calendar() {
         completed: false,
       };
 
-      updated[target.date].push(newActivity);
+      updated[target.date] = [...updated[target.date], newActivity];
       // Marcar como elegida y aumentar la carga para próximas iteraciones
       picked.push(target.date);
       candidates[foundIndex].load += 1;
@@ -2105,13 +2277,87 @@ export default function Calendar() {
         showTodayButton
         todayButtonText={t('calendar.todayButton')}
       >
-        <ExpandableCalendar
-          key={`${language}-${themeColor}-${themeMode}`}
-          firstDay={1}
-          markedDates={markedDates}
-          markingType="custom"
-          theme={themedCalendar}
-        />
+        <View
+          style={[
+            styles.calendarWrapper,
+            (shouldShowCalendarDragHint || shouldShowCalendarDragHintCollapse) && { marginBottom: 18 },
+          ]}
+        >
+          <ExpandableCalendar
+            key={`${language}-${themeColor}-${themeMode}`}
+            firstDay={1}
+            markedDates={markedDates}
+            markingType="custom"
+            theme={themedCalendar}
+            onCalendarToggled={handleCalendarToggled}
+          />
+
+          {shouldShowCalendarDragHint ? (
+            <View style={styles.calendarDragHintOverlay} pointerEvents="box-none">
+              <Pressable
+                onPress={dismissCalendarDragHint}
+                style={[
+                  styles.calendarDragHintPill,
+                  isDark && {
+                    backgroundColor: 'rgba(148, 163, 184, 0.12)',
+                    borderColor: 'rgba(148, 163, 184, 0.28)',
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('calendar.dragHintExpand') || 'Desliza hacia abajo para ver el mes'}
+              >
+                <Animated.View style={{ transform: [{ translateY: calendarDragHintAnim }] }}>
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color={isDark ? '#e5e7eb' : '#334155'}
+                  />
+                </Animated.View>
+                <Text
+                  style={[
+                    styles.calendarDragHintText,
+                    isDark && { color: '#e5e7eb' },
+                  ]}
+                >
+                  {t('calendar.dragHintExpand') || 'Desliza hacia abajo para ver el mes'}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {shouldShowCalendarDragHintCollapse ? (
+            <View style={styles.calendarDragHintOverlay} pointerEvents="box-none">
+              <Pressable
+                onPress={dismissCalendarDragHintCollapse}
+                style={[
+                  styles.calendarDragHintPill,
+                  isDark && {
+                    backgroundColor: 'rgba(148, 163, 184, 0.12)',
+                    borderColor: 'rgba(148, 163, 184, 0.28)',
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('calendar.dragHintCollapse') || 'Desliza hacia arriba para ver la semana'}
+              >
+                <Animated.View style={{ transform: [{ translateY: calendarDragHintCollapseAnim }] }}>
+                  <Ionicons
+                    name="chevron-up"
+                    size={18}
+                    color={isDark ? '#e5e7eb' : '#334155'}
+                  />
+                </Animated.View>
+                <Text
+                  style={[
+                    styles.calendarDragHintText,
+                    isDark && { color: '#e5e7eb' },
+                  ]}
+                >
+                  {t('calendar.dragHintCollapse') || 'Desliza hacia arriba para ver la semana'}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
 
         <View style={[styles.content, isDark && { backgroundColor: '#020617' }]}>
           <ScrollView
@@ -3385,6 +3631,34 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
 
+  calendarWrapper: {
+    position: 'relative',
+    zIndex: 10,
+  },
+  calendarDragHintOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -12,
+    alignItems: 'center',
+  },
+  calendarDragHintPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.28)',
+  },
+  calendarDragHintText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+
 
   // Date Header
   dateHeader: {
@@ -3924,16 +4198,16 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   habitCardImage: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 13,
     resizeMode: 'cover',
     backgroundColor: '#fee2e2',
   },
   habitImagePlaceholder: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 13,
     backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',

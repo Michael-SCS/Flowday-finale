@@ -154,13 +154,14 @@ export default function RootNavigator({ navigationTheme }) {
         onSelect={async ({ score, emoji }) => {
           if (moodSaving) return;
           setMoodSaving(true);
+          // Close immediately for better UX; keep moodSaving true to avoid re-open.
+          setMoodVisible(false);
           try {
             const today = todayMoodKey();
             await Promise.all([
               saveMoodForToday({ score, emoji }),
               setLastPromptDate(today),
             ]);
-            setMoodVisible(false);
           } finally {
             setMoodSaving(false);
           }

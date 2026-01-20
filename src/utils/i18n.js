@@ -42,6 +42,7 @@ const translations = {
       step2Helper: 'Ahora crea los datos de acceso a tu cuenta.',
       creating: 'Creando cuenta…',
       goToLogin: '¿Ya tienes cuenta? Inicia sesión',
+      backToApp: 'Volver a la app',
       policyHelper: 'Al registrarte aceptas la Política de tratamiento de datos, uso y privacidad.',
       policyAcceptLabel: 'He leído y acepto la Política de tratamiento de datos, uso y privacidad.',
       policyViewLabel: 'Ver políticas',
@@ -191,6 +192,7 @@ const translations = {
       feedbackSendError: 'No se pudo enviar tu mensaje. Revisa tu conexión e inténtalo de nuevo.',
       privacyPolicy: 'Política de privacidad',
       privacyOpenHint: 'Cómo usamos tus datos',
+      policyAccept: 'Entendido',
       deleteAccount: 'Borrar cuenta',
       deleteAccountMessageShort: 'Esta acción es permanente',
       deleteAccountTitle: 'Borrar cuenta',
@@ -348,6 +350,8 @@ const translations = {
       timeConflictTitle: 'Horario no disponible',
       timeConflictMessage:
         'Ya tienes otra actividad en este horario. Ajusta la hora o la duración.',
+      dragHintExpand: 'Desliza hacia abajo para ver el mes',
+      dragHintCollapse: 'Desliza hacia arriba para ver la semana',
       timeConflictExistingActivity: 'Actividad en ese horario:',
       timeConflictReplace: 'Reemplazar',
       timeConflictKeepBoth: 'Mantener ambas',
@@ -410,6 +414,7 @@ const translations = {
     specialHabits: {
       birthday: {
         question: '¿Quién cumplirá años?',
+        placeholder: 'Nombre de la persona',
         subtitlePrefix: '🎉 Hoy celebramos el cumpleaños de',
       },
       study: {
@@ -496,6 +501,7 @@ const translations = {
       step2Helper: 'Now create the login details for your account.',
       creating: 'Creating account…',
       goToLogin: 'I already have an account',
+      backToApp: 'Back to app',
       policyHelper: 'By signing up, you accept the data processing, use and privacy policy.',
       policyAcceptLabel: 'I have read and accept the data processing, use and privacy policy.',
       policyViewLabel: 'View policy',
@@ -812,6 +818,8 @@ const translations = {
       timeConflictTitle: 'Time not available',
       timeConflictMessage:
         'You already have another activity at this time. Adjust the time or duration.',
+      dragHintExpand: 'Swipe down to see the month',
+      dragHintCollapse: 'Swipe up to see the week',
       timeConflictExistingActivity: 'Existing activity:',
       timeConflictReplace: 'Replace',
       timeConflictKeepBoth: 'Keep both',
@@ -874,6 +882,7 @@ const translations = {
     specialHabits: {
       birthday: {
         question: 'Who will have a birthday?',
+        placeholder: "Person's name",
         subtitlePrefix: '🎉 Today we celebrate the birthday of',
       },
       study: {
@@ -960,6 +969,7 @@ const translations = {
       step2Helper: 'Agora crie os dados de acesso da sua conta.',
       creating: 'Criando conta…',
       goToLogin: 'Já tenho uma conta',
+      backToApp: 'Voltar ao app',
       policyHelper: 'Ao se registrar, você aceita a Política de tratamento de dados, uso e privacidade.',
       policyAcceptLabel: 'Li e aceito a Política de tratamento de dados, uso e privacidade.',
       policyViewLabel: 'Ver políticas',
@@ -1263,6 +1273,8 @@ const translations = {
       timeConflictTitle: 'Horário indisponível',
       timeConflictMessage:
         'Você já tem outra atividade neste horário. Ajuste o horário ou a duração.',
+      dragHintExpand: 'Deslize para baixo para ver o mês',
+      dragHintCollapse: 'Deslize para cima para ver a semana',
       timeConflictExistingActivity: 'Atividade nesse horário:',
       timeConflictReplace: 'Substituir',
       timeConflictKeepBoth: 'Manter ambas',
@@ -1325,6 +1337,7 @@ const translations = {
     specialHabits: {
       birthday: {
         question: 'Quem fará aniversário?',
+        placeholder: 'Nome da pessoa',
         subtitlePrefix: '🎉 Hoje celebramos o aniversário de',
       },
       study: {
@@ -1411,6 +1424,7 @@ const translations = {
       step2Helper: 'Créez maintenant les identifiants de votre compte.',
       creating: 'Création du compte…',
       goToLogin: "J'ai déjà un compte",
+      backToApp: "Retour à l’app",
       policyHelper: "En vous inscrivant, vous acceptez la politique de traitement des données, d'utilisation et de confidentialité.",
       policyAcceptLabel: "J'ai lu et j'accepte la politique de traitement des données, d'utilisation et de confidentialité.",
       policyViewLabel: 'Voir la politique',
@@ -1716,6 +1730,8 @@ const translations = {
       timeConflictTitle: 'Horaire indisponible',
       timeConflictMessage:
         'Vous avez déjà une autre activité à cet horaire. Ajustez l\'heure ou la durée.',
+      dragHintExpand: 'Glissez vers le bas pour voir le mois',
+      dragHintCollapse: 'Glissez vers le haut pour voir la semaine',
       timeConflictExistingActivity: 'Activité à cette heure :',
       timeConflictReplace: 'Remplacer',
       timeConflictKeepBoth: 'Garder les deux',
@@ -1778,6 +1794,7 @@ const translations = {
     specialHabits: {
       birthday: {
         question: "Qui va fêter son anniversaire ?",
+        placeholder: 'Nom de la personne',
         subtitlePrefix: "🎉 Aujourd'hui, nous célébrons l'anniversaire de",
       },
       study: {

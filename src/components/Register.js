@@ -95,6 +95,36 @@ export default function Register({ navigation }) {
     }
   };
 
+  const goToApp = async () => {
+    // User decided not to register: return to the app (guest mode).
+    try {
+      await AsyncStorage.removeItem('onboarding_in_progress');
+    } catch {
+      // ignore
+    }
+
+    const root = navigation?.getParent?.();
+    try {
+      root?.reset?.({ index: 0, routes: [{ name: 'App' }] });
+      return;
+    } catch {
+      // ignore
+    }
+
+    try {
+      root?.navigate?.('App');
+      return;
+    } catch {
+      // ignore
+    }
+
+    try {
+      navigation.goBack?.();
+    } catch {
+      // ignore
+    }
+  };
+
   async function handleRegister() {
     setError('');
     setLoading(true);
@@ -452,12 +482,20 @@ export default function Register({ navigation }) {
           </View>
 
           {step === 2 && (
-            <Pressable onPress={goToLogin}>
-              <Text style={styles.link}>
-                {t('register.goToLogin') || '¿Ya tienes cuenta? Inicia sesión'}
-              </Text>
-            </Pressable>
+            <>
+              <Pressable onPress={goToLogin}>
+                <Text style={styles.link}>
+                  {t('register.goToLogin') || '¿Ya tienes cuenta? Inicia sesión'}
+                </Text>
+              </Pressable>
+            </>
           )}
+
+          <Pressable onPress={goToApp}>
+            <Text style={[styles.link, styles.linkSecondary]}>
+              {t('register.backToApp') || 'Volver a la app'}
+            </Text>
+          </Pressable>
         </View>
       </KeyboardAwareScrollView>
 
@@ -725,6 +763,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: '#A8D8F0',
     fontWeight: '600',
+  },
+  linkSecondary: {
+    marginTop: 10,
+    color: '#64748b',
   },
   error: {
     color: '#ef4444',

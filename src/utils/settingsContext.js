@@ -44,7 +44,8 @@ export function getAccentColor(themeColor) {
 export function mapLocaleToLang(locale) {
   if (!locale || typeof locale !== 'string') return 'en';
   const code = locale.split(/[-_]/)[0].toLowerCase();
-  if (['es', 'en', 'pt', 'fr', 'de', 'it'].includes(code)) return code;
+  // Only supported languages for now.
+  if (code === 'es' || code === 'en' || code === 'pt' || code === 'fr') return code;
   return 'en';
 }
 
@@ -128,8 +129,16 @@ export function SettingsProvider({ children }) {
         // - Si el usuario eligió manualmente -> respetar.
         // - Si no (incluye compatibilidad con instalaciones viejas sin LANG_SOURCE) -> sincronizar con idioma del sistema.
         if (storedLangSource === 'user' && storedLang) {
-          setLanguageState(storedLang);
+          const normalized = mapLocaleToLang(storedLang);
+          setLanguageState(normalized);
           setLanguageSource('user');
+          if (normalized !== storedLang) {
+            try {
+              await AsyncStorage.setItem(LANG_KEY, normalized);
+            } catch {
+              // ignore
+            }
+          }
         } else {
           const systemLanguage = mapLocaleToLang(getSystemLocaleString());
           setLanguageState(systemLanguage);
@@ -203,8 +212,9 @@ export function SettingsProvider({ children }) {
 
   const setLanguage = async (value) => {
     try {
-      setLanguageState(value);
-      await AsyncStorage.setItem(LANG_KEY, value);
+      const next = mapLocaleToLang(value);
+      setLanguageState(next);
+      await AsyncStorage.setItem(LANG_KEY, next);
       // Marca como ajuste manual del usuario
       try {
         await AsyncStorage.setItem(LANG_SOURCE_KEY, 'user');
@@ -239,7 +249,7 @@ export function SettingsProvider({ children }) {
 
   // Cambiar idioma temporalmente sin persistir (útil para onboarding)
   const setLanguageTemp = (value) => {
-    setLanguageState(value);
+    setLanguageState(mapLocaleToLang(value));
   };
 
   return (

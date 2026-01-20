@@ -20,7 +20,9 @@ function clampScore(score) {
 
 async function getUserKey(baseKey) {
   const userId = getCurrentUserId();
-  if (!userId) return null;
+  // Guest mode: still persist mood + prompt/dismissal state on-device.
+  // Use a dedicated suffix to avoid colliding with authenticated scoped keys.
+  if (!userId) return `${baseKey}_GUEST`;
   return userScopedKey(baseKey, userId);
 }
 

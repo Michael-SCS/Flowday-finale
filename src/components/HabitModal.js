@@ -82,7 +82,7 @@ export default function HabitModal({ onSelect, onClose }) {
                     />
                   ) : (
                     <View style={styles.iconPlaceholder}>
-                      <Ionicons name="sparkles" size={20} color="#A8D8F0" />
+                      <Ionicons name="sparkles" size={18} color="#A8D8F0" />
                     </View>
                   )}
                   <View style={styles.itemTextContainer}>
@@ -154,17 +154,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   icon: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     marginRight: 10,
-    borderRadius: 10,
+    borderRadius: 9,
     backgroundColor: '#fee2e2',
   },
   iconPlaceholder: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     marginRight: 10,
-    borderRadius: 10,
+    borderRadius: 9,
     backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
