@@ -22,17 +22,6 @@ const Tab = createBottomTabNavigator();
 const TOUR_STORAGE_KEY = 'fluu_hasSeenMascotTour';
 const TOUR_PENDING_KEY = 'fluu_mascotTourPending';
 
-const TAB_COLORS = {
-  Calendar: '#3b82f6',
-  Pomodoro: '#f97316',
-  Perfil: '#a855f7',
-  Estadísticas: '#22c55e',
-};
-
-function getTabColor(routeName, fallback) {
-  return TAB_COLORS[routeName] || fallback;
-}
-
 function TabIcon({ name, focused, tabColor, size, isDark }) {
   const iconColor = focused ? tabColor : isDark ? `${tabColor}CC` : `${tabColor}B3`;
 
@@ -61,6 +50,8 @@ export default function TabNavigator() {
   const [showTour, setShowTour] = useState(false);
   const { isPro } = useProStatus();
   const isDark = themeMode === 'dark';
+  const tabBarBackground = isDark ? '#000000' : '#ffffff';
+  const tabBarBorder = isDark ? '#111827' : '#e5e7eb';
   const { user } = useAuth();
   const tourStorageKey = useMemo(() => {
     if (!user?.id) return null;
@@ -133,8 +124,8 @@ export default function TabNavigator() {
           height: 60 + insets.bottom,   // 🔥 CLAVE
           paddingBottom: insets.bottom, // 🔥 CLAVE
           paddingTop: 6,
-          backgroundColor: isDark ? '#020617' : '#ffffff',
-          borderTopColor: isDark ? '#1e293b' : '#e2e8f0',
+          backgroundColor: tabBarBackground,
+          borderTopColor: tabBarBorder,
         },
       }}
     >
@@ -143,7 +134,7 @@ export default function TabNavigator() {
         component={CalendarScreen}
         options={{
           tabBarLabel: ({ focused }) => {
-            const tabColor = getTabColor('Calendar', accent);
+            const tabColor = accent;
             return (
               <Text style={{ color: focused ? tabColor : isDark ? '#64748b' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
                 {t('calendar.title')}
@@ -151,7 +142,7 @@ export default function TabNavigator() {
             );
           },
           tabBarIcon: ({ focused, size }) => {
-            const tabColor = getTabColor('Calendar', accent);
+            const tabColor = accent;
             return <TabIcon name="calendar-outline" focused={focused} tabColor={tabColor} size={size} isDark={isDark} />;
           },
         }}
@@ -162,7 +153,7 @@ export default function TabNavigator() {
         component={PomodoroScreen}
         options={{
           tabBarLabel: ({ focused }) => {
-            const tabColor = getTabColor('Pomodoro', accent);
+            const tabColor = accent;
             return (
               <Text style={{ color: focused ? tabColor : isDark ? '#64748b' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
                 {t('pomodoro.title')}
@@ -170,7 +161,7 @@ export default function TabNavigator() {
             );
           },
           tabBarIcon: ({ focused, size }) => {
-            const tabColor = getTabColor('Pomodoro', accent);
+            const tabColor = accent;
             return <TabIcon name="timer-outline" focused={focused} tabColor={tabColor} size={size} isDark={isDark} />;
           },
         }}
@@ -183,7 +174,7 @@ export default function TabNavigator() {
         component={ProfileScreen}
         options={{
           tabBarLabel: ({ focused }) => {
-            const tabColor = getTabColor('Perfil', accent);
+            const tabColor = accent;
             return (
               <Text style={{ color: focused ? tabColor : isDark ? '#64748b' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
                 {t('profile.personalInfo')}
@@ -191,7 +182,7 @@ export default function TabNavigator() {
             );
           },
           tabBarIcon: ({ focused, size }) => {
-            const tabColor = getTabColor('Perfil', accent);
+            const tabColor = accent;
             return <TabIcon name="person-outline" focused={focused} tabColor={tabColor} size={size} isDark={isDark} />;
           },
         }}
@@ -202,7 +193,7 @@ export default function TabNavigator() {
           component={AdvancedStatsScreen}
           options={{
             tabBarLabel: ({ focused }) => {
-              const tabColor = getTabColor('Estadísticas', accent);
+              const tabColor = accent;
               return (
                 <Text style={{ color: focused ? tabColor : isDark ? '#64748b' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
                   {t('premium.statsTitle')}
@@ -210,7 +201,7 @@ export default function TabNavigator() {
               );
             },
             tabBarIcon: ({ focused, size }) => {
-              const tabColor = getTabColor('Estadísticas', accent);
+              const tabColor = accent;
               return <TabIcon name="stats-chart" focused={focused} tabColor={tabColor} size={size} isDark={isDark} />;
             },
           }}

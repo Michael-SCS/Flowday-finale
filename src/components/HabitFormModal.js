@@ -42,6 +42,12 @@ const FREQUENCIES = [
   { key: 'yearly', icon: 'time' },
 ];
 
+const SAVINGS_FREQUENCIES = [
+  { key: 'daily', icon: 'today' },
+  { key: 'weekly', icon: 'calendar' },
+  { key: 'monthly', icon: 'calendar-outline' },
+];
+
 const COLOR_OPTIONS = [
   '#A8D8F0', // blue
   '#F5B3C1', // pink
@@ -95,6 +101,119 @@ function isBirthdayHabit(habit) {
   return titleLower.includes('cumple') || titleLower.includes('birthday') || titleLower.includes('anniversaire');
 }
 
+function isSavingsHabit(habit) {
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  // Be permissive: titles come from Supabase translations.
+  return (
+    titleLower.includes('ahorrar dinero') ||
+    titleLower.includes('ahorrar') ||
+    titleLower.includes('ahorro') ||
+    titleLower.includes('save money') ||
+    titleLower.includes('saving')
+  );
+}
+
+function isWaterHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'water') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    (titleLower.includes('beber') && titleLower.includes('agua')) ||
+    titleLower.includes('agua') ||
+    titleLower.includes('water') ||
+    titleLower.includes('eau') ||
+    titleLower.includes('água')
+  );
+}
+
+function isOrganizeSpacesHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'spaces' || type === 'organizespaces' || type === 'organizeespacios') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('organizar espacios') ||
+    titleLower.includes('espacios a organizar') ||
+    titleLower.includes('spaces to organize') ||
+    titleLower.includes('organize spaces') ||
+    (titleLower.includes('organiser') && titleLower.includes('espaces'))
+  );
+}
+
+function isStudyHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'study' || type === 'estudiar' || type === 'studying') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('estudiar') ||
+    titleLower.includes('estudio') ||
+    titleLower.includes('study') ||
+    titleLower.includes('studying') ||
+    titleLower.includes('étudier') ||
+    titleLower.includes('etudier')
+  );
+}
+
+function isCourseHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'course' || type === 'curso' || type === 'takeacourse') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('tomar un curso') ||
+    titleLower.includes('tomar curso') ||
+    titleLower.includes('curso') ||
+    titleLower.includes('take a course') ||
+    titleLower.includes('course')
+  );
+}
+
+function isResearchHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'research' || type === 'investigar' || type === 'investigate') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('investigar') ||
+    titleLower.includes('investigación') ||
+    titleLower.includes('investigacion') ||
+    titleLower.includes('research') ||
+    titleLower.includes('investigate')
+  );
+}
+
+function isPodcastHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'podcast' || type === 'listenpodcast' || type === 'escucharpodcast') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('podcast') ||
+    (titleLower.includes('escuchar') && titleLower.includes('podcast')) ||
+    titleLower.includes('listen')
+  );
+}
+
+function isLanguagePracticeHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'language' || type === 'languagepractice' || type === 'idiomas' || type === 'practicaridioma') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('practicar idioma') ||
+    titleLower.includes('practicar idiomas') ||
+    titleLower.includes('idioma') ||
+    titleLower.includes('language practice')
+  );
+}
+
+function dayKeyFromDate(d) {
+  const idx = d instanceof Date ? d.getDay() : new Date().getDay();
+  // JS: 0=Sun..6=Sat
+  if (idx === 0) return 'sun';
+  if (idx === 1) return 'mon';
+  if (idx === 2) return 'tue';
+  if (idx === 3) return 'wed';
+  if (idx === 4) return 'thu';
+  if (idx === 5) return 'fri';
+  return 'sat';
+}
+
 function formatMarketValue(value, currencySymbol) {
   const n = parseMoneyLike(value);
   if (n === null) return `${currencySymbol}${String(value ?? 0)}`;
@@ -121,6 +240,17 @@ export default function HabitFormModal({
   const isDark = themeMode === 'dark';
 
   const isBirthdayTemplate = useMemo(() => isBirthdayHabit(habit), [habit]);
+  const isSavingsTemplate = useMemo(() => isSavingsHabit(habit), [habit]);
+  const isWaterTemplate = useMemo(() => isWaterHabit(habit), [habit]);
+  const isOrganizeSpacesTemplate = useMemo(() => isOrganizeSpacesHabit(habit), [habit]);
+  const isLanguagePracticeTemplate = useMemo(() => isLanguagePracticeHabit(habit), [habit]);
+  const isStudyTemplate = useMemo(
+    () => isStudyHabit(habit) && !isLanguagePracticeHabit(habit),
+    [habit]
+  );
+  const isCourseTemplate = useMemo(() => isCourseHabit(habit), [habit]);
+  const isResearchTemplate = useMemo(() => isResearchHabit(habit), [habit]);
+  const isPodcastTemplate = useMemo(() => isPodcastHabit(habit), [habit]);
 
   const baseDate = useMemo(() => {
     if (selectedDate instanceof Date) return selectedDate;
@@ -150,6 +280,12 @@ export default function HabitFormModal({
   const [marketAddFieldKey, setMarketAddFieldKey] = useState(null);
   const [vitaminsAddVisible, setVitaminsAddVisible] = useState(false);
   const [vitaminsAddFieldKey, setVitaminsAddFieldKey] = useState(null);
+
+  const [spacesDropdownOpen, setSpacesDropdownOpen] = useState(false);
+  const [studyDropdownOpen, setStudyDropdownOpen] = useState(false);
+  const [courseDropdownOpen, setCourseDropdownOpen] = useState(false);
+  const [researchDropdownOpen, setResearchDropdownOpen] = useState(false);
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
 
   const headerBg = useMemo(() => {
     if (!headerColorPreviewEnabled) return isDark ? '#020617' : '#ffffff';
@@ -223,9 +359,93 @@ export default function HabitFormModal({
       habit?.color ||
       (isBirthdayTemplate ? '#F5B3C1' : '#38BDF8');
     setSelectedColor(initialColor);
-    setHeaderColorPreviewEnabled(!!editingActivity?.data?.color);
+    setHeaderColorPreviewEnabled(!isBirthdayTemplate && !!editingActivity?.data?.color);
     setActivePicker(null);
   }, [habit, baseDate, editingActivity, initialSchedule, isBirthdayTemplate]);
+
+  useEffect(() => {
+    if (!isSavingsTemplate) return;
+    // Savings habit: simplify UX (no period/time) but keep valid internal defaults.
+    setHasEndDate(false);
+    setEndDate((prev) => prev || baseDate);
+    setTime(null);
+    setTimePickerVisible(false);
+    setActivePicker(null);
+  }, [baseDate, isSavingsTemplate]);
+
+  useEffect(() => {
+    if (!isWaterTemplate) return;
+    // Water habit: no time selector; daily goal instead.
+    setTime(null);
+    setTimePickerVisible(false);
+  }, [isWaterTemplate]);
+
+  useEffect(() => {
+    if (!isStudyTemplate) return;
+    // Study habit: no time-of-day selector; user chooses study duration.
+    setTime(null);
+    setTimePickerVisible(false);
+    setFormData((prev) => ({
+      ...prev,
+      studyDurationMinutes: prev?.studyDurationMinutes ?? '30',
+    }));
+  }, [isStudyTemplate]);
+
+  useEffect(() => {
+    if (!isCourseTemplate) return;
+    setTime(null);
+    setTimePickerVisible(false);
+    setFormData((prev) => ({
+      ...prev,
+      courseDurationMinutes: prev?.courseDurationMinutes ?? '30',
+    }));
+  }, [isCourseTemplate]);
+
+  useEffect(() => {
+    if (!isResearchTemplate) return;
+    setTime(null);
+    setTimePickerVisible(false);
+    setFormData((prev) => ({
+      ...prev,
+      researchDurationMinutes: prev?.researchDurationMinutes ?? '30',
+    }));
+  }, [isResearchTemplate]);
+
+  useEffect(() => {
+    if (!isLanguagePracticeTemplate) return;
+    setTime(null);
+    setTimePickerVisible(false);
+    setFormData((prev) => ({
+      ...prev,
+      languagePracticeDurationMinutes: prev?.languagePracticeDurationMinutes ?? '30',
+    }));
+  }, [isLanguagePracticeTemplate]);
+
+  useEffect(() => {
+    if (!isBirthdayTemplate) return;
+    // Birthday habit: always annual, no time, no end date.
+    setFrequency('yearly');
+    setDaysOfWeek([]);
+    setTime(null);
+    setTimePickerVisible(false);
+    setHasEndDate(false);
+  }, [isBirthdayTemplate]);
+
+  useEffect(() => {
+    if (!isWaterTemplate) return;
+    setFormData((prev) => ({
+      ...prev,
+      waterMlTarget: prev?.waterMlTarget ?? '2000',
+    }));
+  }, [isWaterTemplate]);
+
+  useEffect(() => {
+    if (!isSavingsTemplate) return;
+    // Savings habit: keep schedule valid without asking weekly day selection.
+    if (frequency === 'weekly' && (!Array.isArray(daysOfWeek) || daysOfWeek.length === 0)) {
+      setDaysOfWeek([dayKeyFromDate(startDate)]);
+    }
+  }, [daysOfWeek, frequency, isSavingsTemplate, startDate]);
 
 
   const config = useMemo(() => {
@@ -246,6 +466,166 @@ export default function HabitFormModal({
     return textField || null;
   }, [config, isBirthdayTemplate]);
 
+  const spacesChecklistField = useMemo(() => {
+    if (!isOrganizeSpacesTemplate) return null;
+    const fields = config?.fields;
+    if (!Array.isArray(fields) || fields.length === 0) return null;
+
+    const checklistFields = fields.filter(
+      (f) => String(f?.type || '').toLowerCase() === 'checklist'
+    );
+    if (checklistFields.length === 0) return null;
+
+    const preferred = checklistFields.find((f) => {
+      const lbl = String(f?.label || '').toLowerCase();
+      return lbl.includes('espacios') || lbl.includes('spaces') || lbl.includes('espaces');
+    });
+
+    return preferred || checklistFields[0];
+  }, [config, isOrganizeSpacesTemplate]);
+
+  const SPACE_OPTIONS = useMemo(
+    () => [
+      { label: 'Sala', emoji: '🛋️' },
+      { label: 'Comedor', emoji: '🍽️' },
+      { label: 'Cocina', emoji: '🍳' },
+      { label: 'Habitaciones / Dormitorios', emoji: '🛏️' },
+      { label: 'Baño', emoji: '🚿' },
+      { label: 'Pasillo', emoji: '🚪' },
+      { label: 'Entrada / Recibidor', emoji: '🔑' },
+      { label: 'Patio', emoji: '🏞️' },
+      { label: 'Jardín', emoji: '🌿' },
+      { label: 'Balcón', emoji: '🌇' },
+      { label: 'Terraza', emoji: '🌞' },
+      { label: 'Garaje / Parqueadero', emoji: '🚗' },
+      { label: 'Entrada exterior', emoji: '🏛️' },
+      { label: 'Estudio / Oficina', emoji: '💻' },
+      { label: 'Sala de TV', emoji: '📺' },
+      { label: 'Sala de juegos', emoji: '🎮' },
+      { label: 'Biblioteca', emoji: '📚' },
+      { label: 'Gimnasio en casa', emoji: '🏋️' },
+    ],
+    []
+  );
+
+  const STUDY_SUBJECT_OPTIONS = useMemo(
+    () => [
+      'Matemáticas',
+      'Lenguaje / Español',
+      'Inglés',
+      'Ciencias',
+      'Historia',
+      'Geografía',
+      'Filosofía',
+      'Otros',
+    ],
+    []
+  );
+
+  const STUDY_SUBJECT_EMOJI = useMemo(
+    () => ({
+      'Matemáticas': '🧮',
+      'Lenguaje / Español': '📝',
+      'Inglés': '🗣️',
+      'Ciencias': '🔬',
+      'Historia': '📜',
+      'Geografía': '🌍',
+      'Filosofía': '🧠',
+      'Otros': '📚',
+    }),
+    []
+  );
+
+  const STUDY_DURATION_OPTIONS = useMemo(() => [15, 30, 45, 60, 90, 120], []);
+
+  const LANGUAGE_OPTIONS = useMemo(
+    () => [
+      'Inglés',
+      'Francés',
+      'Portugués',
+      'Italiano',
+      'Alemán',
+      'Japonés',
+      'Coreano',
+      'Chino',
+      'Otros',
+    ],
+    []
+  );
+
+  const LANGUAGE_EMOJI = useMemo(
+    () => ({
+      'Inglés': '🗣️',
+      'Francés': '🥐',
+      'Portugués': '🌎',
+      'Italiano': '🍝',
+      'Alemán': '🧠',
+      'Japonés': '🗾',
+      'Coreano': '🎧',
+      'Chino': '🀄',
+      'Otros': '📚',
+    }),
+    []
+  );
+
+  const COURSE_TOPIC_OPTIONS = useMemo(
+    () => [
+      'Programación',
+      'Diseño',
+      'Marketing',
+      'Finanzas',
+      'Idiomas',
+      'Negocios',
+      'Productividad',
+      'Salud',
+      'Otros',
+    ],
+    []
+  );
+
+  const COURSE_TOPIC_EMOJI = useMemo(
+    () => ({
+      'Programación': '💻',
+      'Diseño': '🎨',
+      'Marketing': '📣',
+      'Finanzas': '💰',
+      'Idiomas': '🗣️',
+      'Negocios': '🧾',
+      'Productividad': '✅',
+      'Salud': '🧘',
+      'Otros': '📚',
+    }),
+    []
+  );
+
+  const RESEARCH_TOPIC_OPTIONS = useMemo(
+    () => [
+      'Tecnología',
+      'Ciencia',
+      'Historia',
+      'Finanzas',
+      'Salud',
+      'Noticias',
+      'Arte',
+      'Otros',
+    ],
+    []
+  );
+
+  const RESEARCH_TOPIC_EMOJI = useMemo(
+    () => ({
+      'Tecnología': '💡',
+      'Ciencia': '🔬',
+      'Historia': '📜',
+      'Finanzas': '💰',
+      'Salud': '🧬',
+      'Noticias': '📰',
+      'Arte': '🎭',
+      'Otros': '🔎',
+    }),
+    []
+  );
+
   function toggleDay(day) {
     setDaysOfWeek((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
@@ -256,18 +636,54 @@ export default function HabitFormModal({
     setFormData((prev) => ({ ...prev, [key]: value }));
   }
 
+  function toggleSpaceOption(label) {
+    const listKey = spacesChecklistField?.key || 'checklist';
+    const current = Array.isArray(formData?.[listKey]) ? formData[listKey] : [];
+
+    const getItemLabel = (it) => {
+      if (typeof it === 'string') return it;
+      return it?.label ?? it?.name ?? it?.title ?? '';
+    };
+
+    const exists = current.some((it) => String(getItemLabel(it)) === String(label));
+    if (exists) {
+      updateField(
+        listKey,
+        current.filter((it) => String(getItemLabel(it)) !== String(label))
+      );
+      return;
+    }
+
+    updateField(listKey, [...current, { label: String(label), checked: false }]);
+  }
+
+  function selectAllSpaces() {
+    const listKey = spacesChecklistField?.key || 'checklist';
+    updateField(
+      listKey,
+      SPACE_OPTIONS.map((opt) => ({ label: String(opt.label), checked: false }))
+    );
+  }
+
+  function clearSpaces() {
+    const listKey = spacesChecklistField?.key || 'checklist';
+    updateField(listKey, []);
+  }
+
   function renderField(field) {
     const value = formData[field.key];
 
     switch (field.type) {
       case 'text':
       case 'number':
+      {
         const placeholder =
           isBirthdayTemplate &&
           birthdayTextField &&
           field.key === birthdayTextField.key
             ? (t('specialHabits.birthday.placeholder') || 'Nombre de la persona')
             : field.label;
+
         return (
           <TextInput
             style={[styles.input, isDark && styles.inputDark]}
@@ -278,36 +694,7 @@ export default function HabitFormModal({
             onChangeText={(v) => updateField(field.key, v)}
           />
         );
-
-      case 'checklist':
-        return (
-          <View style={styles.optionsWrap}>
-            {field.options.map((opt) => {
-              const selected = (value || []).includes(opt);
-              return (
-                <Pressable
-                  key={opt}
-                  style={[styles.optionBtn, selected && styles.optionBtnActive]}
-                  onPress={() => {
-                    const next = selected
-                      ? value.filter((v) => v !== opt)
-                      : [...(value || []), opt];
-                    updateField(field.key, next);
-                  }}
-                >
-                  <Ionicons
-                    name={selected ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={18}
-                    color={selected ? '#fff' : '#38BDF8'}
-                  />
-                  <Text style={[styles.optionTxt, selected && styles.optionTxtActive]}>
-                    {opt}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        );
+      }
 
       case 'market':
         const items = value || [];
@@ -523,6 +910,17 @@ export default function HabitFormModal({
   }
 
   function handleSave() {
+    if (isSavingsTemplate) {
+      const target = parseMoneyLike(formData?.savingsTargetAmount);
+      if (target === null || target <= 0) {
+        Alert.alert(
+          t('habitForm.savingsGoalErrorTitle') || 'Meta requerida',
+          t('habitForm.savingsGoalErrorMessage') || 'Ingresa cuánto dinero quieres ahorrar.'
+        );
+        return;
+      }
+    }
+
     if (frequency === 'weekly' && daysOfWeek.length === 0) {
       Alert.alert(
         t('habitForm.weeklyErrorTitle'),
@@ -568,22 +966,53 @@ export default function HabitFormModal({
       return `${year}-${month}-${day}`;
     };
 
+    const dataToSave = { ...formData };
+    if (isBirthdayTemplate) {
+      // Birthday card uses a fixed banner background in Calendar.
+      delete dataToSave.color;
+    } else {
+      dataToSave.color = selectedColor;
+    }
+
+    const resolvedFrequency = isBirthdayTemplate ? 'yearly' : frequency;
+    const resolvedDaysOfWeek = isBirthdayTemplate
+      ? []
+      : resolvedFrequency === 'weekly'
+        ? daysOfWeek
+        : [];
+    const resolvedAllDay = isBirthdayTemplate ? true : false;
+    const resolvedTime = isBirthdayTemplate ? null : effectiveTimeString;
+    const resolvedEndDate = isBirthdayTemplate
+      ? null
+      : hasEndDate
+        ? formatLocalYMD(endDate)
+        : null;
+
     onSave({
       habit,
       data: {
-        ...formData,
-        color: selectedColor,
+        ...dataToSave,
       },
       editingActivityId: editingActivity?.id || null,
       schedule: {
         // Use local date (not UTC) to avoid shifting the scheduled day on some devices/timezones.
         startDate: formatLocalYMD(startDate),
-        endDate: isBirthdayTemplate ? null : hasEndDate ? formatLocalYMD(endDate) : null,
-        frequency,
-        daysOfWeek: frequency === 'weekly' ? daysOfWeek : [],
-        allDay: false,
-        time: effectiveTimeString,
-        durationMinutes: null,
+        endDate: resolvedEndDate,
+        frequency: resolvedFrequency,
+        daysOfWeek: resolvedDaysOfWeek,
+        allDay: resolvedAllDay,
+        time: resolvedTime,
+        durationMinutes: (() => {
+          const pick = (v) => {
+            const n = parseInt(String(v ?? ''), 10);
+            return Number.isFinite(n) && n > 0 ? n : null;
+          };
+          if (isStudyTemplate) return pick(formData?.studyDurationMinutes);
+          if (isCourseTemplate) return pick(formData?.courseDurationMinutes);
+          if (isResearchTemplate) return pick(formData?.researchDurationMinutes);
+          if (isLanguagePracticeTemplate) return pick(formData?.languagePracticeDurationMinutes);
+          return null;
+        })(),
         endTime: null,
       },
     });
@@ -753,146 +1182,1214 @@ export default function HabitFormModal({
             </View>
           ) : null}
 
-          {/* HORARIO */}
-          <View style={styles.section}>
-            <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
+          {isWaterTemplate ? (
+            <View style={styles.section}>
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                {t('habitForm.waterTargetLabel') || '¿Cuánta agua tomarás al día? (ml)'}
+              </Text>
+              <Text style={[styles.sublabel, isDark && { color: '#9ca3af' }]}>
+                {t('habitForm.waterTargetInfo') || 'Una persona adulta necesita entre 2 y 3 litros (2000-3000 ml) de agua al día'}
+              </Text>
 
-            <Pressable
-              style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
-              onPress={() => setTimePickerVisible(true)}
-            >
-              <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
-              <View style={styles.boxRight}>
-                <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
-                  {time ? formatTimeFromDate(time, { language, timeFormat }) : 'Select the time'}
-                </Text>
-                <Ionicons name="time-outline" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
-              </View>
-            </Pressable>
+              {(() => {
+                const OPTIONS = [1000, 2000, 3000, 4000, 5000];
+                const current = parseInt(String(formData?.waterMlTarget ?? '2000'), 10);
+                const currentIdx = Math.max(0, OPTIONS.indexOf(Number.isFinite(current) ? current : 2000));
+                const activeIdx = currentIdx >= 0 ? currentIdx : 1;
+                const pct = OPTIONS.length <= 1 ? 0 : (activeIdx / (OPTIONS.length - 1)) * 100;
 
-            {timePickerVisible && (
-              <View style={styles.picker}>
-                <DateTimePicker
-                  value={time || new Date()}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-                  locale={
-                    Platform.OS === 'ios'
-                      ? language === 'en'
-                        ? 'en-US'
-                        : 'es-ES'
-                      : undefined
-                  }
-                  themeVariant={isDark ? 'dark' : 'light'}
-                  textColor={Platform.OS === 'ios' ? (isDark ? '#e5e7eb' : '#111827') : undefined}
-                  onChange={(_, date) => {
-                    if (!date) {
-                      if (Platform.OS === 'android') setTimePickerVisible(false);
-                      return;
-                    }
-                    setTime(date);
-                    if (Platform.OS === 'android') setTimePickerVisible(false);
-                  }}
-                />
-              </View>
-            )}
-          </View>
-
-          {/* FRECUENCIA */}
-          <View style={[styles.section, styles.frequencySection]}>
-            <Text style={[styles.label, styles.frequencyLabel, isDark && { color: '#e5e7eb' }]}>
-              {t('habitForm.frequencyLabel')}
-            </Text>
-
-            <View style={[styles.freqGrid, styles.freqGridCentered]}>
-              {FREQUENCIES.map((f) => (
-                <Pressable
-                  key={f.key}
-                  style={[styles.freqBtn, frequency === f.key && styles.freqBtnActive]}
-                  onPress={() => setFrequency(f.key)}
-                >
-                  <Ionicons
-                    name={f.icon}
-                    size={20}
-                    color={frequency === f.key ? '#fff' : '#38BDF8'}
-                  />
-                  <Text style={[styles.freqTxt, frequency === f.key && styles.freqTxtActive]}>
-                    {t(`habitForm.frequency${
-                      f.key.charAt(0).toUpperCase() + f.key.slice(1)
-                    }`)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            {frequency === 'weekly' && (
-              <>
-                <Text style={[styles.sublabel, styles.frequencySublabel, isDark && { color: '#9ca3af' }]}>
-                  {t('habitForm.weeklySelectDays')}
-                </Text>
-                <View style={styles.daysRow}>
-                  {WEEK_DAYS.map((d) => (
-                    <Pressable
-                      key={d.key}
-                      style={[
-                        styles.dayBtn,
-                        daysOfWeek.includes(d.key) && styles.dayBtnActive,
-                      ]}
-                      onPress={() => toggleDay(d.key)}
-                    >
-                      <Text
+                return (
+                  <>
+                    <View style={[styles.waterBarTrack, isDark && styles.waterBarTrackDark]}>
+                      <View
                         style={[
-                          styles.dayTxt,
-                          daysOfWeek.includes(d.key) && styles.dayTxtActive,
+                          styles.waterBarFill,
+                          { width: `${pct}%`, backgroundColor: selectedColor || '#38BDF8' },
+                        ]}
+                      />
+                      <View style={styles.waterBarDotsRow}>
+                        {OPTIONS.map((v, idx) => {
+                          const isActive = idx <= activeIdx;
+                          const isKnob = idx === activeIdx;
+                          return (
+                            <Pressable
+                              key={v}
+                              onPress={() => updateField('waterMlTarget', String(v))}
+                              style={[
+                                styles.waterBarDot,
+                                isDark && styles.waterBarDotDark,
+                                isActive && { borderColor: selectedColor || '#38BDF8' },
+                                isKnob && [styles.waterBarKnob, { backgroundColor: selectedColor || '#38BDF8' }],
+                              ]}
+                              hitSlop={10}
+                            />
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    <View style={styles.waterOptionsRow}>
+                      {OPTIONS.map((v) => {
+                        const isSelected = String(formData?.waterMlTarget ?? '2000') === String(v);
+                        return (
+                          <Pressable
+                            key={v}
+                            onPress={() => updateField('waterMlTarget', String(v))}
+                            style={[
+                              styles.waterOptionPill,
+                              isDark && styles.waterOptionPillDark,
+                              isSelected && [styles.waterOptionPillSelected, { borderColor: selectedColor || '#38BDF8' }],
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.waterOptionText,
+                                isDark && { color: '#e5e7eb' },
+                                isSelected && { color: selectedColor || '#38BDF8' },
+                              ]}
+                            >
+                              {v}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </>
+                );
+              })()}
+            </View>
+          ) : null}
+
+          {isOrganizeSpacesTemplate ? (
+            <View style={styles.section}>
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                {language === 'es'
+                  ? 'Selecciona los espacios'
+                  : language === 'pt'
+                    ? 'Selecione os espaços'
+                    : language === 'fr'
+                      ? 'Sélectionnez les espaces'
+                      : 'Select the spaces'}
+              </Text>
+              <Text style={[styles.sublabel, isDark && { color: '#9ca3af' }]}>
+                {language === 'es'
+                  ? 'Esto creará tu lista de espacios a organizar.'
+                  : language === 'pt'
+                    ? 'Isso criará sua lista de espaços para organizar.'
+                    : language === 'fr'
+                      ? "Cela créera votre liste d'espaces à organiser."
+                      : 'This will create your spaces-to-organize list.'}
+              </Text>
+
+              {(() => {
+                const listKey = spacesChecklistField?.key || 'checklist';
+                const current = Array.isArray(formData?.[listKey]) ? formData[listKey] : [];
+                const selectedLabels = current
+                  .map((it) => (typeof it === 'string' ? it : it?.label))
+                  .filter(Boolean);
+                const selectedCount = selectedLabels.length;
+
+                const selectedSummary =
+                  selectedCount === 0
+                    ? (language === 'es'
+                        ? 'Ninguno seleccionado'
+                        : language === 'pt'
+                          ? 'Nenhum selecionado'
+                          : language === 'fr'
+                            ? 'Aucun s\u00e9lectionn\u00e9'
+                            : 'None selected')
+                    : (language === 'es'
+                        ? `${selectedCount} seleccionados`
+                        : language === 'pt'
+                          ? `${selectedCount} selecionados`
+                          : language === 'fr'
+                            ? `${selectedCount} s\u00e9lectionn\u00e9s`
+                            : `${selectedCount} selected`);
+
+                return (
+                  <View style={{ marginTop: 10 }}>
+                    <Pressable
+                      onPress={() => setSpacesDropdownOpen((v) => !v)}
+                      style={[
+                        styles.spacesDropdownHeader,
+                        isDark && styles.spacesDropdownHeaderDark,
+                      ]}
+                    >
+                      <View style={styles.spacesDropdownHeaderLeft}>
+                        <Ionicons
+                          name="home-outline"
+                          size={18}
+                          color={isDark ? '#e5e7eb' : '#111827'}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.spacesDropdownTitle, isDark && { color: '#e5e7eb' }]}>
+                            {language === 'es'
+                              ? 'Espacios'
+                              : language === 'pt'
+                                ? 'Espa\u00e7os'
+                                : language === 'fr'
+                                  ? 'Espaces'
+                                  : 'Spaces'}
+                          </Text>
+                          <Text style={[styles.spacesDropdownSubtitle, isDark && { color: '#9ca3af' }]}>
+                            {selectedSummary}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Ionicons
+                        name={spacesDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        color={isDark ? '#e5e7eb' : '#111827'}
+                      />
+                    </Pressable>
+
+                    {spacesDropdownOpen ? (
+                      <View style={styles.spacesDropdownBody}>
+                        <View style={styles.spacesActionsRow}>
+                          <Pressable
+                            onPress={selectAllSpaces}
+                            style={[styles.spacesActionBtn, isDark && styles.spacesActionBtnDark]}
+                          >
+                            <Ionicons
+                              name="checkbox-outline"
+                              size={18}
+                              color={isDark ? '#e5e7eb' : '#111827'}
+                            />
+                            <Text style={[styles.spacesActionText, isDark && { color: '#e5e7eb' }]}>
+                              {language === 'es'
+                                ? 'Seleccionar todo'
+                                : language === 'pt'
+                                  ? 'Selecionar tudo'
+                                  : language === 'fr'
+                                    ? 'Tout s\u00e9lectionner'
+                                    : 'Select all'}
+                            </Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={clearSpaces}
+                            style={[styles.spacesActionBtn, isDark && styles.spacesActionBtnDark]}
+                          >
+                            <Ionicons
+                              name="close-circle-outline"
+                              size={18}
+                              color={isDark ? '#e5e7eb' : '#111827'}
+                            />
+                            <Text style={[styles.spacesActionText, isDark && { color: '#e5e7eb' }]}>
+                              {language === 'es'
+                                ? 'Limpiar'
+                                : language === 'pt'
+                                  ? 'Limpar'
+                                  : language === 'fr'
+                                    ? 'Effacer'
+                                    : 'Clear'}
+                            </Text>
+                          </Pressable>
+                        </View>
+
+                        <View style={styles.spacesGrid}>
+                          {SPACE_OPTIONS.map((opt) => {
+                            const isSelected = selectedLabels.some(
+                              (lbl) => String(lbl) === String(opt.label)
+                            );
+
+                            return (
+                              <Pressable
+                                key={opt.label}
+                                onPress={() => toggleSpaceOption(opt.label)}
+                                style={[
+                                  styles.spacePill,
+                                  isDark && styles.spacePillDark,
+                                  isSelected && [
+                                    styles.spacePillSelected,
+                                    { borderColor: selectedColor || '#38BDF8' },
+                                  ],
+                                ]}
+                              >
+                                <Ionicons
+                                  name={isSelected ? 'checkbox' : 'square-outline'}
+                                  size={18}
+                                  color={
+                                    isSelected
+                                      ? (selectedColor || '#38BDF8')
+                                      : (isDark ? '#94a3af' : '#9ca3af')
+                                  }
+                                />
+                                <Text
+                                  style={[
+                                    styles.spacePillText,
+                                    isDark && { color: '#e5e7eb' },
+                                    isSelected && { color: selectedColor || '#38BDF8' },
+                                  ]}
+                                >
+                                  {`${opt.emoji} ${opt.label}`}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })()}
+            </View>
+          ) : null}
+
+          {isStudyTemplate ? (
+            <>
+              <View style={styles.section}>
+                {(() => {
+                  const selected = String(formData?.studySubject ?? '').trim();
+                  const selectedOther = String(formData?.studySubjectOther ?? '').trim();
+
+                  const withEmoji = (label) => {
+                    const clean = String(label ?? '').trim();
+                    if (!clean) return '';
+                    const emoji = STUDY_SUBJECT_EMOJI[clean];
+                    if (!emoji) return clean;
+                    if (clean.startsWith(emoji)) return clean;
+                    return `${emoji} ${clean}`;
+                  };
+
+                  const selectedDisplay =
+                    selected === 'Otros' && selectedOther
+                      ? `${withEmoji('Otros')}: ${selectedOther}`
+                      : withEmoji(selected);
+
+                  const summary = selected
+                    ? selectedDisplay
+                    : (language === 'es'
+                        ? 'Selecciona una opción'
+                        : language === 'pt'
+                          ? 'Selecione uma opção'
+                          : language === 'fr'
+                            ? 'Sélectionnez une option'
+                            : 'Select an option');
+
+                  return (
+                    <View style={{ marginTop: 2 }}>
+                      <Pressable
+                        onPress={() => setStudyDropdownOpen((v) => !v)}
+                        style={[
+                          styles.spacesDropdownHeader,
+                          isDark && styles.spacesDropdownHeaderDark,
                         ]}
                       >
-                        {d?.[language] || d.es}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            )}
-          </View>
+                        <View style={styles.spacesDropdownHeaderLeft}>
+                          <Ionicons
+                            name="book-outline"
+                            size={18}
+                            color={isDark ? '#e5e7eb' : '#111827'}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.spacesDropdownTitle, isDark && { color: '#e5e7eb' }]}>
+                              {language === 'es'
+                                ? '¿Qué te gustaría estudiar hoy?'
+                                : language === 'pt'
+                                  ? 'O que você gostaria de estudar hoje?'
+                                  : language === 'fr'
+                                    ? "Qu’aimeriez-vous étudier aujourd’hui ?"
+                                    : 'What would you like to study today?'}
+                            </Text>
+                            <Text style={[styles.spacesDropdownSubtitle, isDark && { color: '#9ca3af' }]}>
+                              {summary}
+                            </Text>
+                          </View>
+                        </View>
 
-          {/* CAMPOS PERSONALIZADOS */}
-          {!isBirthdayTemplate &&
-            config?.fields?.map((field) => (
-              <View key={field.key} style={styles.section}>
-                <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
-                  {field.type === 'market' ? '🛒' : field.type === 'checklist' ? '✅' : '✏️'}{' '}
-                  {field.label}
-                </Text>
-                {renderField(field)}
+                        <Ionicons
+                          name={studyDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          color={isDark ? '#e5e7eb' : '#111827'}
+                        />
+                      </Pressable>
+
+                      {studyDropdownOpen ? (
+                        <View style={styles.spacesDropdownBody}>
+                          <View style={styles.waterOptionsRow}>
+                            {STUDY_SUBJECT_OPTIONS.map((opt) => {
+                              const isSelected = String(formData?.studySubject ?? '') === String(opt);
+                              return (
+                                <Pressable
+                                  key={opt}
+                                  onPress={() => {
+                                    updateField('studySubject', String(opt));
+                                    if (String(opt) !== 'Otros') updateField('studySubjectOther', '');
+                                    setStudyDropdownOpen(false);
+                                  }}
+                                  style={[
+                                    styles.waterOptionPill,
+                                    isDark && styles.waterOptionPillDark,
+                                    isSelected && [
+                                      styles.waterOptionPillSelected,
+                                      { borderColor: selectedColor || '#38BDF8' },
+                                    ],
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.waterOptionText,
+                                      isDark && { color: '#e5e7eb' },
+                                      isSelected && { color: selectedColor || '#38BDF8' },
+                                    ]}
+                                  >
+                                    {withEmoji(opt)}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+
+                          {String(formData?.studySubject ?? '') === 'Otros' ? (
+                            <View style={{ marginTop: 10 }}>
+                              <TextInput
+                                value={String(formData?.studySubjectOther ?? '')}
+                                onChangeText={(v) => updateField('studySubjectOther', v)}
+                                placeholder={language === 'es' ? 'Escribe el tema...' : 'Type the topic...'}
+                                placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                                style={[
+                                  styles.input,
+                                  isDark && {
+                                    backgroundColor: '#020617',
+                                    borderColor: '#1e293b',
+                                    color: '#e5e7eb',
+                                  },
+                                ]}
+                              />
+                            </View>
+                          ) : null}
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })()}
               </View>
-            ))}
 
-          {/* COLOR */}
-          <View style={styles.section}>
-            <Text style={[styles.label, styles.colorLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.colorLabel') || 'Color'}</Text>
-            <View style={{ marginTop: 8 }}>
-              <View style={styles.colorGrid}>
-                {COLOR_OPTIONS.map((c) => (
-                  <Pressable
-                    key={c}
-                    onPress={() => {
-                      setSelectedColor(c);
-                      setHeaderColorPreviewEnabled(true);
+              <View style={styles.section}>
+                <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                  {language === 'es'
+                    ? '¿Cuánto tiempo dedicarás al estudiar?'
+                    : language === 'pt'
+                      ? 'Quanto tempo você vai dedicar a estudar?'
+                      : language === 'fr'
+                        ? 'Combien de temps allez-vous étudier ?'
+                        : 'How much time will you dedicate to studying?'}
+                </Text>
+                <View style={[styles.waterOptionsRow, { marginTop: 10 }]}>
+                  {STUDY_DURATION_OPTIONS.map((mins) => {
+                    const isSelected = String(formData?.studyDurationMinutes ?? '30') === String(mins);
+                    return (
+                      <Pressable
+                        key={mins}
+                        onPress={() => updateField('studyDurationMinutes', String(mins))}
+                        style={[
+                          styles.waterOptionPill,
+                          isDark && styles.waterOptionPillDark,
+                          isSelected && [
+                            styles.waterOptionPillSelected,
+                            { borderColor: selectedColor || '#38BDF8' },
+                          ],
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.waterOptionText,
+                            isDark && { color: '#e5e7eb' },
+                            isSelected && { color: selectedColor || '#38BDF8' },
+                          ]}
+                        >
+                          {mins} min
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </>
+          ) : null}
+
+          {isCourseTemplate ? (
+            <>
+              <View style={styles.section}>
+                {(() => {
+                  const selected = String(formData?.courseTopic ?? '').trim();
+                  const selectedOther = String(formData?.courseTopicOther ?? '').trim();
+
+                  const withEmoji = (label) => {
+                    const clean = String(label ?? '').trim();
+                    if (!clean) return '';
+                    const emoji = COURSE_TOPIC_EMOJI[clean];
+                    if (!emoji) return clean;
+                    if (clean.startsWith(emoji)) return clean;
+                    return `${emoji} ${clean}`;
+                  };
+
+                  const selectedDisplay =
+                    selected === 'Otros' && selectedOther
+                      ? `${withEmoji('Otros')}: ${selectedOther}`
+                      : withEmoji(selected);
+
+                  const summary = selected
+                    ? selectedDisplay
+                    : (language === 'es'
+                        ? 'Selecciona una opción'
+                        : language === 'pt'
+                          ? 'Selecione uma opção'
+                          : language === 'fr'
+                            ? 'Sélectionnez une option'
+                            : 'Select an option');
+
+                  return (
+                    <View style={{ marginTop: 2 }}>
+                      <Pressable
+                        onPress={() => setCourseDropdownOpen((v) => !v)}
+                        style={[
+                          styles.spacesDropdownHeader,
+                          isDark && styles.spacesDropdownHeaderDark,
+                        ]}
+                      >
+                        <View style={styles.spacesDropdownHeaderLeft}>
+                          <Ionicons
+                            name="school-outline"
+                            size={18}
+                            color={isDark ? '#e5e7eb' : '#111827'}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.spacesDropdownTitle, isDark && { color: '#e5e7eb' }]}>
+                              {language === 'es'
+                                ? '¿Qué curso tomarás hoy?'
+                                : language === 'pt'
+                                  ? 'Qual curso você fará hoje?'
+                                  : language === 'fr'
+                                    ? "Quel cours allez-vous suivre aujourd’hui ?"
+                                    : 'Which course will you take today?'}
+                            </Text>
+                            <Text style={[styles.spacesDropdownSubtitle, isDark && { color: '#9ca3af' }]}>
+                              {summary}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Ionicons
+                          name={courseDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          color={isDark ? '#e5e7eb' : '#111827'}
+                        />
+                      </Pressable>
+
+                      {courseDropdownOpen ? (
+                        <View style={styles.spacesDropdownBody}>
+                          <View style={styles.waterOptionsRow}>
+                            {COURSE_TOPIC_OPTIONS.map((opt) => {
+                              const isSelected = String(formData?.courseTopic ?? '') === String(opt);
+                              return (
+                                <Pressable
+                                  key={opt}
+                                  onPress={() => {
+                                    updateField('courseTopic', String(opt));
+                                    if (String(opt) !== 'Otros') updateField('courseTopicOther', '');
+                                    setCourseDropdownOpen(false);
+                                  }}
+                                  style={[
+                                    styles.waterOptionPill,
+                                    isDark && styles.waterOptionPillDark,
+                                    isSelected && [
+                                      styles.waterOptionPillSelected,
+                                      { borderColor: selectedColor || '#38BDF8' },
+                                    ],
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.waterOptionText,
+                                      isDark && { color: '#e5e7eb' },
+                                      isSelected && { color: selectedColor || '#38BDF8' },
+                                    ]}
+                                  >
+                                    {withEmoji(opt)}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+
+                          {String(formData?.courseTopic ?? '') === 'Otros' ? (
+                            <View style={{ marginTop: 10 }}>
+                              <TextInput
+                                value={String(formData?.courseTopicOther ?? '')}
+                                onChangeText={(v) => updateField('courseTopicOther', v)}
+                                placeholder={language === 'es' ? 'Escribe el curso...' : 'Type the course...'}
+                                placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                                style={[
+                                  styles.input,
+                                  isDark && {
+                                    backgroundColor: '#020617',
+                                    borderColor: '#1e293b',
+                                    color: '#e5e7eb',
+                                  },
+                                ]}
+                              />
+                            </View>
+                          ) : null}
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })()}
+              </View>
+
+              <View style={styles.section}>
+                <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                  {language === 'es'
+                    ? '¿Cuánto tiempo dedicarás al curso?'
+                    : language === 'pt'
+                      ? 'Quanto tempo você vai dedicar ao curso?'
+                      : language === 'fr'
+                        ? 'Combien de temps allez-vous consacrer au cours ?'
+                        : 'How much time will you dedicate to the course?'}
+                </Text>
+                <View style={[styles.waterOptionsRow, { marginTop: 10 }]}>
+                  {STUDY_DURATION_OPTIONS.map((mins) => {
+                    const isSelected = String(formData?.courseDurationMinutes ?? '30') === String(mins);
+                    return (
+                      <Pressable
+                        key={mins}
+                        onPress={() => updateField('courseDurationMinutes', String(mins))}
+                        style={[
+                          styles.waterOptionPill,
+                          isDark && styles.waterOptionPillDark,
+                          isSelected && [
+                            styles.waterOptionPillSelected,
+                            { borderColor: selectedColor || '#38BDF8' },
+                          ],
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.waterOptionText,
+                            isDark && { color: '#e5e7eb' },
+                            isSelected && { color: selectedColor || '#38BDF8' },
+                          ]}
+                        >
+                          {mins} min
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </>
+          ) : null}
+
+          {isResearchTemplate ? (
+            <>
+              <View style={styles.section}>
+                {(() => {
+                  const selected = String(formData?.researchTopic ?? '').trim();
+                  const selectedOther = String(formData?.researchTopicOther ?? '').trim();
+
+                  const withEmoji = (label) => {
+                    const clean = String(label ?? '').trim();
+                    if (!clean) return '';
+                    const emoji = RESEARCH_TOPIC_EMOJI[clean];
+                    if (!emoji) return clean;
+                    if (clean.startsWith(emoji)) return clean;
+                    return `${emoji} ${clean}`;
+                  };
+
+                  const selectedDisplay =
+                    selected === 'Otros' && selectedOther
+                      ? `${withEmoji('Otros')}: ${selectedOther}`
+                      : withEmoji(selected);
+
+                  const summary = selected
+                    ? selectedDisplay
+                    : (language === 'es'
+                        ? 'Selecciona una opción'
+                        : language === 'pt'
+                          ? 'Selecione uma opção'
+                          : language === 'fr'
+                            ? 'Sélectionnez une option'
+                            : 'Select an option');
+
+                  return (
+                    <View style={{ marginTop: 2 }}>
+                      <Pressable
+                        onPress={() => setResearchDropdownOpen((v) => !v)}
+                        style={[
+                          styles.spacesDropdownHeader,
+                          isDark && styles.spacesDropdownHeaderDark,
+                        ]}
+                      >
+                        <View style={styles.spacesDropdownHeaderLeft}>
+                          <Ionicons
+                            name="search-outline"
+                            size={18}
+                            color={isDark ? '#e5e7eb' : '#111827'}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.spacesDropdownTitle, isDark && { color: '#e5e7eb' }]}>
+                              {language === 'es'
+                                ? '¿Qué te gustaría investigar hoy?'
+                                : language === 'pt'
+                                  ? 'O que você gostaria de pesquisar hoje?'
+                                  : language === 'fr'
+                                    ? "Qu’aimeriez-vous rechercher aujourd’hui ?"
+                                    : 'What would you like to research today?'}
+                            </Text>
+                            <Text style={[styles.spacesDropdownSubtitle, isDark && { color: '#9ca3af' }]}>
+                              {summary}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Ionicons
+                          name={researchDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          color={isDark ? '#e5e7eb' : '#111827'}
+                        />
+                      </Pressable>
+
+                      {researchDropdownOpen ? (
+                        <View style={styles.spacesDropdownBody}>
+                          <View style={styles.waterOptionsRow}>
+                            {RESEARCH_TOPIC_OPTIONS.map((opt) => {
+                              const isSelected = String(formData?.researchTopic ?? '') === String(opt);
+                              return (
+                                <Pressable
+                                  key={opt}
+                                  onPress={() => {
+                                    updateField('researchTopic', String(opt));
+                                    if (String(opt) !== 'Otros') updateField('researchTopicOther', '');
+                                    setResearchDropdownOpen(false);
+                                  }}
+                                  style={[
+                                    styles.waterOptionPill,
+                                    isDark && styles.waterOptionPillDark,
+                                    isSelected && [
+                                      styles.waterOptionPillSelected,
+                                      { borderColor: selectedColor || '#38BDF8' },
+                                    ],
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.waterOptionText,
+                                      isDark && { color: '#e5e7eb' },
+                                      isSelected && { color: selectedColor || '#38BDF8' },
+                                    ]}
+                                  >
+                                    {withEmoji(opt)}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+
+                          {String(formData?.researchTopic ?? '') === 'Otros' ? (
+                            <View style={{ marginTop: 10 }}>
+                              <TextInput
+                                value={String(formData?.researchTopicOther ?? '')}
+                                onChangeText={(v) => updateField('researchTopicOther', v)}
+                                placeholder={language === 'es' ? 'Escribe el tema...' : 'Type the topic...'}
+                                placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                                style={[
+                                  styles.input,
+                                  isDark && {
+                                    backgroundColor: '#020617',
+                                    borderColor: '#1e293b',
+                                    color: '#e5e7eb',
+                                  },
+                                ]}
+                              />
+                            </View>
+                          ) : null}
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })()}
+              </View>
+
+              <View style={styles.section}>
+                <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                  {language === 'es'
+                    ? '¿Cuánto tiempo dedicarás a investigar?'
+                    : language === 'pt'
+                      ? 'Quanto tempo você vai dedicar a pesquisar?'
+                      : language === 'fr'
+                        ? 'Combien de temps allez-vous consacrer à la recherche ?'
+                        : 'How much time will you dedicate to researching?'}
+                </Text>
+                <View style={[styles.waterOptionsRow, { marginTop: 10 }]}>
+                  {STUDY_DURATION_OPTIONS.map((mins) => {
+                    const isSelected = String(formData?.researchDurationMinutes ?? '30') === String(mins);
+                    return (
+                      <Pressable
+                        key={mins}
+                        onPress={() => updateField('researchDurationMinutes', String(mins))}
+                        style={[
+                          styles.waterOptionPill,
+                          isDark && styles.waterOptionPillDark,
+                          isSelected && [
+                            styles.waterOptionPillSelected,
+                            { borderColor: selectedColor || '#38BDF8' },
+                          ],
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.waterOptionText,
+                            isDark && { color: '#e5e7eb' },
+                            isSelected && { color: selectedColor || '#38BDF8' },
+                          ]}
+                        >
+                          {mins} min
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </>
+          ) : null}
+
+          {isPodcastTemplate ? (
+            <View style={styles.section}>
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                {language === 'es'
+                  ? '¿Qué podcast deseas escuchar?'
+                  : language === 'pt'
+                    ? 'Qual podcast você quer ouvir?'
+                    : language === 'fr'
+                      ? 'Quel podcast voulez-vous écouter ?'
+                      : 'Which podcast do you want to listen to?'}
+              </Text>
+              <TextInput
+                value={String(formData?.podcastName ?? '')}
+                onChangeText={(v) => updateField('podcastName', v)}
+                placeholder={language === 'es' ? 'Ej: The Diary of a CEO' : 'e.g. The Diary of a CEO'}
+                placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                style={[
+                  styles.input,
+                  isDark && {
+                    backgroundColor: '#020617',
+                    borderColor: '#1e293b',
+                    color: '#e5e7eb',
+                  },
+                ]}
+              />
+            </View>
+          ) : null}
+
+          {isLanguagePracticeTemplate ? (
+            <>
+              <View style={styles.section}>
+                {(() => {
+                  const selected = String(formData?.languagePracticeLanguage ?? '').trim();
+                  const other = String(formData?.languagePracticeOther ?? '').trim();
+
+                  const withEmoji = (label) => {
+                    const clean = String(label ?? '').trim();
+                    if (!clean) return '';
+                    const emoji = LANGUAGE_EMOJI[clean];
+                    if (!emoji) return clean;
+                    if (clean.startsWith(emoji)) return clean;
+                    return `${emoji} ${clean}`;
+                  };
+
+                  const selectedDisplay =
+                    selected === 'Otros' && other
+                      ? `${withEmoji('Otros')}: ${other}`
+                      : withEmoji(selected);
+
+                  const summary = selected
+                    ? selectedDisplay
+                    : (language === 'es'
+                        ? 'Selecciona un idioma'
+                        : language === 'pt'
+                          ? 'Selecione um idioma'
+                          : language === 'fr'
+                            ? 'Sélectionnez une langue'
+                            : 'Select a language');
+
+                  return (
+                    <View style={{ marginTop: 2 }}>
+                      <Pressable
+                        onPress={() => setLanguageDropdownOpen((v) => !v)}
+                        style={[
+                          styles.spacesDropdownHeader,
+                          isDark && styles.spacesDropdownHeaderDark,
+                        ]}
+                      >
+                        <View style={styles.spacesDropdownHeaderLeft}>
+                          <Ionicons
+                            name="language-outline"
+                            size={18}
+                            color={isDark ? '#e5e7eb' : '#111827'}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.spacesDropdownTitle, isDark && { color: '#e5e7eb' }]}>
+                              {language === 'es'
+                                ? '¿Qué idioma practicarás hoy?'
+                                : language === 'pt'
+                                  ? 'Que idioma você vai praticar hoje?'
+                                  : language === 'fr'
+                                    ? "Quelle langue allez-vous pratiquer aujourd’hui ?"
+                                    : 'Which language will you practice today?'}
+                            </Text>
+                            <Text style={[styles.spacesDropdownSubtitle, isDark && { color: '#9ca3af' }]}>
+                              {summary}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Ionicons
+                          name={languageDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          color={isDark ? '#e5e7eb' : '#111827'}
+                        />
+                      </Pressable>
+
+                      {languageDropdownOpen ? (
+                        <View style={styles.spacesDropdownBody}>
+                          <View style={styles.waterOptionsRow}>
+                            {LANGUAGE_OPTIONS.map((opt) => {
+                              const isSelected = String(formData?.languagePracticeLanguage ?? '') === String(opt);
+                              return (
+                                <Pressable
+                                  key={opt}
+                                  onPress={() => {
+                                    updateField('languagePracticeLanguage', String(opt));
+                                    if (String(opt) !== 'Otros') updateField('languagePracticeOther', '');
+                                    setLanguageDropdownOpen(false);
+                                  }}
+                                  style={[
+                                    styles.waterOptionPill,
+                                    isDark && styles.waterOptionPillDark,
+                                    isSelected && [
+                                      styles.waterOptionPillSelected,
+                                      { borderColor: selectedColor || '#38BDF8' },
+                                    ],
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.waterOptionText,
+                                      isDark && { color: '#e5e7eb' },
+                                      isSelected && { color: selectedColor || '#38BDF8' },
+                                    ]}
+                                  >
+                                    {withEmoji(opt)}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+
+                          {String(formData?.languagePracticeLanguage ?? '') === 'Otros' ? (
+                            <View style={{ marginTop: 10 }}>
+                              <TextInput
+                                value={String(formData?.languagePracticeOther ?? '')}
+                                onChangeText={(v) => updateField('languagePracticeOther', v)}
+                                placeholder={language === 'es' ? 'Escribe el idioma...' : 'Type the language...'}
+                                placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                                style={[
+                                  styles.input,
+                                  isDark && {
+                                    backgroundColor: '#020617',
+                                    borderColor: '#1e293b',
+                                    color: '#e5e7eb',
+                                  },
+                                ]}
+                              />
+                            </View>
+                          ) : null}
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })()}
+              </View>
+
+              <View style={styles.section}>
+                <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                  {language === 'es'
+                    ? '¿Cuánto tiempo practicarás?'
+                    : language === 'pt'
+                      ? 'Quanto tempo você vai praticar?'
+                      : language === 'fr'
+                        ? 'Combien de temps allez-vous pratiquer ?'
+                        : 'How long will you practice?'}
+                </Text>
+                <View style={[styles.waterOptionsRow, { marginTop: 10 }]}>
+                  {STUDY_DURATION_OPTIONS.map((mins) => {
+                    const isSelected = String(formData?.languagePracticeDurationMinutes ?? '30') === String(mins);
+                    return (
+                      <Pressable
+                        key={mins}
+                        onPress={() => updateField('languagePracticeDurationMinutes', String(mins))}
+                        style={[
+                          styles.waterOptionPill,
+                          isDark && styles.waterOptionPillDark,
+                          isSelected && [
+                            styles.waterOptionPillSelected,
+                            { borderColor: selectedColor || '#38BDF8' },
+                          ],
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.waterOptionText,
+                            isDark && { color: '#e5e7eb' },
+                            isSelected && { color: selectedColor || '#38BDF8' },
+                          ]}
+                        >
+                          {mins} min
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </>
+          ) : null}
+
+          {/* HORARIO */}
+          {!isBirthdayTemplate && !isSavingsTemplate && !isWaterTemplate && !isStudyTemplate && !isCourseTemplate && !isResearchTemplate && !isPodcastTemplate && !isLanguagePracticeTemplate ? (
+            <View style={styles.section}>
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
+
+              <Pressable
+                style={[styles.box, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
+                onPress={() => setTimePickerVisible(true)}
+              >
+                <Text style={[styles.boxLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.timeLabel')}</Text>
+                <View style={styles.boxRight}>
+                  <Text style={[styles.boxValue, isDark && { color: '#e5e7eb' }]}>
+                    {time ? formatTimeFromDate(time, { language, timeFormat }) : 'Select the time'}
+                  </Text>
+                  <Ionicons name="time-outline" size={18} color={isDark ? '#9ca3af' : '#9ca3af'} />
+                </View>
+              </Pressable>
+
+              {timePickerVisible && (
+                <View style={styles.picker}>
+                  <DateTimePicker
+                    value={time || new Date()}
+                    mode="time"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+                    locale={
+                      Platform.OS === 'ios'
+                        ? language === 'en'
+                          ? 'en-US'
+                          : 'es-ES'
+                        : undefined
+                    }
+                    themeVariant={isDark ? 'dark' : 'light'}
+                    textColor={Platform.OS === 'ios' ? (isDark ? '#e5e7eb' : '#111827') : undefined}
+                    onChange={(_, date) => {
+                      if (!date) {
+                        if (Platform.OS === 'android') setTimePickerVisible(false);
+                        return;
+                      }
+                      setTime(date);
+                      if (Platform.OS === 'android') setTimePickerVisible(false);
                     }}
-                    style={[
-                      styles.colorSwatch,
-                      selectedColor === c && styles.colorSwatchSelected,
-                      { backgroundColor: c },
-                    ]}
+                  />
+                </View>
+              )}
+            </View>
+          ) : null}
+
+          {isSavingsTemplate ? (
+            <View style={styles.section}>
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                {t('habitForm.savingsGoalLabel') || '¿Cuánto dinero quieres ahorrar?'}
+              </Text>
+              <TextInput
+                value={String(formData?.savingsTargetAmount ?? '')}
+                onChangeText={(v) => updateField('savingsTargetAmount', v)}
+                keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
+                placeholder={t('habitForm.savingsGoalPlaceholder') || 'Ej: 500'}
+                placeholderTextColor={isDark ? '#64748b' : '#9ca3af'}
+                style={[
+                  styles.input,
+                  isDark && { backgroundColor: '#020617', borderColor: '#1e293b', color: '#e5e7eb' },
+                ]}
+              />
+
+              <Text style={[styles.label, { marginTop: 12 }, isDark && { color: '#e5e7eb' }]}>
+                {t('habitForm.savingsSavedLabel') || 'Meta ahorrada'}
+              </Text>
+              <Text
+                style={[
+                  styles.sublabel,
+                  { marginTop: 0, fontSize: 13, fontWeight: '500' },
+                  isDark && { color: '#9ca3af' },
+                ]}
+              >
+                {t('habitForm.savingsSavedHelp') || 'Lo que llevas ahorrado hasta ahora (tu progreso).'}
+              </Text>
+              <TextInput
+                value={String(formData?.savingsSavedAmount ?? '')}
+                onChangeText={(v) => updateField('savingsSavedAmount', v)}
+                keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
+                placeholder={t('habitForm.savingsSavedPlaceholder') || 'Ej: 0'}
+                placeholderTextColor={isDark ? '#64748b' : '#9ca3af'}
+                style={[
+                  styles.input,
+                  isDark && { backgroundColor: '#020617', borderColor: '#1e293b', color: '#e5e7eb' },
+                ]}
+              />
+            </View>
+          ) : null}
+
+          {/* FRECUENCIA */}
+          {isBirthdayTemplate ? (
+            <View style={styles.section}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={18}
+                  color={isDark ? '#9ca3af' : '#6b7280'}
+                  style={{ marginTop: 2 }}
+                />
+                <Text style={[styles.sublabel, { marginTop: 0 }, isDark && { color: '#9ca3af' }]}>
+                  {language === 'es'
+                    ? 'Al ser un cumpleaños, se agendará automáticamente de manera anual.'
+                    : language === 'pt'
+                      ? 'Por ser um aniversário, será agendado automaticamente de forma anual.'
+                      : language === 'fr'
+                        ? "Comme il s'agit d'un anniversaire, il sera programmé automatiquement chaque année."
+                        : 'Because this is a birthday, it will be scheduled automatically every year.'}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.section, styles.frequencySection]}>
+              {isSavingsTemplate ? (
+                <Text style={[styles.label, styles.frequencyLabel, isDark && { color: '#e5e7eb' }]}>
+                  {(t('habitForm.savingsFrequencyQuestionPrefix') || '¿Cada cuánto estarás ahorrando para cumplir tu meta de')}{' '}
+                  {(formData?.savingsTargetAmount ? `${String(formData.savingsTargetAmount).trim()} $` : (t('habitForm.savingsFrequencyQuestionFallback') || 'XX $'))}
+                  ?
+                </Text>
+              ) : (
+                <Text style={[styles.label, styles.frequencyLabel, isDark && { color: '#e5e7eb' }]}>
+                  {t('habitForm.frequencyLabel')}
+                </Text>
+              )}
+
+              <View style={[styles.freqGrid, styles.freqGridCentered]}>
+                {(isSavingsTemplate ? SAVINGS_FREQUENCIES : FREQUENCIES).map((f) => (
+                  <Pressable
+                    key={f.key}
+                    style={[styles.freqBtn, frequency === f.key && styles.freqBtnActive]}
+                    onPress={() => setFrequency(f.key)}
                   >
-                    {selectedColor === c && (
-                      <Ionicons name="checkmark" size={14} color={getContrastColorLocal(c)} />
-                    )}
+                    <Ionicons
+                      name={f.icon}
+                      size={20}
+                      color={frequency === f.key ? '#fff' : '#38BDF8'}
+                    />
+                    <Text style={[styles.freqTxt, frequency === f.key && styles.freqTxtActive]}>
+                      {t(`habitForm.frequency${
+                        f.key.charAt(0).toUpperCase() + f.key.slice(1)
+                      }`)}
+                    </Text>
                   </Pressable>
                 ))}
               </View>
+
+              {!isSavingsTemplate && frequency === 'weekly' && (
+                <>
+                  <Text style={[styles.sublabel, styles.frequencySublabel, isDark && { color: '#9ca3af' }]}>
+                    {t('habitForm.weeklySelectDays')}
+                  </Text>
+                  <View style={styles.daysRow}>
+                    {WEEK_DAYS.map((d) => (
+                      <Pressable
+                        key={d.key}
+                        style={[
+                          styles.dayBtn,
+                          daysOfWeek.includes(d.key) && styles.dayBtnActive,
+                        ]}
+                        onPress={() => toggleDay(d.key)}
+                      >
+                        <Text
+                          style={[
+                            styles.dayTxt,
+                            daysOfWeek.includes(d.key) && styles.dayTxtActive,
+                          ]}
+                        >
+                          {d?.[language] || d.es}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </>
+              )}
             </View>
-          </View>
+          )}
+
+          {/* CAMPOS PERSONALIZADOS */}
+          {!isBirthdayTemplate &&
+            !isWaterTemplate &&
+            !isStudyTemplate &&
+            !isCourseTemplate &&
+            !isResearchTemplate &&
+            !isPodcastTemplate &&
+            !isLanguagePracticeTemplate &&
+            config?.fields
+              ?.filter((field) => {
+                if (
+                  isOrganizeSpacesTemplate &&
+                  String(field?.type || '').toLowerCase() === 'checklist'
+                ) {
+                  return false;
+                }
+                return true;
+              })
+              .map((field) => (
+                <View key={field.key} style={styles.section}>
+                  <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
+                    {field.type === 'market' ? '🛒' : field.type === 'checklist' ? '✅' : '✏️'}{' '}
+                    {field.label}
+                  </Text>
+                  {renderField(field)}
+                </View>
+              ))}
+
+          {/* COLOR */}
+          {!isBirthdayTemplate ? (
+            <View style={styles.section}>
+              <Text style={[styles.label, styles.colorLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.colorLabel') || 'Color'}</Text>
+              <View style={{ marginTop: 8 }}>
+                <View style={styles.colorGrid}>
+                  {COLOR_OPTIONS.map((c) => (
+                    <Pressable
+                      key={c}
+                      onPress={() => {
+                        setSelectedColor(c);
+                        setHeaderColorPreviewEnabled(true);
+                      }}
+                      style={[
+                        styles.colorSwatch,
+                        selectedColor === c && styles.colorSwatchSelected,
+                        { backgroundColor: c },
+                      ]}
+                    >
+                      {selectedColor === c && (
+                        <Ionicons name="checkmark" size={14} color={getContrastColorLocal(c)} />
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </View>
+          ) : null}
 
           <View style={{ height: 100 }} />
         </ScrollView>
@@ -975,9 +2472,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   icon: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
+    width: 72,
+    height: 72,
+    borderRadius: 999,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
   },
   title: {
     fontSize: 20,
@@ -1306,6 +2805,172 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#38BDF8',
+  },
+
+  // Water target selector
+  waterBarTrack: {
+    height: 26,
+    borderRadius: 999,
+    backgroundColor: '#eef2ff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    justifyContent: 'center',
+    marginTop: 6,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  waterBarTrackDark: {
+    backgroundColor: '#0b1120',
+    borderColor: '#1e293b',
+  },
+  waterBarFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 999,
+    opacity: 0.35,
+  },
+  waterBarDotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+  },
+  waterBarDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+  },
+  waterBarDotDark: {
+    backgroundColor: '#020617',
+    borderColor: '#334155',
+  },
+  waterBarKnob: {
+    width: 18,
+    height: 18,
+    borderWidth: 0,
+  },
+  waterOptionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  waterOptionPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+  },
+  waterOptionPillDark: {
+    backgroundColor: '#071127',
+    borderColor: '#273142',
+  },
+  waterOptionPillSelected: {
+    borderWidth: 2,
+  },
+  waterOptionText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#111827',
+  },
+
+  // Organize spaces selector
+  spacesDropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+  },
+  spacesDropdownHeaderDark: {
+    backgroundColor: '#071127',
+    borderColor: '#273142',
+  },
+  spacesDropdownHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  spacesDropdownTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#111827',
+  },
+  spacesDropdownSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6b7280',
+  },
+  spacesDropdownBody: {
+    marginTop: 10,
+  },
+  spacesActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 10,
+  },
+  spacesActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+  },
+  spacesActionBtnDark: {
+    backgroundColor: '#071127',
+    borderColor: '#273142',
+  },
+  spacesActionText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  spacesGrid: {
+    marginTop: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  spacePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+  },
+  spacePillDark: {
+    backgroundColor: '#071127',
+    borderColor: '#273142',
+  },
+  spacePillSelected: {
+    borderWidth: 2,
+  },
+  spacePillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
   },
 
   // Footer

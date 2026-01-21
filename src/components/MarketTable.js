@@ -26,7 +26,7 @@ const MarketTableItem = React.memo(function MarketTableItem({ item, index, isDar
         <View style={styles.checkboxContainer}>
           <Ionicons
             name={item.checked ? 'checkmark-circle' : 'ellipse-outline'}
-            size={32}
+            size={24}
             color={item.checked ? (accentColor || '#10b981') : (isDark ? '#64748b' : '#d1d5db')}
           />
         </View>
@@ -117,7 +117,11 @@ export default function MarketTable({
       {/* HEADER CON BOTÓN DE CERRAR (opcional) */}
       {showHeader && !embedded && (
         <View style={[styles.header, isDark && styles.headerDark]}>
-          <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>
+          <Text
+            style={[styles.headerTitle, isDark && styles.headerTitleDark]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {title || 'Lista de Compras'}
           </Text>
           {onClose && (
@@ -209,7 +213,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    position: 'relative',
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#fff',
@@ -226,19 +231,24 @@ const styles = StyleSheet.create({
     borderBottomColor: '#334155',
   },
   headerTitle: {
+    flex: 1,
     fontSize: 20,
     fontWeight: '700',
     color: '#111827',
+    textAlign: 'center',
+    paddingHorizontal: 44,
   },
   headerTitleDark: {
     color: '#f1f5f9',
   },
   closeButton: {
     padding: 4,
+    position: 'absolute',
+    right: 16,
   },
   scrollContent: {
     flex: 1,
-    padding: 16,
+    padding: 12,
   },
   scrollContentEmbedded: {
     padding: 0,
@@ -247,8 +257,8 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: 14,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -271,10 +281,10 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 10,
   },
   checkboxContainer: {
-    marginRight: 16,
+    marginRight: 10,
     justifyContent: 'flex-start',
     paddingTop: 2,
   },
@@ -282,11 +292,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   productName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 12,
-    lineHeight: 24,
+    marginBottom: 6,
+    lineHeight: 20,
   },
   productNameDark: {
     color: '#f1f5f9',
@@ -298,22 +308,22 @@ const styles = StyleSheet.create({
   detailsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 10,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   detailLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6b7280',
-    marginRight: 6,
+    marginRight: 4,
   },
   detailLabelDark: {
     color: '#94a3b8',
   },
   detailValue: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#374151',
   },
@@ -321,7 +331,7 @@ const styles = StyleSheet.create({
     color: '#e2e8f0',
   },
   subtotalValue: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
     color: '#f97316',
   },

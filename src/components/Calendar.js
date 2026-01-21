@@ -5,8 +5,10 @@ import {
   Text,
   StyleSheet,
   Pressable,
+  KeyboardAvoidingView,
   Animated,
   Image,
+  ImageBackground,
   FlatList,
   Alert,
   Modal,
@@ -59,9 +61,9 @@ function getTodayLocal() {
 
 function getContrastColor(hex) {
   try {
-    if (!hex || typeof hex !== 'string') return '#ffffff';
-    let c = hex.replace('#', '');
-    if (c.length === 3) c = c.split('').map((ch) => ch + ch).join('');
+    const c = String(hex || '').replace('#', '');
+    if (c.length < 6) return '#111827';
+
     const r = parseInt(c.substr(0, 2), 16);
     const g = parseInt(c.substr(2, 2), 16);
     const b = parseInt(c.substr(4, 2), 16);
@@ -69,8 +71,166 @@ function getContrastColor(hex) {
     // Lower threshold so more colors get a dark foreground for better readability
     return luminance > 0.35 ? '#111827' : '#ffffff';
   } catch {
-    return '#ffffff';
+    return '#111827';
   }
+}
+
+function parseMoneyLike(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value)
+    .trim()
+    .replace(/[^0-9,.-]/g, '')
+    .replace(',', '.');
+  if (!normalized) return null;
+  const num = parseFloat(normalized);
+  return Number.isFinite(num) ? num : null;
+}
+
+function parseMlLike(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim().replace(/[^0-9-]/g, '');
+  if (!normalized) return null;
+  const num = parseInt(normalized, 10);
+  return Number.isFinite(num) ? num : null;
+}
+
+function looksLikeSavingsTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('ahorrar') ||
+    t.includes('ahorro') ||
+    t.includes('savings') ||
+    t.includes('save money') ||
+    t.includes('economizar') ||
+    t.includes('économ')
+  );
+}
+
+function looksLikeWaterTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    (t.includes('beber') && t.includes('agua')) ||
+    t.includes('agua') ||
+    t.includes('water') ||
+    t.includes('eau') ||
+    t.includes('água') ||
+    t.includes('agua')
+  );
+}
+
+function looksLikeStudyTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('estudiar') ||
+    t.includes('estudio') ||
+    t.includes('study') ||
+    t.includes('studying') ||
+    t.includes('étudier') ||
+    t.includes('etudier')
+  );
+}
+
+function looksLikeCourseTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('tomar un curso') ||
+    t.includes('tomar curso') ||
+    t.includes('curso') ||
+    t.includes('take a course') ||
+    t.includes('course')
+  );
+}
+
+function looksLikeResearchTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('investigar') ||
+    t.includes('investigación') ||
+    t.includes('investigacion') ||
+    t.includes('research') ||
+    t.includes('investigate')
+  );
+}
+
+function looksLikePodcastTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('escuchar podcast') ||
+    t.includes('podcast') ||
+    (t.includes('escuchar') && t.includes('podcast'))
+  );
+}
+
+function looksLikeLanguagePracticeTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('practicar idioma') ||
+    t.includes('language practice') ||
+    (t.includes('practicar') && t.includes('idioma'))
+  );
+}
+
+function getWaterMotivation(progress, language) {
+  const p = Number.isFinite(progress) ? progress : 0;
+  const lang = language || 'es';
+
+  if (p >= 1) {
+    return lang === 'es'
+      ? '¡Meta de agua alcanzada! Buen trabajo.'
+      : 'Water goal reached! Great job.';
+  }
+  if (p >= 0.75) {
+    return lang === 'es'
+      ? '¡Ya casi! Un último empujón.'
+      : 'Almost there! One last push.';
+  }
+  if (p >= 0.5) {
+    return lang === 'es'
+      ? 'Vas muy bien. Sigue hidratándote.'
+      : 'Doing great. Keep hydrating.';
+  }
+  if (p > 0) {
+    return lang === 'es'
+      ? 'Buen inicio. Suma un poco más.'
+      : 'Good start. Add a bit more.';
+  }
+  return lang === 'es'
+    ? 'Empieza con un vaso de agua.'
+    : 'Start with a glass of water.';
+}
+
+function getSavingsMotivation(progress, language) {
+  const p = Number.isFinite(progress) ? progress : 0;
+  const lang = language || 'es';
+
+  if (p >= 1) {
+    return lang === 'es'
+      ? '¡Meta cumplida! Increíble trabajo, mantén el hábito.'
+      : 'Goal achieved! Amazing work—keep the habit going.';
+  }
+  if (p >= 0.75) {
+    return lang === 'es'
+      ? '¡Ya casi! Estás súper cerca de tu meta.'
+      : "So close! You're very near your goal.";
+  }
+  if (p >= 0.5) {
+    return lang === 'es'
+      ? 'Vas por la mitad. Consistencia = resultados.'
+      : 'Halfway there. Consistency = results.';
+  }
+  if (p >= 0.25) {
+    return lang === 'es'
+      ? 'Buen inicio. Sigue sumando poquito a poquito.'
+      : 'Great start. Keep adding a little at a time.';
+  }
+  if (p > 0) {
+    return lang === 'es'
+      ? 'Cada peso cuenta. Vas en el camino correcto.'
+      : 'Every bit counts. You’re on the right track.';
+  }
+  return lang === 'es'
+    ? 'Empieza hoy: agrega tu primer ahorro y arranca con fuerza.'
+    : 'Start today: add your first savings and build momentum.';
 }
 
 const today = getTodayLocal();
@@ -78,11 +238,6 @@ const today = getTodayLocal();
 /* =========================
    DATE HELPERS (GLOBAL)
 ========================= */
-
-function parseLocalDate(dateString) {
-  const [y, m, d] = dateString.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
 
 function timeStringToMinutes(timeStr) {
   if (!timeStr) return null;
@@ -94,19 +249,23 @@ function timeStringToMinutes(timeStr) {
 function minutesToTimeString(totalMinutes) {
   if (!Number.isFinite(totalMinutes)) return null;
   const mins = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  const h = String(Math.floor(mins / 60)).padStart(2, '0');
+  const m = String(mins % 60).padStart(2, '0');
+  return `${h}:${m}`;
 }
 
-function buildSuggestedTimeMinutesAround(startMinutes, {
-  stepMinutes = 30,
-  minMinutes = 6 * 60,
-  maxMinutes = 22 * 60,
-  maxSuggestions = 4,
-} = {}) {
+function buildSuggestedTimeMinutesAround(
+  startMinutes,
+  {
+    stepMinutes = 30,
+    minMinutes = 6 * 60,
+    maxMinutes = 22 * 60,
+    maxSuggestions = 4,
+  } = {}
+) {
   if (!Number.isFinite(startMinutes)) return [];
   const suggestions = [];
+
   for (let i = 1; suggestions.length < maxSuggestions && i <= 48; i += 1) {
     const forward = startMinutes + i * stepMinutes;
     const backward = startMinutes - i * stepMinutes;
@@ -119,7 +278,10 @@ function buildSuggestedTimeMinutesAround(startMinutes, {
       suggestions.push(backward);
       if (suggestions.length >= maxSuggestions) break;
     }
+
+    if (forward > maxMinutes && backward < minMinutes) break;
   }
+
   return suggestions;
 }
 
@@ -265,6 +427,19 @@ function formatLocalDate(date) {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+function parseLocalDate(dateString) {
+  if (!dateString) return new Date();
+  if (dateString instanceof Date) return dateString;
+
+  const [y, m, d] = String(dateString).split('-').map((n) => parseInt(n, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    return new Date();
+  }
+
+  // Construct as LOCAL date to avoid timezone shifting.
+  return new Date(y, m - 1, d);
 }
 const DAY_MAP = {
   sun: 0,
@@ -806,6 +981,47 @@ export default function Calendar() {
   const [marketModalData, setMarketModalData] = useState(null);
   const [vitaminsModalVisible, setVitaminsModalVisible] = useState(false);
   const [vitaminsModalData, setVitaminsModalData] = useState(null);
+  const [savingsModalVisible, setSavingsModalVisible] = useState(false);
+  const [savingsModalData, setSavingsModalData] = useState(null);
+  const [savingsAddAmountText, setSavingsAddAmountText] = useState('');
+
+  const [waterModalVisible, setWaterModalVisible] = useState(false);
+  const [waterModalData, setWaterModalData] = useState(null);
+  const [waterAddMlText, setWaterAddMlText] = useState('');
+
+  const habitIconById = useMemo(() => {
+    const map = new Map();
+    (habits || []).forEach((h) => {
+      if (h?.id && h?.icon) map.set(h.id, h.icon);
+    });
+    return map;
+  }, [habits]);
+
+  const savingsByHabitId = useMemo(() => {
+    const map = new Map();
+
+    for (const dateKey of Object.keys(activities || {})) {
+      const dayActs = activities?.[dateKey] || [];
+      for (const act of dayActs) {
+        const habitId = act?.habit_id;
+        if (!habitId) continue;
+
+        const target = parseMoneyLike(act?.data?.savingsTargetAmount);
+        const saved = parseMoneyLike(act?.data?.savingsSavedAmount);
+
+        if (!Number.isFinite(target) || target <= 0) continue;
+
+        const prev = map.get(habitId) || { target, saved: 0 };
+        const nextTarget = Number.isFinite(prev.target) && prev.target > 0 ? prev.target : target;
+        const nextSavedRaw = Math.max(prev.saved || 0, Number.isFinite(saved) ? saved : 0);
+        const nextSaved = Math.min(nextSavedRaw, nextTarget);
+
+        map.set(habitId, { target: nextTarget, saved: nextSaved });
+      }
+    }
+
+    return map;
+  }, [activities]);
 
   const themedCalendar = useMemo(() => {
     const base = {
@@ -1544,6 +1760,142 @@ export default function Calendar() {
     saveActivities(updated);
   }
 
+  function finalizeSavingsHabit(habitId, cutoffDate) {
+    if (!habitId) return;
+    const updated = { ...activities };
+
+    Object.keys(updated).forEach((dateKey) => {
+      if (cutoffDate && String(dateKey) > String(cutoffDate)) {
+        updated[dateKey] = (updated[dateKey] || []).filter(
+          (act) => act?.habit_id !== habitId
+        );
+      }
+    });
+
+    saveActivities(updated);
+  }
+
+  function addSavingsAmount(activity, addAmount) {
+    const inc = Number(addAmount);
+    if (!Number.isFinite(inc) || inc <= 0) {
+      Alert.alert(
+        language === 'es' ? 'Monto inválido' : 'Invalid amount',
+        language === 'es'
+          ? 'Ingresa un monto mayor que 0.'
+          : 'Enter an amount greater than 0.'
+      );
+      return;
+    }
+
+    const habitId = activity?.habit_id;
+    const cutoffDate = activity?.date;
+    if (!habitId || !cutoffDate) return;
+
+    const totals = savingsByHabitId.get(habitId);
+    const target = Number.isFinite(totals?.target)
+      ? totals.target
+      : parseMoneyLike(activity?.data?.savingsTargetAmount);
+    const currentSaved = Number.isFinite(totals?.saved)
+      ? totals.saved
+      : (parseMoneyLike(activity?.data?.savingsSavedAmount) || 0);
+
+    if (!Number.isFinite(target) || target <= 0) {
+      Alert.alert(
+        language === 'es' ? 'Falta la meta' : 'Missing goal',
+        language === 'es'
+          ? 'Primero define una meta para este hábito.'
+          : 'Please set a goal for this habit first.'
+      );
+      return;
+    }
+
+    let nextSaved = currentSaved + inc;
+    if (nextSaved < 0) nextSaved = 0;
+    nextSaved = Math.min(nextSaved, target);
+
+    const reachedGoal = nextSaved >= target;
+
+    const updated = { ...activities };
+
+    // Sync saved amount to ALL cards of the same habit so progress carries day to day.
+    Object.keys(updated).forEach((dateKey) => {
+      const dayActs = updated[dateKey] || [];
+      updated[dateKey] = dayActs
+        .map((act) => {
+          if (act?.habit_id !== habitId) return act;
+          const data = { ...(act.data || {}) };
+          data.savingsTargetAmount = data.savingsTargetAmount ?? String(target);
+          data.savingsSavedAmount = String(nextSaved);
+          return { ...act, data };
+        })
+        // If goal reached, automatically stop showing future occurrences.
+        .filter((act) => {
+          if (!reachedGoal) return true;
+          if (act?.habit_id !== habitId) return true;
+          return String(dateKey) <= String(cutoffDate);
+        });
+    });
+
+    saveActivities(updated);
+
+    if (reachedGoal) {
+      Alert.alert(
+        language === 'es' ? '¡Meta alcanzada!' : 'Goal reached!',
+        language === 'es'
+          ? 'Completaste tu meta de ahorro. Este hábito se finalizó automáticamente.'
+          : 'You completed your savings goal. This habit was finalized automatically.'
+      );
+    }
+  }
+
+  function addWaterMl(activity, addMl) {
+    const inc = Number(addMl);
+    if (!Number.isFinite(inc) || inc <= 0) {
+      Alert.alert(
+        language === 'es' ? 'Cantidad inválida' : 'Invalid amount',
+        language === 'es'
+          ? 'Ingresa una cantidad de ML mayor que 0.'
+          : 'Enter an amount of ml greater than 0.'
+      );
+      return;
+    }
+
+    const dateKey = activity?.date;
+    const activityId = activity?.id;
+    if (!dateKey || !activityId) return;
+
+    const DEFAULT_TARGET_ML = 2000;
+
+    const dayActivities = activities?.[dateKey] || [];
+    const current = dayActivities.find((a) => a.id === activityId);
+    if (!current) return;
+
+    const targetRaw = parseMlLike(current?.data?.waterMlTarget);
+    const target = Number.isFinite(targetRaw) && targetRaw > 0 ? targetRaw : DEFAULT_TARGET_ML;
+    const consumedRaw = parseMlLike(current?.data?.waterMlConsumed);
+    const consumed = Number.isFinite(consumedRaw) && consumedRaw > 0 ? consumedRaw : 0;
+
+    let nextConsumed = consumed + Math.round(inc);
+    if (!Number.isFinite(nextConsumed) || nextConsumed < 0) nextConsumed = 0;
+
+    const reachedGoal = nextConsumed >= target;
+
+    const updated = { ...activities };
+    updated[dateKey] = dayActivities.map((act) => {
+      if (act.id !== activityId) return act;
+      const data = { ...(act.data || {}) };
+      data.waterMlTarget = data.waterMlTarget ?? String(target);
+      data.waterMlConsumed = String(nextConsumed);
+      return {
+        ...act,
+        data,
+        completed: reachedGoal ? true : act.completed,
+      };
+    });
+
+    saveActivities(updated);
+  }
+
   function addMarketItem(activity, listType, item) {
     // Add to ALL cards of the same habit/style (same habit_id), so the list stays in sync.
     // Keep `checked` independent per-day by only appending the new item.
@@ -1666,6 +2018,40 @@ export default function Calendar() {
     }
 
     saveActivities(updated);
+  }
+
+  function maybeCompleteMarketActivity(modalData) {
+    const dateKey = modalData?.activity?.date;
+    const activityId = modalData?.activity?.id;
+    const marketKey = modalData?.marketKey;
+
+    if (!dateKey || !activityId || !marketKey) return;
+
+    const dayActivities = activities[dateKey] || [];
+    const current = dayActivities.find((a) => a.id === activityId);
+    const items = current?.data?.[marketKey];
+
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    const allChecked = items.every((it) => !!it && it.checked === true);
+    if (!allChecked) return;
+    if (current?.completed) return;
+
+    const updated = { ...activities };
+    updated[dateKey] = dayActivities.map((act) => {
+      if (act.id !== activityId) return act;
+      return { ...act, completed: true };
+    });
+
+    saveActivities(updated);
+  }
+
+  function closeMarketModal() {
+    if (marketModalData) {
+      maybeCompleteMarketActivity(marketModalData);
+    }
+    setMarketModalVisible(false);
+    setMarketModalData(null);
   }
 
   /* =========================
@@ -2431,6 +2817,232 @@ export default function Calendar() {
 
                 const displayTitle = getDisplayTitle(activityWithDate);
 
+                const habitTemplateForCard = getHabitTemplateForActivity(activityWithDate);
+                const habitTypeForCard = String(habitTemplateForCard?.type || '').toLowerCase();
+                const savingsTotals = activityWithDate?.habit_id
+                  ? savingsByHabitId.get(activityWithDate.habit_id)
+                  : null;
+                const savingsTargetAmount = Number.isFinite(savingsTotals?.target)
+                  ? savingsTotals.target
+                  : parseMoneyLike(activityWithDate.data?.savingsTargetAmount);
+                const savingsSavedAmount = Number.isFinite(savingsTotals?.saved)
+                  ? savingsTotals.saved
+                  : (parseMoneyLike(activityWithDate.data?.savingsSavedAmount) || 0);
+                const hasSavingsGoal = Number.isFinite(savingsTargetAmount) && savingsTargetAmount > 0;
+                const savingsProgress = hasSavingsGoal
+                  ? Math.max(0, Math.min(1, savingsSavedAmount / savingsTargetAmount))
+                  : 0;
+                const isSavingsHabit =
+                  hasSavingsGoal ||
+                  looksLikeSavingsTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeSavingsTitle(displayTitle);
+
+                const isWaterHabit =
+                  habitTypeForCard === 'water' ||
+                  looksLikeWaterTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeWaterTitle(displayTitle);
+
+                const isStudyHabit =
+                  habitTypeForCard === 'study' ||
+                  looksLikeStudyTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeStudyTitle(displayTitle);
+
+                const isCourseHabit =
+                  habitTypeForCard === 'course' ||
+                  looksLikeCourseTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeCourseTitle(displayTitle);
+
+                const isResearchHabit =
+                  habitTypeForCard === 'research' ||
+                  habitTypeForCard === 'investigate' ||
+                  looksLikeResearchTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeResearchTitle(displayTitle);
+
+                const isPodcastHabit =
+                  habitTypeForCard === 'podcast' ||
+                  looksLikePodcastTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikePodcastTitle(displayTitle);
+
+                const isLanguagePracticeHabit =
+                  habitTypeForCard === 'language_practice' ||
+                  habitTypeForCard === 'language' ||
+                  looksLikeLanguagePracticeTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeLanguagePracticeTitle(displayTitle);
+
+                const isBirthdayHabit =
+                  habitTypeForCard === 'birthday' ||
+                  (() => {
+                    const t = String(habitTemplateForCard?.title || habitTemplateForCard?.Title || displayTitle || '').toLowerCase();
+                    return t.includes('cumple') || t.includes('birthday') || t.includes('anniversaire') || t.includes('anivers');
+                  })();
+
+                const waterTargetMlRaw = parseMlLike(activityWithDate?.data?.waterMlTarget);
+                const waterTargetMl = Number.isFinite(waterTargetMlRaw) && waterTargetMlRaw > 0
+                  ? waterTargetMlRaw
+                  : 2000;
+                const waterConsumedMlRaw = parseMlLike(activityWithDate?.data?.waterMlConsumed);
+                const waterConsumedMl = Number.isFinite(waterConsumedMlRaw) && waterConsumedMlRaw > 0
+                  ? waterConsumedMlRaw
+                  : 0;
+                const waterProgress = waterTargetMl > 0
+                  ? Math.max(0, Math.min(1, waterConsumedMl / waterTargetMl))
+                  : 0;
+                const waterMotivation = isWaterHabit ? getWaterMotivation(waterProgress, language) : null;
+                const savingsMotivation = hasSavingsGoal
+                  ? getSavingsMotivation(savingsProgress, language)
+                  : null;
+                const currencySymbol = t('habitForm.marketPricePlaceholder') || '$';
+
+                const studyMeta = (() => {
+                  if (!isStudyHabit) return null;
+
+                  const subjectRaw = String(activityWithDate?.data?.studySubject ?? '').trim();
+                  const otherTopic = String(activityWithDate?.data?.studySubjectOther ?? '').trim();
+                  const subject =
+                    subjectRaw === 'Otros'
+                      ? (otherTopic || 'Otros')
+                      : (subjectRaw || null);
+
+                  const minutes =
+                    typeof activityWithDate?.durationMinutes === 'number' && activityWithDate.durationMinutes > 0
+                      ? activityWithDate.durationMinutes
+                      : (() => {
+                        const n = parseInt(String(activityWithDate?.data?.studyDurationMinutes ?? ''), 10);
+                        return Number.isFinite(n) && n > 0 ? n : null;
+                      })();
+
+                  if (!subject && !minutes) return null;
+
+                  const EMOJI = {
+                    'Matemáticas': '🧮',
+                    'Lenguaje / Español': '📝',
+                    'Inglés': '🗣️',
+                    'Ciencias': '🔬',
+                    'Historia': '📜',
+                    'Geografía': '🌍',
+                    'Filosofía': '🧠',
+                    'Otros': '📚',
+                  };
+
+                  const emojiKey = subjectRaw === 'Otros' ? 'Otros' : subjectRaw;
+                  const emoji = EMOJI[emojiKey] || '📚';
+
+                  return {
+                    subjectText: subject ? `${emoji} ${subject}` : null,
+                    minutes,
+                  };
+                })();
+
+                const courseMeta = (() => {
+                  if (!isCourseHabit) return null;
+
+                  const topicRaw = String(activityWithDate?.data?.courseTopic ?? '').trim();
+                  const other = String(activityWithDate?.data?.courseTopicOther ?? '').trim();
+                  const topic = topicRaw === 'Otros' ? (other || 'Otros') : (topicRaw || null);
+
+                  const minutes =
+                    typeof activityWithDate?.durationMinutes === 'number' && activityWithDate.durationMinutes > 0
+                      ? activityWithDate.durationMinutes
+                      : (() => {
+                        const n = parseInt(String(activityWithDate?.data?.courseDurationMinutes ?? ''), 10);
+                        return Number.isFinite(n) && n > 0 ? n : null;
+                      })();
+
+                  if (!topic && !minutes) return null;
+
+                  const EMOJI = {
+                    'Programación': '💻',
+                    'Diseño': '🎨',
+                    'Marketing': '📣',
+                    'Finanzas': '💰',
+                    'Idiomas': '🗣️',
+                    'Negocios': '🧾',
+                    'Productividad': '✅',
+                    'Salud': '🧘',
+                    'Otros': '🎓',
+                  };
+
+                  const emojiKey = topicRaw === 'Otros' ? 'Otros' : topicRaw;
+                  const emoji = EMOJI[emojiKey] || '🎓';
+
+                  return {
+                    subjectText: topic ? `${emoji} ${topic}` : null,
+                    minutes,
+                  };
+                })();
+
+                const researchMeta = (() => {
+                  if (!isResearchHabit) return null;
+
+                  const topicRaw = String(activityWithDate?.data?.researchTopic ?? '').trim();
+                  const other = String(activityWithDate?.data?.researchTopicOther ?? '').trim();
+                  const topic = topicRaw === 'Otros' ? (other || 'Otros') : (topicRaw || null);
+
+                  const minutes =
+                    typeof activityWithDate?.durationMinutes === 'number' && activityWithDate.durationMinutes > 0
+                      ? activityWithDate.durationMinutes
+                      : (() => {
+                        const n = parseInt(String(activityWithDate?.data?.researchDurationMinutes ?? ''), 10);
+                        return Number.isFinite(n) && n > 0 ? n : null;
+                      })();
+
+                  if (!topic && !minutes) return null;
+
+                  const EMOJI = {
+                    'Tecnología': '💡',
+                    'Ciencia': '🔬',
+                    'Historia': '📜',
+                    'Finanzas': '💰',
+                    'Salud': '🧬',
+                    'Noticias': '📰',
+                    'Arte': '🎭',
+                    'Otros': '🔎',
+                  };
+
+                  const emojiKey = topicRaw === 'Otros' ? 'Otros' : topicRaw;
+                  const emoji = EMOJI[emojiKey] || '🔎';
+
+                  return {
+                    subjectText: topic ? `${emoji} ${topic}` : null,
+                    minutes,
+                  };
+                })();
+
+                const podcastMeta = (() => {
+                  if (!isPodcastHabit) return null;
+
+                  const name = String(activityWithDate?.data?.podcastName ?? '').trim();
+                  if (!name) return null;
+
+                  return {
+                    subjectText: `🎙️ ${name}`,
+                    minutes: null,
+                  };
+                })();
+
+                const languagePracticeMeta = (() => {
+                  if (!isLanguagePracticeHabit) return null;
+
+                  const langRaw = String(activityWithDate?.data?.languagePracticeLanguage ?? '').trim();
+                  const other = String(activityWithDate?.data?.languagePracticeOther ?? '').trim();
+                  const lang = langRaw === 'Otros' ? (other || 'Otros') : (langRaw || null);
+
+                  const minutes =
+                    typeof activityWithDate?.durationMinutes === 'number' && activityWithDate.durationMinutes > 0
+                      ? activityWithDate.durationMinutes
+                      : (() => {
+                        const n = parseInt(String(activityWithDate?.data?.languagePracticeDurationMinutes ?? ''), 10);
+                        return Number.isFinite(n) && n > 0 ? n : null;
+                      })();
+
+                  if (!lang && !minutes) return null;
+
+                  return {
+                    subjectText: lang ? `🗣️ ${lang}` : null,
+                    minutes,
+                  };
+                })();
+
                 const timeRangeText = (() => {
                   if (activityWithDate.allDay) {
                     return t('calendar.allDayLabel') || t('habitForm.durationAllDay') || 'Todo el día';
@@ -2508,7 +3120,7 @@ export default function Calendar() {
 
                 const isCompleted = !!activityWithDate.completed;
                 const cardColor = activityWithDate?.data?.color || accent;
-                const cardTextColor = getContrastColor(cardColor);
+                const cardTextColor = isBirthdayHabit ? '#ffffff' : getContrastColor(cardColor);
                 const titleTextColor = isCompleted
                   ? undefined
                   : cardTextColor;
@@ -2548,11 +3160,26 @@ export default function Calendar() {
                     <Pressable
                       style={[
                         styles.card,
-                        isCompleted && styles.cardCompleted,
-                        !isCompleted && { backgroundColor: cardColor, borderColor: cardColor },
+                        isBirthdayHabit && styles.birthdayCard,
+                        !isBirthdayHabit && isCompleted && styles.cardCompleted,
+                        !isCompleted && !isBirthdayHabit && { backgroundColor: cardColor, borderColor: cardColor },
                       ]}
                       onPress={() => {
-                        if (hasMarket) {
+                        if (isSavingsHabit && hasSavingsGoal) {
+                          setSavingsModalData({
+                            activity: activityWithDate,
+                            displayTitle,
+                          });
+                          setSavingsAddAmountText('');
+                          setSavingsModalVisible(true);
+                        } else if (isWaterHabit) {
+                          setWaterModalData({
+                            activity: activityWithDate,
+                            displayTitle,
+                          });
+                          setWaterAddMlText('');
+                          setWaterModalVisible(true);
+                        } else if (hasMarket) {
                           setMarketModalData({
                             activity: activityWithDate,
                             marketKey,
@@ -2576,20 +3203,37 @@ export default function Calendar() {
                         }
                       }}
                     >
+                      {isBirthdayHabit ? (
+                        <>
+                          <ImageBackground
+                            source={require('../../assets/Banners/birthday.png')}
+                            style={styles.birthdayBanner}
+                            imageStyle={styles.birthdayBannerImage}
+                            resizeMode="cover"
+                          />
+                          <View pointerEvents="none" style={styles.birthdayOverlay} />
+                          {isCompleted ? (
+                            <View pointerEvents="none" style={styles.birthdayCompletedOverlay} />
+                          ) : null}
+                        </>
+                      ) : null}
+
                       {/* HEADER */}
                       <View style={styles.cardHeader}>
-                        <View style={styles.cardIconContainer}>
-                          {activity.icon ? (
-                            <Image
-                              source={{ uri: activity.icon }}
-                              style={styles.cardIcon}
-                            />
-                          ) : (
-                            <View style={styles.cardIconPlaceholder}>
-                              <Ionicons name="sparkles" size={20} color={accent} />
-                            </View>
-                          )}
-                        </View>
+                        {((activity && activity.icon) || habitIconById.get(activity?.habit_id)) || !hasMarket ? (
+                          <View style={styles.cardIconContainer}>
+                            {((activity && activity.icon) || habitIconById.get(activity?.habit_id)) ? (
+                              <Image
+                                source={{ uri: (activity && activity.icon) || habitIconById.get(activity?.habit_id) }}
+                                style={styles.cardIcon}
+                              />
+                            ) : (
+                              <View style={styles.cardIconPlaceholder}>
+                                <Ionicons name="sparkles" size={26} color={accent} />
+                              </View>
+                            )}
+                          </View>
+                        ) : null}
                         <View style={styles.cardHeaderText}>
                           <View style={{ flex: 1, minWidth: 0 }}>
                             <Text
@@ -2601,22 +3245,39 @@ export default function Calendar() {
                             >
                               {displayTitle}
                             </Text>
-                            {timeRangeText && (
+                            {(timeRangeText || hasMarket) && (
                               <View style={styles.cardTimeRow}>
-                                <Ionicons
-                                  name="time-outline"
-                                  size={14}
-                                  color="#f97316"
-                                />
-                                <Text
-                                  style={[
-                                    styles.cardTimeText,
-                                    isCompleted && styles.cardSubtitleCompleted,
-                                    subtitleTextColor && { color: subtitleTextColor },
-                                  ]}
-                                >
-                                  {timeRangeText}
-                                </Text>
+                                {timeRangeText ? (
+                                  <>
+                                    <Ionicons
+                                      name="time-outline"
+                                      size={14}
+                                      color="#f97316"
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.cardTimeText,
+                                        isCompleted && styles.cardSubtitleCompleted,
+                                        subtitleTextColor && { color: subtitleTextColor },
+                                      ]}
+                                    >
+                                      {timeRangeText}
+                                    </Text>
+                                  </>
+                                ) : null}
+
+                                {hasMarket ? (
+                                  <Text
+                                    style={[
+                                      styles.cardTimeText,
+                                      isCompleted && styles.cardSubtitleCompleted,
+                                      subtitleTextColor && { color: subtitleTextColor },
+                                    ]}
+                                  >
+                                    {timeRangeText ? '  ·  ' : ''}
+                                    {language === 'es' ? 'Lista' : 'List'}
+                                  </Text>
+                                ) : null}
                               </View>
                             )}
                             {friendlySubtitle && (
@@ -2630,6 +3291,194 @@ export default function Calendar() {
                                 {friendlySubtitle}
                               </Text>
                             )}
+
+                            {studyMeta || courseMeta || researchMeta || podcastMeta || languagePracticeMeta ? (
+                              <View style={styles.studyMetaRow}>
+                                {(() => {
+                                  const textColor = subtitleTextColor || '#ffffff';
+                                  const chipStyle =
+                                    String(textColor) === '#111827'
+                                      ? styles.studyMetaChipOnLight
+                                      : styles.studyMetaChipOnDark;
+
+                                  const renderMeta = (meta) => {
+                                    if (!meta) return null;
+                                    return (
+                                      <>
+                                        {meta.subjectText ? (
+                                          <View style={[styles.studyMetaChip, chipStyle]}>
+                                            <Text style={[styles.studyMetaText, { color: textColor }]}>
+                                              {meta.subjectText}
+                                            </Text>
+                                          </View>
+                                        ) : null}
+
+                                        {meta.minutes ? (
+                                          <View style={[styles.studyMetaChip, chipStyle]}>
+                                            <Ionicons
+                                              name="time-outline"
+                                              size={14}
+                                              color={textColor}
+                                            />
+                                            <Text style={[styles.studyMetaText, { color: textColor }]}>
+                                              {`${meta.minutes} min`}
+                                            </Text>
+                                          </View>
+                                        ) : null}
+                                      </>
+                                    );
+                                  };
+
+                                  return (
+                                    <>
+                                      {renderMeta(studyMeta)}
+                                      {renderMeta(courseMeta)}
+                                      {renderMeta(researchMeta)}
+                                      {renderMeta(podcastMeta)}
+                                      {renderMeta(languagePracticeMeta)}
+                                    </>
+                                  );
+                                })()}
+                              </View>
+                            ) : null}
+
+                            {isWaterHabit ? (
+                              <>
+                                <View style={styles.waterTopRow}>
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={[
+                                      styles.waterInlineStats,
+                                      isCompleted && styles.cardSubtitleCompleted,
+                                      subtitleTextColor && { color: subtitleTextColor },
+                                    ]}
+                                  >
+                                    {`${waterConsumedMl} / ${waterTargetMl} ml`}
+                                  </Text>
+
+                                  <Ionicons
+                                    name="add-circle-outline"
+                                    size={18}
+                                    color={isCompleted ? '#16a34a' : (subtitleTextColor || '#ffffff')}
+                                    style={{ opacity: 0.9 }}
+                                  />
+                                </View>
+
+                                <View style={styles.waterProgressRow}>
+                                  <View
+                                    style={[
+                                      styles.waterProgressTrack,
+                                      { backgroundColor: subtitleTextColor ? `${subtitleTextColor}33` : 'rgba(255,255,255,0.25)' },
+                                    ]}
+                                  >
+                                    <View
+                                      style={[
+                                        styles.waterProgressFill,
+                                        {
+                                          width: `${Math.round(waterProgress * 100)}%`,
+                                          backgroundColor: isCompleted
+                                            ? '#ffffff'
+                                            : (subtitleTextColor || '#ffffff'),
+                                        },
+                                      ]}
+                                    />
+                                  </View>
+                                  <Text
+                                    style={[
+                                      styles.waterPercentText,
+                                      isCompleted && styles.cardSubtitleCompleted,
+                                      subtitleTextColor && { color: subtitleTextColor },
+                                    ]}
+                                  >
+                                    {`${Math.round(waterProgress * 100)}%`}
+                                  </Text>
+                                </View>
+
+                                {waterMotivation ? (
+                                  <Text
+                                    numberOfLines={2}
+                                    ellipsizeMode="tail"
+                                    style={[
+                                      styles.waterMotivationText,
+                                      isCompleted && styles.cardSubtitleCompleted,
+                                      subtitleTextColor && { color: subtitleTextColor },
+                                    ]}
+                                  >
+                                    {waterMotivation}
+                                  </Text>
+                                ) : null}
+                              </>
+                            ) : null}
+
+                            {isSavingsHabit && hasSavingsGoal ? (
+                              <>
+                                <View style={styles.savingsTopRow}>
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={[
+                                      styles.savingsInlineStats,
+                                      isCompleted && styles.cardSubtitleCompleted,
+                                      subtitleTextColor && { color: subtitleTextColor },
+                                    ]}
+                                  >
+                                    {`${currencySymbol}${savingsSavedAmount.toFixed(2)} / ${currencySymbol}${savingsTargetAmount.toFixed(2)}`}
+                                  </Text>
+
+                                  <Ionicons
+                                    name="add-circle-outline"
+                                    size={18}
+                                    color={isCompleted ? '#16a34a' : (subtitleTextColor || '#ffffff')}
+                                    style={{ opacity: 0.9 }}
+                                  />
+                                </View>
+
+                                <View style={styles.savingsProgressRow}>
+                                  <View
+                                    style={[
+                                      styles.savingsProgressTrack,
+                                      { backgroundColor: subtitleTextColor ? `${subtitleTextColor}33` : 'rgba(255,255,255,0.25)' },
+                                    ]}
+                                  >
+                                    <View
+                                      style={[
+                                        styles.savingsProgressFill,
+                                        {
+                                          width: `${Math.round(savingsProgress * 100)}%`,
+                                          backgroundColor: isCompleted
+                                            ? '#ffffff'
+                                            : (subtitleTextColor || '#ffffff'),
+                                        },
+                                      ]}
+                                    />
+                                  </View>
+                                  <Text
+                                    style={[
+                                      styles.savingsPercentText,
+                                      isCompleted && styles.cardSubtitleCompleted,
+                                      subtitleTextColor && { color: subtitleTextColor },
+                                    ]}
+                                  >
+                                    {`${Math.round(savingsProgress * 100)}%`}
+                                  </Text>
+                                </View>
+
+                                {savingsMotivation ? (
+                                  <Text
+                                    numberOfLines={2}
+                                    ellipsizeMode="tail"
+                                    style={[
+                                      styles.savingsMotivationText,
+                                      isCompleted && styles.cardSubtitleCompleted,
+                                      subtitleTextColor && { color: subtitleTextColor },
+                                    ]}
+                                  >
+                                    {savingsMotivation}
+                                  </Text>
+                                ) : null}
+                              </>
+                            ) : null}
                           </View>
                           <View style={styles.cardRightActions}>
                             <Pressable
@@ -2646,12 +3495,7 @@ export default function Calendar() {
                                 color={isCompleted ? '#16a34a' : '#6b7280'}
                               />
                             </Pressable>
-                          {hasMarket && (
-                            <View style={styles.cardBadge}>
-                              <Ionicons name="list" size={12} color={accent} />
-                              <Text style={[styles.cardBadgeText, !isCompleted && { color: cardTextColor }]}>Lista</Text>
-                            </View>
-                          )}
+                          {hasMarket ? null : null}
                           </View>
                         </View>
                       </View>
@@ -2968,17 +3812,392 @@ export default function Calendar() {
         </View>
       </Modal>
 
+      {/* SAVINGS PROGRESS MODAL */}
+      <Modal
+        transparent
+        visible={savingsModalVisible && !!savingsModalData}
+        animationType="slide"
+        onRequestClose={() => setSavingsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setSavingsModalVisible(false)}
+          />
+          <Pressable
+            style={[styles.modal, isDark && { backgroundColor: '#020617' }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {savingsModalData && (
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              >
+                <View style={[styles.modalHeader, isDark && { borderBottomColor: '#0f172a' }]}>
+                  <View style={[styles.modalHandle, isDark && { backgroundColor: '#0f172a' }]} />
+                  <View style={styles.modalTitleContainer}>
+                    <Ionicons name="wallet" size={24} color={accent} />
+                    <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>
+                      {savingsModalData.displayTitle || (language === 'es' ? 'Ahorro' : 'Savings')}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setSavingsModalVisible(false)}
+                    style={styles.modalClose}
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={28}
+                      color={isDark ? '#9ca3af' : '#6b7280'}
+                    />
+                  </Pressable>
+                </View>
+
+                {(() => {
+                  const act = savingsModalData.activity;
+                  const currencySymbol = t('habitForm.marketPricePlaceholder') || '$';
+                  const totals = act?.habit_id ? savingsByHabitId.get(act.habit_id) : null;
+                  const target = Number.isFinite(totals?.target)
+                    ? totals.target
+                    : parseMoneyLike(act?.data?.savingsTargetAmount);
+                  const saved = Number.isFinite(totals?.saved)
+                    ? totals.saved
+                    : (parseMoneyLike(act?.data?.savingsSavedAmount) || 0);
+                  const hasGoal = Number.isFinite(target) && target > 0;
+                  const progress = hasGoal ? Math.max(0, Math.min(1, saved / target)) : 0;
+                  const motivation = hasGoal ? getSavingsMotivation(progress, language) : null;
+
+                  return (
+                    <ScrollView
+                      showsVerticalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }}
+                    >
+                      {hasGoal ? (
+                        <>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
+                            {language === 'es' ? 'Progreso' : 'Progress'}
+                          </Text>
+                          <Text style={{ marginTop: 6, fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280' }}>
+                            {`${Math.round(progress * 100)}% · ${currencySymbol}${saved.toFixed(2)} / ${currencySymbol}${target.toFixed(2)}`}
+                          </Text>
+                          <View
+                            style={{
+                              marginTop: 10,
+                              height: 10,
+                              borderRadius: 9999,
+                              backgroundColor: isDark ? '#0b1120' : '#e5e7eb',
+                              overflow: 'hidden',
+                              borderWidth: 1,
+                              borderColor: isDark ? '#1e293b' : '#d1d5db',
+                            }}
+                          >
+                            <View
+                              style={{
+                                width: `${Math.round(progress * 100)}%`,
+                                height: '100%',
+                                backgroundColor: accent,
+                              }}
+                            />
+                          </View>
+                          {motivation ? (
+                            <Text style={{ marginTop: 10, fontSize: 13, fontWeight: '600', color: isDark ? '#e5e7eb' : '#111827' }}>
+                              {motivation}
+                            </Text>
+                          ) : null}
+                        </>
+                      ) : null}
+
+                      <Text
+                        style={{
+                          marginTop: 16,
+                          fontSize: 14,
+                          fontWeight: '700',
+                          color: isDark ? '#e5e7eb' : '#111827',
+                        }}
+                      >
+                        {language === 'es' ? 'Agregar ahorro' : 'Add savings'}
+                      </Text>
+                      <TextInput
+                        value={savingsAddAmountText}
+                        onChangeText={setSavingsAddAmountText}
+                        placeholder={language === 'es' ? 'Monto a agregar' : 'Amount to add'}
+                        placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
+                        keyboardType="numeric"
+                        style={{
+                          marginTop: 10,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: isDark ? '#1e293b' : '#e5e7eb',
+                          paddingHorizontal: 12,
+                          paddingVertical: 12,
+                          backgroundColor: isDark ? '#0b1120' : '#f9fafb',
+                          color: isDark ? '#e5e7eb' : '#111827',
+                        }}
+                      />
+
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                        <Pressable
+                          onPress={() => setSavingsModalVisible(false)}
+                          style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 9999,
+                            borderWidth: 1,
+                            borderColor: isDark ? '#334155' : '#d1d5db',
+                            alignItems: 'center',
+                            backgroundColor: 'transparent',
+                          }}
+                        >
+                          <Text style={{ fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
+                            {t('cancel') || (language === 'es' ? 'Cancelar' : 'Cancel')}
+                          </Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => {
+                            const inc = parseMoneyLike(savingsAddAmountText);
+                            if (!savingsModalData?.activity) return;
+                            addSavingsAmount(savingsModalData.activity, inc);
+                            setSavingsModalVisible(false);
+                          }}
+                          style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 9999,
+                            borderWidth: 1,
+                            borderColor: accent,
+                            alignItems: 'center',
+                            backgroundColor: 'transparent',
+                          }}
+                        >
+                          <Text style={{ fontWeight: '800', color: accent }}>
+                              {language === 'es' ? 'Ahorrar' : (t('save') || 'Save')}
+                          </Text>
+                        </Pressable>
+                      </View>
+
+                      <Pressable
+                        onPress={() => {
+                          const act = savingsModalData?.activity;
+                          if (!act?.habit_id || !act?.date) return;
+                          Alert.alert(
+                            language === 'es' ? 'Finalizar hábito' : 'End habit',
+                            language === 'es'
+                              ? 'Esto eliminará las tarjetas futuras de este hábito. ¿Continuar?'
+                              : 'This will remove future cards for this habit. Continue?',
+                            [
+                              {
+                                text: language === 'es' ? 'Cancelar' : 'Cancel',
+                                style: 'cancel',
+                              },
+                              {
+                                text: language === 'es' ? 'Finalizar' : 'End',
+                                style: 'destructive',
+                                onPress: () => {
+                                  finalizeSavingsHabit(act.habit_id, act.date);
+                                  setSavingsModalVisible(false);
+                                },
+                              },
+                            ]
+                          );
+                        }}
+                        style={{
+                          marginTop: 12,
+                          paddingVertical: 12,
+                          borderRadius: 9999,
+                          borderWidth: 1,
+                          borderColor: isDark ? '#334155' : '#d1d5db',
+                          alignItems: 'center',
+                          backgroundColor: 'transparent',
+                        }}
+                      >
+                        <Text style={{ fontWeight: '800', color: isDark ? '#e5e7eb' : '#111827' }}>
+                          {language === 'es' ? 'Finalizar hábito' : 'End habit'}
+                        </Text>
+                      </Pressable>
+
+                      <View style={{ height: 12 }} />
+                    </ScrollView>
+                  );
+                })()}
+              </KeyboardAvoidingView>
+            )}
+          </Pressable>
+        </View>
+      </Modal>
+
+      {/* WATER ML MODAL */}
+      <Modal
+        transparent
+        visible={waterModalVisible && !!waterModalData}
+        animationType="slide"
+        onRequestClose={() => setWaterModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setWaterModalVisible(false)}
+          />
+          <Pressable
+            style={[styles.modal, isDark && { backgroundColor: '#020617' }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {waterModalData && (
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              >
+                <View style={[styles.modalHeader, isDark && { borderBottomColor: '#0f172a' }]}>
+                  <View style={[styles.modalHandle, isDark && { backgroundColor: '#0f172a' }]} />
+                  <View style={styles.modalTitleContainer}>
+                    <Ionicons name="water" size={24} color={accent} />
+                    <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>
+                      {waterModalData.displayTitle || (language === 'es' ? 'Beber agua' : 'Drink water')}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setWaterModalVisible(false)}
+                    style={styles.modalClose}
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={28}
+                      color={isDark ? '#9ca3af' : '#6b7280'}
+                    />
+                  </Pressable>
+                </View>
+
+                {(() => {
+                  const act = waterModalData.activity;
+                  const targetRaw = parseMlLike(act?.data?.waterMlTarget);
+                  const target = Number.isFinite(targetRaw) && targetRaw > 0 ? targetRaw : 2000;
+                  const consumedRaw = parseMlLike(act?.data?.waterMlConsumed);
+                  const consumed = Number.isFinite(consumedRaw) && consumedRaw > 0 ? consumedRaw : 0;
+                  const progress = target > 0 ? Math.max(0, Math.min(1, consumed / target)) : 0;
+
+                  return (
+                    <ScrollView
+                      showsVerticalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
+                        {language === 'es' ? 'Progreso' : 'Progress'}
+                      </Text>
+                      <Text style={{ marginTop: 6, fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280' }}>
+                        {`${Math.round(progress * 100)}% · ${consumed} / ${target} ml`}
+                      </Text>
+                      <View
+                        style={{
+                          marginTop: 10,
+                          height: 10,
+                          borderRadius: 9999,
+                          backgroundColor: isDark ? '#0b1120' : '#e5e7eb',
+                          overflow: 'hidden',
+                          borderWidth: 1,
+                          borderColor: isDark ? '#1e293b' : '#d1d5db',
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: `${Math.round(progress * 100)}%`,
+                            height: '100%',
+                            backgroundColor: accent,
+                          }}
+                        />
+                      </View>
+
+                      <Text
+                        style={{
+                          marginTop: 16,
+                          fontSize: 14,
+                          fontWeight: '700',
+                          color: isDark ? '#e5e7eb' : '#111827',
+                        }}
+                      >
+                        {language === 'es' ? 'Agregar agua' : 'Add water'}
+                      </Text>
+                      <TextInput
+                        value={waterAddMlText}
+                        onChangeText={setWaterAddMlText}
+                        placeholder={language === 'es' ? 'ML a agregar' : 'ml to add'}
+                        placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
+                        keyboardType="numeric"
+                        style={{
+                          marginTop: 10,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: isDark ? '#1e293b' : '#e5e7eb',
+                          paddingHorizontal: 12,
+                          paddingVertical: 12,
+                          backgroundColor: isDark ? '#0b1120' : '#f9fafb',
+                          color: isDark ? '#e5e7eb' : '#111827',
+                        }}
+                      />
+
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                        <Pressable
+                          onPress={() => setWaterModalVisible(false)}
+                          style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 9999,
+                            borderWidth: 1,
+                            borderColor: isDark ? '#334155' : '#d1d5db',
+                            alignItems: 'center',
+                            backgroundColor: 'transparent',
+                          }}
+                        >
+                          <Text style={{ fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
+                            {t('cancel') || (language === 'es' ? 'Cancelar' : 'Cancel')}
+                          </Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => {
+                            const inc = parseMlLike(waterAddMlText);
+                            if (!waterModalData?.activity) return;
+                            addWaterMl(waterModalData.activity, inc);
+                            setWaterModalVisible(false);
+                          }}
+                          style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 9999,
+                            borderWidth: 1,
+                            borderColor: accent,
+                            alignItems: 'center',
+                            backgroundColor: 'transparent',
+                          }}
+                        >
+                          <Text style={{ fontWeight: '800', color: accent }}>
+                            {language === 'es' ? 'Agregar' : (t('save') || 'Add')}
+                          </Text>
+                        </Pressable>
+                      </View>
+
+                      <View style={{ height: 12 }} />
+                    </ScrollView>
+                  );
+                })()}
+              </KeyboardAvoidingView>
+            )}
+          </Pressable>
+        </View>
+      </Modal>
+
       {/* MARKET LIST MODAL */}
       <Modal
         transparent
         visible={marketModalVisible && !!marketModalData}
         animationType="slide"
-        onRequestClose={() => setMarketModalVisible(false)}
+        onRequestClose={closeMarketModal}
       >
         <View style={styles.modalOverlay}>
           <Pressable
             style={StyleSheet.absoluteFill}
-            onPress={() => setMarketModalVisible(false)}
+            onPress={closeMarketModal}
           />
           <Pressable
             style={[styles.modal, isDark && { backgroundColor: '#020617' }]}
@@ -2986,8 +4205,8 @@ export default function Calendar() {
           >
             {marketModalData && (
               <>
-                <View style={[styles.modalHeader, isDark && { borderBottomColor: '#0f172a' }]}>
-                  <View style={[styles.modalHandle, isDark && { backgroundColor: '#0f172a' }]} />
+                <View style={[styles.modalHeader, styles.marketModalHeaderCompact, isDark && { borderBottomColor: '#0f172a' }]}>
+                  <View style={[styles.modalHandle, styles.marketModalHandleCompact, isDark && { backgroundColor: '#0f172a' }]} />
                   <View style={styles.modalTitleContainer}>
                     <Ionicons name="cart" size={24} color={accent} />
                     <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>
@@ -3004,21 +4223,7 @@ export default function Calendar() {
                     }}
                   >
                     <Pressable
-                      onPress={() => {
-                        setMarketAddContext({ activity: marketModalData.activity, listKey: marketModalData.marketKey });
-                        setMarketAddVisible(true);
-                      }}
-                      style={[
-                        styles.marketModalHeaderIconBtn,
-                        { marginRight: 6 },
-                        isDark && styles.marketModalHeaderIconBtnDark,
-                      ]}
-                      hitSlop={8}
-                    >
-                      <Ionicons name="add-circle" size={28} color={accent} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => setMarketModalVisible(false)}
+                      onPress={closeMarketModal}
                       style={[
                         styles.marketModalHeaderIconBtn,
                         isDark && styles.marketModalHeaderIconBtnDark,
@@ -3036,7 +4241,7 @@ export default function Calendar() {
                   nestedScrollEnabled
                   keyboardShouldPersistTaps="handled"
                 >
-                  <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+                  <View style={styles.marketModalContent}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
                       {getDisplayTitle(marketModalData.activity)}
                     </Text>
@@ -3047,12 +4252,14 @@ export default function Calendar() {
                     <View
                       style={[
                         styles.checklistSection,
+                        styles.marketModalChecklistSection,
                         isDark && { backgroundColor: '#0b1120', borderWidth: 1, borderColor: '#1e293b' },
                       ]}
                     >
                       <View
                         style={[
                           styles.checklistHeader,
+                          styles.marketModalChecklistHeader,
                           isDark && { borderBottomColor: '#1e293b' },
                         ]}
                       >
@@ -3121,7 +4328,7 @@ export default function Calendar() {
                             </View>
 
                             <Pressable
-                              onPress={() => setMarketModalVisible(false)}
+                              onPress={closeMarketModal}
                               style={[
                                 styles.marketModalAcceptBtn,
                                 isDark && styles.marketModalAcceptBtnDark,
@@ -3138,7 +4345,7 @@ export default function Calendar() {
                       })()}
                     </View>
                   </View>
-                  <View style={{ height: 24 }} />
+                  <View style={{ height: 12 }} />
                 </ScrollView>
               </>
             )}
@@ -3307,17 +4514,14 @@ export default function Calendar() {
             style={StyleSheet.absoluteFill}
             onPress={() => setChecklistModalVisible(false)}
           />
-          <Pressable
-            style={styles.modal}
-            onPress={(e) => e.stopPropagation()}
-          >
+          <View style={[styles.modal, isDark && { backgroundColor: '#020617' }, { height: '85%' }]}>
             {checklistModalData && (
               <>
-                <View style={styles.modalHeader}>
+                <View style={[styles.modalHeader, isDark && { borderBottomColor: '#1e293b' }]}>
                   <View style={styles.modalHandle} />
                   <View style={styles.modalTitleContainer}>
                     <Ionicons name="checkbox" size={24} color={accent} />
-                    <Text style={styles.modalTitle}>
+                    <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>
                       {checklistModalData.checklistLabel ||
                         t('calendar.checklistDefaultTitle')}
                     </Text>
@@ -3326,27 +4530,65 @@ export default function Calendar() {
                     onPress={() => setChecklistModalVisible(false)}
                     style={styles.modalClose}
                   >
-                    <Ionicons name="close-circle" size={28} color="#6b7280" />
+                    <Ionicons
+                      name="close-circle"
+                      size={28}
+                      color={isDark ? '#9ca3af' : '#6b7280'}
+                    />
                   </Pressable>
                 </View>
 
                 <ScrollView
                   showsVerticalScrollIndicator={false}
-                  style={{ maxHeight: '80%' }}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ paddingBottom: 24 }}
                   nestedScrollEnabled
                   keyboardShouldPersistTaps="handled"
                 >
                   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: '700',
+                        color: isDark ? '#e5e7eb' : '#111827',
+                      }}
+                    >
                       {getDisplayTitle(checklistModalData.activity)}
                     </Text>
-                    <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        color: isDark ? '#9ca3af' : '#6b7280',
+                        marginTop: 4,
+                      }}
+                    >
                       {formatDate(checklistModalData.activity.date, language)}
                     </Text>
 
-                    <View style={styles.checklistSection}>
-                      <View style={styles.checklistHeader}>
-                        <View style={styles.checklistIconBg}>
+                    <View
+                      style={[
+                        styles.checklistSection,
+                        isDark && {
+                          backgroundColor: '#0b1220',
+                          borderWidth: 1,
+                          borderColor: '#1e293b',
+                          shadowOpacity: 0,
+                          elevation: 0,
+                        },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.checklistHeader,
+                          isDark && { borderBottomColor: '#1e293b' },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.checklistIconBg,
+                            isDark && { backgroundColor: '#0f172a' },
+                          ]}
+                        >
                           <Ionicons name="home" size={16} color={accent} />
                         </View>
                         <Text style={[styles.checklistTitle, isDark && { color: '#e5e7eb' }]}>
@@ -3391,10 +4633,47 @@ export default function Calendar() {
                           return item;
                         });
 
+                        const SPACE_EMOJI = {
+                          'Sala': '🛋️',
+                          'Comedor': '🍽️',
+                          'Cocina': '🍳',
+                          'Habitaciones / Dormitorios': '🛏️',
+                          'Baño': '🚿',
+                          'Pasillo': '🚪',
+                          'Entrada / Recibidor': '🔑',
+                          'Patio': '🏞️',
+                          'Jardín': '🌿',
+                          'Balcón': '🌇',
+                          'Terraza': '🌞',
+                          'Garaje / Parqueadero': '🚗',
+                          'Entrada exterior': '🏛️',
+                          'Estudio / Oficina': '💻',
+                          'Sala de TV': '📺',
+                          'Sala de juegos': '🎮',
+                          'Biblioteca': '📚',
+                          'Gimnasio en casa': '🏋️',
+                        };
+
+                        const withSpaceEmoji = (label) => {
+                          const clean = String(label ?? '').trim();
+                          if (!clean) return '';
+                          const emoji = SPACE_EMOJI[clean];
+                          if (!emoji) return clean;
+                          // Avoid double-emoji if already present in label
+                          if (clean.startsWith(emoji)) return clean;
+                          return `${emoji} ${clean}`;
+                        };
+
+                        const displayItems = normalized.map((it) => ({
+                          ...it,
+                          label: withSpaceEmoji(it?.label),
+                        }));
+
                         return (
                           <ChecklistTable
-                            items={normalized}
+                            items={displayItems}
                             columns={{ qty: false, extra: false }}
+                            isDark={isDark}
                             onToggle={(index) =>
                               toggleChecklistItem(
                                 checklistModalData.activity,
@@ -3407,11 +4686,10 @@ export default function Calendar() {
                       })()}
                     </View>
                   </View>
-                  <View style={{ height: 24 }} />
                 </ScrollView>
               </>
             )}
-          </Pressable>
+          </View>
         </View>
       </Modal>
 
@@ -3754,7 +5032,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardIconContainer: {
-    marginRight: 14,
+    marginLeft: -6,
+    marginRight: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -3762,14 +5041,14 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   cardIconPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#020617',
     justifyContent: 'center',
     alignItems: 'center',
@@ -3800,6 +5079,137 @@ const styles = StyleSheet.create({
   cardSubtitleCompleted: {
     color: '#16a34a',
   },
+  studyMetaRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  studyMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  studyMetaChipOnDark: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  studyMetaChipOnLight: {
+    backgroundColor: 'rgba(17,24,39,0.06)',
+    borderColor: 'rgba(17,24,39,0.12)',
+  },
+  studyMetaText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  birthdayCard: {
+    borderColor: '#ffffff33',
+    backgroundColor: '#0b1120',
+  },
+  birthdayBanner: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  birthdayBannerImage: {
+    borderRadius: 18,
+  },
+  birthdayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  birthdayCompletedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    backgroundColor: 'rgba(20,83,45,0.28)',
+  },
+  savingsTopRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  savingsInlineStats: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 12,
+    color: '#e5e7eb',
+    fontWeight: '800',
+  },
+  savingsProgressRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  savingsProgressTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  savingsProgressFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  savingsPercentText: {
+    fontSize: 12,
+    color: '#e5e7eb',
+    fontWeight: '900',
+    minWidth: 44,
+    textAlign: 'right',
+  },
+  savingsMotivationText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#e5e7eb',
+    fontWeight: '700',
+  },
+  waterTopRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  waterInlineStats: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 12,
+    color: '#e5e7eb',
+    fontWeight: '800',
+  },
+  waterProgressRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  waterProgressTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  waterProgressFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  waterPercentText: {
+    fontSize: 12,
+    color: '#e5e7eb',
+    fontWeight: '900',
+    minWidth: 44,
+    textAlign: 'right',
+  },
+  waterMotivationText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#e5e7eb',
+    fontWeight: '700',
+  },
   cardTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3823,13 +5233,13 @@ const styles = StyleSheet.create({
   cardBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#020617',
+    backgroundColor: 'transparent',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 10,
     gap: 4,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    borderWidth: 0,
+    borderColor: 'transparent',
   },
   cardBadgeText: {
     fontSize: 11,
@@ -3973,7 +5383,9 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     marginLeft: 8,
-    gap: 4,
+    gap: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.75)',
   },
   swipeEdit: {
     backgroundColor: '#3b82f6',
@@ -3983,12 +5395,17 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     marginLeft: 8,
-    gap: 4,
+    gap: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.75)',
   },
   swipeText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
+    lineHeight: 12,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
 
   // FAB
@@ -4031,12 +5448,30 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f3f4f6',
     position: 'relative',
   },
+  marketModalHeaderCompact: {
+    paddingBottom: 12,
+  },
   modalHandle: {
     width: 40,
     height: 5,
     backgroundColor: '#d1d5db',
     borderRadius: 3,
     marginBottom: 16,
+  },
+  marketModalHandleCompact: {
+    marginBottom: 10,
+  },
+  marketModalContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  marketModalChecklistSection: {
+    padding: 12,
+    gap: 8,
+    borderRadius: 18,
+  },
+  marketModalChecklistHeader: {
+    paddingBottom: 8,
   },
   modalTitleContainer: {
     flexDirection: 'row',
@@ -4198,16 +5633,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   habitCardImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 13,
+    width: 64,
+    height: 64,
+    borderRadius: 999,
+    overflow: 'hidden',
     resizeMode: 'cover',
-    backgroundColor: '#fee2e2',
+    backgroundColor: 'transparent',
   },
   habitImagePlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 13,
+    width: 64,
+    height: 64,
+    borderRadius: 999,
     backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',

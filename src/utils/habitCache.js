@@ -3,11 +3,166 @@ import { supabase } from './supabase';
 import { translate } from './i18n';
 import { getCurrentUserId } from './userScope';
 
-// v2: incluimos versión en la clave para evitar usar cache antiguo
-const CACHE_KEY_BASE = '@fluu_habit_templates_v2';
-const CACHE_TIME_KEY_BASE = '@fluu_habit_templates_time_v2';
+// v3: incluimos versión en la clave para evitar usar cache antiguo
+const CACHE_KEY_BASE = '@fluu_habit_templates_v3';
+const CACHE_TIME_KEY_BASE = '@fluu_habit_templates_time_v3';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 horas
 const SUPPORTED_LANGUAGES = ['es', 'en', 'fr', 'pt', 'de'];
+
+// Cambia este valor cuando actualices imágenes en Supabase para forzar recarga.
+// (También ayuda cuando se re-suben archivos con el mismo nombre y la CDN queda con cache.)
+const IMAGE_CACHE_BUST_VERSION = '2026-01-21';
+
+function withImageCacheBuster(url) {
+  if (!url || typeof url !== 'string') return url;
+  if (!/^https?:\/\//i.test(url)) return url;
+  if (url.includes('fluu_v=')) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}fluu_v=${encodeURIComponent(IMAGE_CACHE_BUST_VERSION)}`;
+}
+
+function applyIconCacheBuster(templates) {
+  if (!Array.isArray(templates) || templates.length === 0) return templates;
+  return templates.map((t) => ({
+    ...t,
+    icon: withImageCacheBuster(t?.icon),
+  }));
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = setTimeout(() => {
+    try {
+      controller?.abort();
+    } catch {}
+  }, timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      ...options,
+      signal: controller?.signal,
+    });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function verifySingleIconUrl(url, { timeoutMs = 15000 } = {}) {
+  if (!url || typeof url !== 'string') {
+    return { ok: false, reason: 'missing_url' };
+  }
+
+  try {
+    // Try HEAD first (fast). Some CDNs/servers may not support HEAD reliably.
+    let res = null;
+    try {
+      res = await fetchWithTimeout(url, { method: 'HEAD' }, timeoutMs);
+    } catch {
+      res = null;
+    }
+
+    if (!res) {
+      // Fallback to GET if HEAD fails.
+      res = await fetchWithTimeout(url, { method: 'GET' }, timeoutMs);
+    }
+
+    const status = res?.status;
+    const ok = !!res?.ok;
+    const contentType =
+      typeof res?.headers?.get === 'function'
+        ? res.headers.get('content-type')
+        : null;
+
+    if (!ok) {
+      return { ok: false, status, contentType: contentType || null, reason: 'http_error' };
+    }
+
+    // If the server returns something non-image, flag it.
+    if (contentType && !String(contentType).toLowerCase().startsWith('image/')) {
+      return { ok: false, status, contentType, reason: 'not_image' };
+    }
+
+    return { ok: true, status, contentType: contentType || null };
+  } catch (e) {
+    return { ok: false, reason: 'network_error', error: String(e?.message || e) };
+  }
+}
+
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const current = nextIndex;
+      nextIndex += 1;
+      results[current] = await fn(items[current], current);
+    }
+  }
+
+  const count = Math.max(1, Math.min(limit || 4, items.length || 1));
+  await Promise.all(Array.from({ length: count }, () => worker()));
+  return results;
+}
+
+export async function verifyHabitIconUrls(templates, {
+  concurrency = 6,
+  timeoutMs = 15000,
+  log = true,
+} = {}) {
+  if (!Array.isArray(templates) || templates.length === 0) {
+    const empty = { total: 0, withIcon: 0, ok: 0, failed: 0, failures: [] };
+    if (log) console.log('🖼️ Icon verify: no templates to verify.');
+    return empty;
+  }
+
+  const normalized = applyIconCacheBuster(templates);
+  const toCheck = normalized.filter((t) => !!t?.icon);
+
+  const checks = await mapLimit(
+    toCheck,
+    concurrency,
+    async (t) => ({
+      template: t,
+      result: await verifySingleIconUrl(t.icon, { timeoutMs }),
+    })
+  );
+
+  const failures = checks
+    .filter((x) => !x?.result?.ok)
+    .map((x) => ({
+      id: x?.template?.id,
+      title: x?.template?.title,
+      icon: x?.template?.icon,
+      reason: x?.result?.reason,
+      status: x?.result?.status ?? null,
+      contentType: x?.result?.contentType ?? null,
+      error: x?.result?.error ?? null,
+    }));
+
+  const summary = {
+    total: normalized.length,
+    withIcon: toCheck.length,
+    ok: toCheck.length - failures.length,
+    failed: failures.length,
+    failures,
+  };
+
+  if (log) {
+    console.log(
+      `🖼️ Icon verify: ${summary.ok}/${summary.withIcon} OK (${summary.failed} failed)`
+    );
+    if (failures.length) {
+      console.log('🖼️ Icon failures (first 10):');
+      failures.slice(0, 10).forEach((f) => {
+        console.log(`- ${f.title || f.id}: ${f.icon} (${f.reason}${f.status ? ` ${f.status}` : ''})`);
+      });
+    }
+  }
+
+  return summary;
+}
 
 function parseConfig(config) {
   if (!config) return null;
@@ -207,7 +362,7 @@ async function fetchTemplatesForLanguage(lang) {
       id: row.id,
       category: row.category,
       type: row.type,
-      icon: row.icon,
+      icon: withImageCacheBuster(row.icon),
       orderIndex: row.order_index,
       config: row.config,
       isActive: row.is_active,
@@ -221,14 +376,18 @@ async function fetchTemplatesForLanguage(lang) {
 /* ======================
    CARGA OPTIMIZADA
 ====================== */
-export async function loadHabitTemplates(appLanguage = 'es') {
+export async function loadHabitTemplates(appLanguage = 'es', options = {}) {
   const lang = SUPPORTED_LANGUAGES.includes(appLanguage) ? appLanguage : 'en';
 
-  // 1️⃣ Devolver cache inmediato si existe
-  const cached = await getCachedHabits(lang);
-  if (cached) {
-    refreshInBackground(lang);
-    return localizeTemplates(cached, lang);
+  const forceRefresh = !!options?.forceRefresh;
+
+  if (!forceRefresh) {
+    // 1️⃣ Devolver cache inmediato si existe
+    const cached = await getCachedHabits(lang);
+    if (cached) {
+      refreshInBackground(lang);
+      return applyIconCacheBuster(localizeTemplates(cached, lang));
+    }
   }
 
   // 2️⃣ Intentar con el idioma actual
@@ -240,8 +399,9 @@ export async function loadHabitTemplates(appLanguage = 'es') {
   }
 
   const localized = localizeTemplates(templates, lang);
-  await saveCache(localized, lang);
-  return localized;
+  const withIcons = applyIconCacheBuster(localized);
+  await saveCache(withIcons, lang);
+  return withIcons;
 }
 
 /* ======================
@@ -259,15 +419,14 @@ async function refreshInBackground(language = 'es') {
   }
 
   const localized = localizeTemplates(templates, lang);
-  await saveCache(localized, lang);
+  const withIcons = applyIconCacheBuster(localized);
+  await saveCache(withIcons, lang);
 }
 
 // Limpiar cache de plantillas de hábitos del usuario actual
 export async function clearHabitCache() {
   const userId = getCurrentUserId();
-  if (!userId) return;
-
-  const suffix = `_${userId}`;
+  const suffix = userId ? `_${userId}` : '_GUEST';
   const languages = SUPPORTED_LANGUAGES;
   const keysToRemove = [];
 
