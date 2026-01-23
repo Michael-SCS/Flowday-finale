@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -202,6 +202,96 @@ function isLanguagePracticeHabit(habit) {
   );
 }
 
+function isSkincareHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'skincare' || type === 'skincaret' || type === 'skin' || type === 'cuidarpiel' || type === 'cuidarmipiel') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('cuidar mi piel') ||
+    (titleLower.includes('cuidar') && titleLower.includes('piel')) ||
+    titleLower.includes('cuidado de la piel') ||
+    titleLower.includes('skin care') ||
+    titleLower.includes('skincare')
+  );
+}
+
+function isCreativeHobbyHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (
+    type === 'creativehobby' ||
+    type === 'hobbycreativo' ||
+    type === 'creative_hobby' ||
+    type === 'hobby_creativo'
+  ) {
+    return true;
+  }
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('hobby creativo') ||
+    titleLower.includes('hobbies creativos') ||
+    titleLower.includes('creative hobby')
+  );
+}
+
+function isFamilyHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'family' || type === 'familytime') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('pasar tiempo en familia') ||
+    (titleLower.includes('tiempo') && titleLower.includes('familia')) ||
+    titleLower.includes('family time')
+  );
+}
+
+function isGymHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'gym' || type === 'gimnasio') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return titleLower.includes('ir al gimnasio') || titleLower.includes('gimnasio') || titleLower.includes('gym');
+}
+
+function isInboxZeroHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'inboxzero' || type === 'inbox_zero') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return titleLower.includes('inboxzero') || titleLower.includes('inbox zero');
+}
+
+function isMarketListHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'market' || type === 'shoppinglist' || type === 'mercado') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('lista de mercado') ||
+    titleLower.includes('lista del mercado') ||
+    titleLower.includes('lista de compras') ||
+    titleLower.includes('shopping list') ||
+    titleLower.includes('mercado')
+  );
+}
+
+function isPlanningDayHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'planningday' || type === 'planning_day') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return (
+    titleLower.includes('planer el día') ||
+    titleLower.includes('planer el dia') ||
+    titleLower.includes('planear el día') ||
+    titleLower.includes('planear el dia') ||
+    titleLower.includes('planificar el día') ||
+    titleLower.includes('planning day')
+  );
+}
+
+function isSunHabit(habit) {
+  const type = normalizeTemplateType(habit?.type);
+  if (type === 'sun' || type === 'sunbath') return true;
+  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+  return titleLower.includes('tomar el sol') || (titleLower.includes('tomar') && titleLower.includes('sol'));
+}
+
 function dayKeyFromDate(d) {
   const idx = d instanceof Date ? d.getDay() : new Date().getDay();
   // JS: 0=Sun..6=Sat
@@ -219,6 +309,19 @@ function formatMarketValue(value, currencySymbol) {
   if (n === null) return `${currencySymbol}${String(value ?? 0)}`;
   // keep it simple; avoid locale deps
   return `${currencySymbol}${n}`;
+}
+
+function startOfTodayLocal() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function clampToToday(date) {
+  const today = startOfTodayLocal();
+  const d = date instanceof Date ? date : new Date(date);
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return today;
+  return d < today ? today : d;
 }
 
 /* ======================
@@ -244,6 +347,8 @@ export default function HabitFormModal({
   const isWaterTemplate = useMemo(() => isWaterHabit(habit), [habit]);
   const isOrganizeSpacesTemplate = useMemo(() => isOrganizeSpacesHabit(habit), [habit]);
   const isLanguagePracticeTemplate = useMemo(() => isLanguagePracticeHabit(habit), [habit]);
+  const isSkincareTemplate = useMemo(() => isSkincareHabit(habit), [habit]);
+  const isCreativeHobbyTemplate = useMemo(() => isCreativeHobbyHabit(habit), [habit]);
   const isStudyTemplate = useMemo(
     () => isStudyHabit(habit) && !isLanguagePracticeHabit(habit),
     [habit]
@@ -252,15 +357,38 @@ export default function HabitFormModal({
   const isResearchTemplate = useMemo(() => isResearchHabit(habit), [habit]);
   const isPodcastTemplate = useMemo(() => isPodcastHabit(habit), [habit]);
 
+  const isBannerLockedTemplate = useMemo(
+    () =>
+      isWaterTemplate ||
+      isStudyTemplate ||
+      isFamilyHabit(habit) ||
+      isGymHabit(habit) ||
+      isInboxZeroHabit(habit) ||
+      isMarketListHabit(habit) ||
+      isPlanningDayHabit(habit) ||
+      isSunHabit(habit),
+    [
+      habit,
+      isStudyTemplate,
+      isWaterTemplate,
+    ]
+  );
+
+  // Special: For 'Spend Time with family', remove color selection in modal
+  const isFamilyTimeHabit = useMemo(() => {
+    const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
+    return titleLower.includes('spend time with family') || isFamilyHabit(habit);
+  }, [habit]);
+
   const baseDate = useMemo(() => {
-    if (selectedDate instanceof Date) return selectedDate;
+    if (selectedDate instanceof Date) return clampToToday(selectedDate);
     if (typeof selectedDate === 'string') {
       const [y, m, d] = selectedDate.split('-').map((n) => parseInt(n, 10));
       if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
-        return new Date(y, m - 1, d);
+        return clampToToday(new Date(y, m - 1, d));
       }
     }
-    return new Date();
+    return clampToToday(new Date());
   }, [selectedDate]);
 
   const [startDate, setStartDate] = useState(baseDate);
@@ -286,6 +414,9 @@ export default function HabitFormModal({
   const [courseDropdownOpen, setCourseDropdownOpen] = useState(false);
   const [researchDropdownOpen, setResearchDropdownOpen] = useState(false);
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
+  const [creativeHobbyDropdownOpen, setCreativeHobbyDropdownOpen] = useState(false);
+
+  const pastDateWarnedRef = useRef(false);
 
   const headerBg = useMemo(() => {
     if (!headerColorPreviewEnabled) return isDark ? '#020617' : '#ffffff';
@@ -308,9 +439,29 @@ export default function HabitFormModal({
   }, [headerColorPreviewEnabled, headerFg, isDark]);
 
   useEffect(() => {
+    const today = startOfTodayLocal();
     if (editingActivity && initialSchedule) {
-      setStartDate(initialSchedule.startDate || baseDate);
-      setEndDate(initialSchedule.endDate || initialSchedule.startDate || baseDate);
+      const rawStart = initialSchedule.startDate || baseDate;
+      const nextStart = clampToToday(rawStart);
+
+      if (!pastDateWarnedRef.current) {
+        const rawStartDate = rawStart instanceof Date ? rawStart : new Date(rawStart);
+        if (rawStartDate < today) {
+          pastDateWarnedRef.current = true;
+          Alert.alert(
+            language === 'es' ? 'Fecha en el pasado' : 'Past date',
+            language === 'es'
+              ? 'No puedes agendar hábitos en fechas pasadas. Se ajustó automáticamente a hoy.'
+              : 'You can’t schedule habits in past dates. It was automatically adjusted to today.'
+          );
+        }
+      }
+
+      const rawEnd = initialSchedule.endDate || initialSchedule.startDate || baseDate;
+      const nextEnd = clampToToday(rawEnd);
+
+      setStartDate(nextStart);
+      setEndDate(nextEnd < nextStart ? nextStart : nextEnd);
       setHasEndDate(!!initialSchedule.endDate);
       setFrequency(initialSchedule.frequency || 'once');
       setDaysOfWeek(
@@ -336,8 +487,20 @@ export default function HabitFormModal({
         setEndDate(initialSchedule.startDate || baseDate);
       }
     } else {
-      setStartDate(baseDate);
-      setEndDate(baseDate);
+      const next = clampToToday(baseDate);
+
+      if (!pastDateWarnedRef.current && baseDate < today) {
+        pastDateWarnedRef.current = true;
+        Alert.alert(
+          language === 'es' ? 'Fecha en el pasado' : 'Past date',
+          language === 'es'
+            ? 'No puedes agendar hábitos en fechas pasadas. Se ajustó automáticamente a hoy.'
+            : 'You can’t schedule habits in past dates. It was automatically adjusted to today.'
+        );
+      }
+
+      setStartDate(next);
+      setEndDate(next);
       setHasEndDate(false);
       if (isBirthdayTemplate) {
         // Cumpleaños: sin horario + todo el día + anual por defecto
@@ -537,6 +700,40 @@ export default function HabitFormModal({
   );
 
   const STUDY_DURATION_OPTIONS = useMemo(() => [15, 30, 45, 60, 90, 120], []);
+
+  const CREATIVE_HOBBY_OPTIONS = useMemo(
+    () => [
+      'Ilustración digital',
+      'Escritura de cuentos cortos',
+      'Bordado creativo',
+      'Creación de velas artesanales',
+      'Fotografía estética',
+      'Producción musical básica',
+      'Journaling creativo (diarios visuales)',
+      'Macramé decorativo',
+      'Repostería creativa',
+      'Creación de contenido creativo (videos, reels)',
+      'Otros',
+    ],
+    []
+  );
+
+  const CREATIVE_HOBBY_EMOJI = useMemo(
+    () => ({
+      'Ilustración digital': '🎨',
+      'Escritura de cuentos cortos': '✍️',
+      'Bordado creativo': '🧵',
+      'Creación de velas artesanales': '🕯️',
+      'Fotografía estética': '📸',
+      'Producción musical básica': '🎶',
+      'Journaling creativo (diarios visuales)': '📖',
+      'Macramé decorativo': '🧶',
+      'Repostería creativa': '🍰',
+      'Creación de contenido creativo (videos, reels)': '🎥',
+      'Otros': '✨',
+    }),
+    []
+  );
 
   const LANGUAGE_OPTIONS = useMemo(
     () => [
@@ -910,6 +1107,30 @@ export default function HabitFormModal({
   }
 
   function handleSave() {
+    const today = startOfTodayLocal();
+    const safeStart = startDate instanceof Date ? startDate : new Date(startDate);
+    const safeEnd = endDate instanceof Date ? endDate : new Date(endDate);
+
+    if (safeStart < today) {
+      Alert.alert(
+        language === 'es' ? 'Fecha inválida' : 'Invalid date',
+        language === 'es'
+          ? 'Solo puedes agendar hábitos para hoy o una fecha futura.'
+          : 'You can only schedule habits for today or a future date.'
+      );
+      return;
+    }
+
+    if (hasEndDate && safeEnd < safeStart) {
+      Alert.alert(
+        language === 'es' ? 'Fecha inválida' : 'Invalid date',
+        language === 'es'
+          ? 'La fecha de fin no puede ser anterior a la fecha de inicio.'
+          : 'End date cannot be before start date.'
+      );
+      return;
+    }
+
     if (isSavingsTemplate) {
       const target = parseMoneyLike(formData?.savingsTargetAmount);
       if (target === null || target <= 0) {
@@ -969,6 +1190,9 @@ export default function HabitFormModal({
     const dataToSave = { ...formData };
     if (isBirthdayTemplate) {
       // Birthday card uses a fixed banner background in Calendar.
+      delete dataToSave.color;
+    } else if (isBannerLockedTemplate) {
+      // Banner-backed cards use fixed backgrounds; ignore custom colors.
       delete dataToSave.color;
     } else {
       dataToSave.color = selectedColor;
@@ -1128,7 +1352,11 @@ export default function HabitFormModal({
                 <DateTimePicker
                   value={activePicker === 'start' ? startDate : endDate}
                   mode="date"
-                  minimumDate={activePicker === 'end' ? startDate : undefined}
+                  minimumDate={
+                    activePicker === 'end'
+                      ? (startDate < startOfTodayLocal() ? startOfTodayLocal() : startDate)
+                      : startOfTodayLocal()
+                  }
                   display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
                   locale={
                     Platform.OS === 'ios'
@@ -1161,9 +1389,11 @@ export default function HabitFormModal({
                     }
 
                     if (activePicker === 'start') {
+                      next = clampToToday(next);
                       setStartDate(next);
                       if (next > endDate) setEndDate(next);
                     } else {
+                      next = clampToToday(next);
                       setEndDate(next);
                     }
                     if (Platform.OS === 'android') setActivePicker(null);
@@ -1783,6 +2013,136 @@ export default function HabitFormModal({
             </>
           ) : null}
 
+          {isCreativeHobbyTemplate ? (
+            <View style={styles.section}>
+              {(() => {
+                const selected = String(formData?.creativeHobbyOption ?? '').trim();
+                const selectedOther = String(formData?.creativeHobbyOther ?? '').trim();
+
+                const withEmoji = (label) => {
+                  const clean = String(label ?? '').trim();
+                  if (!clean) return '';
+                  const emoji = CREATIVE_HOBBY_EMOJI[clean];
+                  if (!emoji) return clean;
+                  if (clean.startsWith(emoji)) return clean;
+                  return `${emoji} ${clean}`;
+                };
+
+                const selectedDisplay =
+                  selected === 'Otros' && selectedOther
+                    ? `${withEmoji('Otros')}: ${selectedOther}`
+                    : withEmoji(selected);
+
+                const summary = selected
+                  ? selectedDisplay
+                  : (language === 'es'
+                      ? 'Selecciona una opción'
+                      : language === 'pt'
+                        ? 'Selecione uma opção'
+                        : language === 'fr'
+                          ? 'Sélectionnez une option'
+                          : 'Select an option');
+
+                return (
+                  <View style={{ marginTop: 2 }}>
+                    <Pressable
+                      onPress={() => setCreativeHobbyDropdownOpen((v) => !v)}
+                      style={[
+                        styles.spacesDropdownHeader,
+                        isDark && styles.spacesDropdownHeaderDark,
+                      ]}
+                    >
+                      <View style={styles.spacesDropdownHeaderLeft}>
+                        <Ionicons
+                          name="color-palette-outline"
+                          size={18}
+                          color={isDark ? '#e5e7eb' : '#111827'}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.spacesDropdownTitle, isDark && { color: '#e5e7eb' }]}>
+                            {language === 'es'
+                              ? '¿Qué hobby quieres hacer hoy?'
+                              : language === 'pt'
+                                ? 'Qual hobby criativo você quer fazer hoje?'
+                                : language === 'fr'
+                                  ? 'Quel hobby créatif voulez-vous faire aujourd’hui ?'
+                                  : 'What creative hobby do you want to do today?'}
+                          </Text>
+                          <Text style={[styles.spacesDropdownSubtitle, isDark && { color: '#9ca3af' }]}>
+                            {summary}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Ionicons
+                        name={creativeHobbyDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        color={isDark ? '#e5e7eb' : '#111827'}
+                      />
+                    </Pressable>
+
+                    {creativeHobbyDropdownOpen ? (
+                      <View style={styles.spacesDropdownBody}>
+                        <View style={styles.waterOptionsRow}>
+                          {CREATIVE_HOBBY_OPTIONS.map((opt) => {
+                            const isSelected = String(formData?.creativeHobbyOption ?? '') === String(opt);
+                            return (
+                              <Pressable
+                                key={opt}
+                                onPress={() => {
+                                  updateField('creativeHobbyOption', String(opt));
+                                  if (String(opt) !== 'Otros') updateField('creativeHobbyOther', '');
+                                  setCreativeHobbyDropdownOpen(false);
+                                }}
+                                style={[
+                                  styles.waterOptionPill,
+                                  isDark && styles.waterOptionPillDark,
+                                  isSelected && [
+                                    styles.waterOptionPillSelected,
+                                    { borderColor: selectedColor || '#38BDF8' },
+                                  ],
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.waterOptionText,
+                                    isDark && { color: '#e5e7eb' },
+                                    isSelected && { color: selectedColor || '#38BDF8' },
+                                  ]}
+                                >
+                                  {withEmoji(opt)}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+
+                        {String(formData?.creativeHobbyOption ?? '') === 'Otros' ? (
+                          <View style={{ marginTop: 10 }}>
+                            <TextInput
+                              value={String(formData?.creativeHobbyOther ?? '')}
+                              onChangeText={(v) => updateField('creativeHobbyOther', v)}
+                              placeholder={language === 'es' ? 'Escribe cuál...' : 'Type which one...'}
+                              placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                              style={[
+                                styles.input,
+                                isDark && {
+                                  backgroundColor: '#020617',
+                                  borderColor: '#1e293b',
+                                  color: '#e5e7eb',
+                                },
+                              ]}
+                            />
+                          </View>
+                        ) : null}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })()}
+            </View>
+          ) : null}
+
           {isResearchTemplate ? (
             <>
               <View style={styles.section}>
@@ -2247,40 +2607,34 @@ export default function HabitFormModal({
             </View>
           ) : null}
 
-          {/* FRECUENCIA */}
-          {isBirthdayTemplate ? (
+          {/* COLOR */}
+          {!isBirthdayTemplate && !isBannerLockedTemplate && !isFamilyTimeHabit ? (
             <View style={styles.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-                <Ionicons
-                  name="information-circle-outline"
-                  size={18}
-                  color={isDark ? '#9ca3af' : '#6b7280'}
-                  style={{ marginTop: 2 }}
-                />
-                <Text style={[styles.sublabel, { marginTop: 0 }, isDark && { color: '#9ca3af' }]}>
-                  {language === 'es'
-                    ? 'Al ser un cumpleaños, se agendará automáticamente de manera anual.'
-                    : language === 'pt'
-                      ? 'Por ser um aniversário, será agendado automaticamente de forma anual.'
-                      : language === 'fr'
-                        ? "Comme il s'agit d'un anniversaire, il sera programmé automatiquement chaque année."
-                        : 'Because this is a birthday, it will be scheduled automatically every year.'}
-                </Text>
+              <Text style={[styles.label, styles.colorLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.colorLabel') || 'Color'}</Text>
+              <View style={{ marginTop: 8 }}>
+                <View style={styles.colorGrid}>
+                  {COLOR_OPTIONS.map((c) => (
+                    <Pressable
+                      key={c}
+                      onPress={() => {
+                        setSelectedColor(c);
+                        setHeaderColorPreviewEnabled(true);
+                      }}
+                      style={[
+                        styles.colorSwatch,
+                        selectedColor === c && styles.colorSwatchSelected,
+                        { backgroundColor: c },
+                      ]}
+                    >
+                      {selectedColor === c && (
+                        <Ionicons name="checkmark" size={14} color={getContrastColorLocal(c)} />
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
               </View>
             </View>
-          ) : (
-            <View style={[styles.section, styles.frequencySection]}>
-              {isSavingsTemplate ? (
-                <Text style={[styles.label, styles.frequencyLabel, isDark && { color: '#e5e7eb' }]}>
-                  {(t('habitForm.savingsFrequencyQuestionPrefix') || '¿Cada cuánto estarás ahorrando para cumplir tu meta de')}{' '}
-                  {(formData?.savingsTargetAmount ? `${String(formData.savingsTargetAmount).trim()} $` : (t('habitForm.savingsFrequencyQuestionFallback') || 'XX $'))}
-                  ?
-                </Text>
-              ) : (
-                <Text style={[styles.label, styles.frequencyLabel, isDark && { color: '#e5e7eb' }]}>
-                  {t('habitForm.frequencyLabel')}
-                </Text>
-              )}
+          ) : null}
 
               <View style={[styles.freqGrid, styles.freqGridCentered]}>
                 {(isSavingsTemplate ? SAVINGS_FREQUENCIES : FREQUENCIES).map((f) => (
@@ -2331,7 +2685,6 @@ export default function HabitFormModal({
                   </View>
                 </>
               )}
-            </View>
           )}
 
           {/* CAMPOS PERSONALIZADOS */}
@@ -2350,6 +2703,23 @@ export default function HabitFormModal({
                 ) {
                   return false;
                 }
+
+                // Remove the skincare prompt section (e.g. "¿Con qué cuidarás tu piel hoy?")
+                // by hiding the template's free-text question field.
+                if (
+                  isSkincareTemplate &&
+                  String(field?.type || '').toLowerCase() === 'text'
+                ) {
+                  return false;
+                }
+
+                // Creative hobby: replace the free-text question with a dropdown.
+                if (
+                  isCreativeHobbyTemplate &&
+                  String(field?.type || '').toLowerCase() === 'text'
+                ) {
+                  return false;
+                }
                 return true;
               })
               .map((field) => (
@@ -2363,7 +2733,7 @@ export default function HabitFormModal({
               ))}
 
           {/* COLOR */}
-          {!isBirthdayTemplate ? (
+          {!isBirthdayTemplate && !isBannerLockedTemplate ? (
             <View style={styles.section}>
               <Text style={[styles.label, styles.colorLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.colorLabel') || 'Color'}</Text>
               <View style={{ marginTop: 8 }}>

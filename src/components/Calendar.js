@@ -170,67 +170,76 @@ function looksLikeLanguagePracticeTitle(text) {
   );
 }
 
-function getWaterMotivation(progress, language) {
-  const p = Number.isFinite(progress) ? progress : 0;
-  const lang = language || 'es';
-
-  if (p >= 1) {
-    return lang === 'es'
-      ? '¡Meta de agua alcanzada! Buen trabajo.'
-      : 'Water goal reached! Great job.';
-  }
-  if (p >= 0.75) {
-    return lang === 'es'
-      ? '¡Ya casi! Un último empujón.'
-      : 'Almost there! One last push.';
-  }
-  if (p >= 0.5) {
-    return lang === 'es'
-      ? 'Vas muy bien. Sigue hidratándote.'
-      : 'Doing great. Keep hydrating.';
-  }
-  if (p > 0) {
-    return lang === 'es'
-      ? 'Buen inicio. Suma un poco más.'
-      : 'Good start. Add a bit more.';
-  }
-  return lang === 'es'
-    ? 'Empieza con un vaso de agua.'
-    : 'Start with a glass of water.';
+function looksLikeFamilyTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('pasar tiempo en familia') ||
+    (t.includes('tiempo') && t.includes('familia')) ||
+    t.includes('family time') ||
+    (t.includes('time') && t.includes('family'))
+  );
 }
 
-function getSavingsMotivation(progress, language) {
-  const p = Number.isFinite(progress) ? progress : 0;
-  const lang = language || 'es';
+function looksLikeGymTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return t.includes('ir al gimnasio') || t.includes('gimnasio') || t.includes('gym');
+}
 
-  if (p >= 1) {
-    return lang === 'es'
-      ? '¡Meta cumplida! Increíble trabajo, mantén el hábito.'
-      : 'Goal achieved! Amazing work—keep the habit going.';
-  }
-  if (p >= 0.75) {
-    return lang === 'es'
-      ? '¡Ya casi! Estás súper cerca de tu meta.'
-      : "So close! You're very near your goal.";
-  }
-  if (p >= 0.5) {
-    return lang === 'es'
-      ? 'Vas por la mitad. Consistencia = resultados.'
-      : 'Halfway there. Consistency = results.';
-  }
-  if (p >= 0.25) {
-    return lang === 'es'
-      ? 'Buen inicio. Sigue sumando poquito a poquito.'
-      : 'Great start. Keep adding a little at a time.';
-  }
-  if (p > 0) {
-    return lang === 'es'
-      ? 'Cada peso cuenta. Vas en el camino correcto.'
-      : 'Every bit counts. You’re on the right track.';
-  }
-  return lang === 'es'
-    ? 'Empieza hoy: agrega tu primer ahorro y arranca con fuerza.'
-    : 'Start today: add your first savings and build momentum.';
+function looksLikeInboxZeroTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return t.includes('inboxzero') || t.includes('inbox zero');
+}
+
+function looksLikeMarketListTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('lista de mercado') ||
+    t.includes('lista del mercado') ||
+    t.includes('lista de compras') ||
+    t.includes('shopping list') ||
+    t.includes('mercado')
+  );
+}
+
+function looksLikePlanningDayTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('planer el día') ||
+    t.includes('planer el dia') ||
+    t.includes('planear el día') ||
+    t.includes('planear el dia') ||
+    t.includes('planificar el día') ||
+    t.includes('planning day')
+  );
+}
+
+function looksLikeSunTitle(text) {
+  const t = String(text || '').toLowerCase();
+  return (
+    t.includes('tomar el sol') ||
+    (t.includes('tomar') && t.includes('sol')) ||
+    t.includes('sunbath') ||
+    t.includes('sun bath')
+  );
+}
+
+function getWaterMotivation(progress, t) {
+  const p = Number.isFinite(progress) ? progress : 0;
+  if (p >= 1) return t('calendar.waterGoalReached');
+  if (p >= 0.75) return t('calendar.waterAlmostThere');
+  if (p >= 0.5) return t('calendar.waterDoingGreat');
+  if (p > 0) return t('calendar.waterGoodStart');
+  return t('calendar.waterStartGlass');
+}
+
+function getSavingsMotivation(progress, t) {
+  const p = Number.isFinite(progress) ? progress : 0;
+  if (p >= 1) return t('calendar.savingsGoalReached');
+  if (p >= 0.75) return t('calendar.savingsAlmostThere');
+  if (p >= 0.5) return t('calendar.savingsHalfway');
+  if (p >= 0.25) return t('calendar.savingsGoodStart');
+  if (p > 0) return t('calendar.savingsEveryBitCounts');
+  return t('calendar.savingsStartToday');
 }
 
 const today = getTodayLocal();
@@ -1190,6 +1199,21 @@ export default function Calendar() {
   ========================= */
 
   function handleSaveHabit(payload) {
+    // Guardrail: do not allow scheduling in the past (yesterday or earlier)
+    try {
+      const todayKey = getTodayLocal();
+      const startKey = payload?.schedule?.startDate;
+      if (typeof startKey === 'string' && startKey < todayKey) {
+        Alert.alert(
+          t('calendar.invalidDateTitle'),
+          t('calendar.invalidDateMessage')
+        );
+        return;
+      }
+    } catch {
+      // no-op
+    }
+
     // Si venimos desde una edición, actualizamos la actividad por ID (más robusto)
     if (payload?.editingActivityId) {
       const updated = { ...activities };
@@ -1221,104 +1245,115 @@ export default function Calendar() {
       }
 
       if (!targetActivity || !targetDateKey) {
-        Alert.alert('Error', 'No se pudo encontrar la actividad a editar.');
+        Alert.alert(t('calendar.editErrorTitle'), t('calendar.editErrorMessage'));
         return;
       }
 
       // Si es una actividad única, solo editamos esta instancia
       if (!schedule || schedule.frequency === 'once') {
-        const dateKey = targetDateKey;
+        const previousDateKey = targetDateKey;
+        const nextDateKey = schedule?.startDate || targetDateKey;
 
-          if (updated[dateKey]) {
-          if (payload?.replaceTimeConflicts && schedule?.time) {
-            updated[dateKey] = removeTimeConflictsFromDay(
-              updated[dateKey],
-              {
-                time: schedule.time,
-                durationMinutes: schedule.durationMinutes,
-              },
-              targetId
-            );
-          }
+        const candidate = schedule?.time
+          ? { time: schedule.time, durationMinutes: schedule.durationMinutes }
+          : null;
 
-          if (schedule?.time && !payload?.allowTimeConflict) {
-            const conflicts = getTimeConflictsForDate(
-              updated[dateKey],
-              {
-                time: schedule.time,
-                durationMinutes: schedule.durationMinutes,
-              },
-              targetId
-            );
+        if (payload?.replaceTimeConflicts && candidate) {
+          updated[nextDateKey] = removeTimeConflictsFromDay(
+            updated[nextDateKey] || [],
+            candidate,
+            targetId
+          );
+        }
 
-            if (conflicts.length) {
-              const first = conflicts[0];
-              const existingLabel =
-                t('calendar.timeConflictExistingActivity') ||
-                (language === 'es' ? 'Actividad en ese horario:' : 'Existing activity:');
-              Alert.alert(
-                t('calendar.timeConflictTitle'),
-                `${t('calendar.timeConflictMessage')}\n\n${existingLabel} ${first?.title || ''}`,
-                [
-                  {
-                    text:
-                      t('calendar.timeConflictReplace') ||
-                      (language === 'es' ? 'Reemplazar' : 'Replace'),
-                    onPress: () =>
-                      handleSaveHabit({
-                        ...payload,
-                        replaceTimeConflicts: true,
-                      }),
-                  },
-                  {
-                    text:
-                      t('calendar.timeConflictKeepBoth') ||
-                      (language === 'es' ? 'Mantener ambas' : 'Schedule anyway'),
-                    onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
-                  },
-                  { text: t('calendar.cancel') || 'Cancelar', style: 'cancel' },
-                ]
-              );
-              return;
-            }
-          }
-
-          updated[dateKey] = updated[dateKey].map((act) => {
-            if (act.id !== targetId) return act;
-            return {
-              ...act,
-              habit_id: habit.id,
-              title: habit.title,
-              icon: habit.icon,
-              allDay:
-                typeof schedule?.allDay === 'boolean'
-                  ? schedule.allDay
-                  : act.allDay ?? false,
-              time: schedule?.time ?? act.time ?? null,
-              durationMinutes:
-                typeof schedule?.durationMinutes === 'number'
-                  ? schedule.durationMinutes
-                  : act.durationMinutes ?? null,
-              endTime: schedule?.endTime ?? act.endTime ?? null,
-              data: data || {},
-            };
-          });
-
-          saveActivities(updated);
-
-          const updatedActivity = (updated[dateKey] || []).find(
-            (act) => act.id === targetId
+        if (candidate && !payload?.allowTimeConflict) {
+          const conflicts = getTimeConflictsForDate(
+            updated[nextDateKey] || [],
+            candidate,
+            targetId
           );
 
-          if (updatedActivity && updatedActivity.time) {
-            scheduleReminderForActivity({
-              date: dateKey,
-              time: updatedActivity.time,
-              title: t('calendar.reminderTitle'),
-              body: `${t('calendar.reminderBodyPrefix')} ${updatedActivity.title}`,
-              notificationsEnabled,
-            });
+          if (conflicts.length) {
+            const first = conflicts[0];
+            const existingLabel =
+              t('calendar.timeConflictExistingActivity') ||
+              (language === 'es' ? 'Actividad en ese horario:' : 'Existing activity:');
+            Alert.alert(
+              t('calendar.timeConflictTitle'),
+              `${t('calendar.timeConflictMessage')}\n\n${existingLabel} ${first?.title || ''}`,
+              [
+                {
+                  text:
+                    t('calendar.timeConflictReplace') ||
+                    (language === 'es' ? 'Reemplazar' : 'Replace'),
+                  onPress: () =>
+                    handleSaveHabit({
+                      ...payload,
+                      replaceTimeConflicts: true,
+                    }),
+                },
+                {
+                  text:
+                    t('calendar.timeConflictKeepBoth') ||
+                    (language === 'es' ? 'Mantener ambas' : 'Schedule anyway'),
+                  onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
+                },
+                { text: t('calendar.cancel') || 'Cancelar', style: 'cancel' },
+              ]
+            );
+            return;
           }
+        }
+
+        const nextActivity = {
+          ...targetActivity,
+          habit_id: habit.id,
+          title: habit.title,
+          icon: habit.icon,
+          date: nextDateKey,
+          allDay:
+            typeof schedule?.allDay === 'boolean'
+              ? schedule.allDay
+              : targetActivity.allDay ?? false,
+          time: schedule?.time ?? targetActivity.time ?? null,
+          durationMinutes:
+            typeof schedule?.durationMinutes === 'number'
+              ? schedule.durationMinutes
+              : targetActivity.durationMinutes ?? null,
+          endTime: schedule?.endTime ?? targetActivity.endTime ?? null,
+          data: data || {},
+        };
+
+        if (nextDateKey !== previousDateKey) {
+          // Remove from previous day
+          if (updated[previousDateKey]) {
+            updated[previousDateKey] = (updated[previousDateKey] || []).filter(
+              (act) => act.id !== targetId
+            );
+            if (updated[previousDateKey].length === 0) delete updated[previousDateKey];
+          }
+
+          // Add to new day
+          updated[nextDateKey] = [...(updated[nextDateKey] || []), nextActivity];
+        } else {
+          // Update in place
+          if (!updated[previousDateKey]) updated[previousDateKey] = [];
+          updated[previousDateKey] = (updated[previousDateKey] || []).map((act) => {
+            if (act.id !== targetId) return act;
+            return nextActivity;
+          });
+        }
+
+        saveActivities(updated);
+
+        if (nextActivity && nextActivity.time) {
+          scheduleReminderForActivity({
+            date: nextDateKey,
+            time: nextActivity.time,
+            title: t('calendar.reminderTitle'),
+            body: `${t('calendar.reminderBodyPrefix')} ${nextActivity.title}`,
+            notificationsEnabled,
+          });
         }
 
         setEditingActivity(null);
@@ -2869,6 +2904,41 @@ export default function Calendar() {
                   looksLikeLanguagePracticeTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
                   looksLikeLanguagePracticeTitle(displayTitle);
 
+                const isFamilyHabit =
+                  habitTypeForCard === 'family' ||
+                  looksLikeFamilyTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeFamilyTitle(displayTitle);
+
+                const isGymHabit =
+                  habitTypeForCard === 'gym' ||
+                  looksLikeGymTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeGymTitle(displayTitle);
+
+                const isInboxZeroHabit =
+                  habitTypeForCard === 'inboxzero' ||
+                  habitTypeForCard === 'inbox_zero' ||
+                  looksLikeInboxZeroTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeInboxZeroTitle(displayTitle);
+
+                const isMarketListHabit =
+                  habitTypeForCard === 'market' ||
+                  habitTypeForCard === 'shopping' ||
+                  hasMarket ||
+                  looksLikeMarketListTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeMarketListTitle(displayTitle);
+
+                const isPlanningDayHabit =
+                  habitTypeForCard === 'planningday' ||
+                  habitTypeForCard === 'planning_day' ||
+                  looksLikePlanningDayTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikePlanningDayTitle(displayTitle);
+
+                const isSunHabit =
+                  habitTypeForCard === 'sun' ||
+                  habitTypeForCard === 'sunbath' ||
+                  looksLikeSunTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeSunTitle(displayTitle);
+
                 const isBirthdayHabit =
                   habitTypeForCard === 'birthday' ||
                   (() => {
@@ -3118,9 +3188,33 @@ export default function Calendar() {
                   }
                 }
 
+                const bannerSource = !isBirthdayHabit
+                  ? (
+                      isWaterHabit
+                        ? require('../../assets/Banners/agua.png')
+                        : isStudyHabit
+                          ? require('../../assets/Banners/estudiar.png')
+                          : isFamilyHabit
+                            ? require('../../assets/Banners/family.png')
+                            : isGymHabit
+                              ? require('../../assets/Banners/Gimnasio.png')
+                              : isInboxZeroHabit
+                                ? require('../../assets/Banners/inboxzero.png')
+                                : isMarketListHabit
+                                  ? require('../../assets/Banners/mercado.png')
+                                  : isPlanningDayHabit
+                                    ? require('../../assets/Banners/plannigDay.png')
+                                    : isSunHabit
+                                      ? require('../../assets/Banners/tomar-sol.png')
+                                      : null
+                    )
+                  : null;
+
+                const hasSpecialBanner = !!bannerSource;
+
                 const isCompleted = !!activityWithDate.completed;
                 const cardColor = activityWithDate?.data?.color || accent;
-                const cardTextColor = isBirthdayHabit ? '#ffffff' : getContrastColor(cardColor);
+                const cardTextColor = (isBirthdayHabit || hasSpecialBanner) ? '#ffffff' : getContrastColor(cardColor);
                 const titleTextColor = isCompleted
                   ? undefined
                   : cardTextColor;
@@ -3161,8 +3255,9 @@ export default function Calendar() {
                       style={[
                         styles.card,
                         isBirthdayHabit && styles.birthdayCard,
+                        hasSpecialBanner && styles.specialBannerCard,
                         !isBirthdayHabit && isCompleted && styles.cardCompleted,
-                        !isCompleted && !isBirthdayHabit && { backgroundColor: cardColor, borderColor: cardColor },
+                        !isCompleted && !isBirthdayHabit && !hasSpecialBanner && { backgroundColor: cardColor, borderColor: cardColor },
                       ]}
                       onPress={() => {
                         if (isSavingsHabit && hasSavingsGoal) {
@@ -3214,6 +3309,21 @@ export default function Calendar() {
                           <View pointerEvents="none" style={styles.birthdayOverlay} />
                           {isCompleted ? (
                             <View pointerEvents="none" style={styles.birthdayCompletedOverlay} />
+                          ) : null}
+                        </>
+                      ) : null}
+
+                      {!isBirthdayHabit && bannerSource ? (
+                        <>
+                          <ImageBackground
+                            source={bannerSource}
+                            style={styles.specialBanner}
+                            imageStyle={styles.specialBannerImage}
+                            resizeMode="cover"
+                          />
+                          <View pointerEvents="none" style={styles.specialOverlay} />
+                          {isCompleted ? (
+                            <View pointerEvents="none" style={styles.specialCompletedOverlay} />
                           ) : null}
                         </>
                       ) : null}
@@ -3916,12 +4026,12 @@ export default function Calendar() {
                           color: isDark ? '#e5e7eb' : '#111827',
                         }}
                       >
-                        {language === 'es' ? 'Agregar ahorro' : 'Add savings'}
+                        {t('calendar.addSavings')}
                       </Text>
                       <TextInput
                         value={savingsAddAmountText}
                         onChangeText={setSavingsAddAmountText}
-                        placeholder={language === 'es' ? 'Monto a agregar' : 'Amount to add'}
+                        placeholder={t('calendar.addSavingsPlaceholder')}
                         placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
                         keyboardType="numeric"
                         style={{
@@ -3950,7 +4060,7 @@ export default function Calendar() {
                           }}
                         >
                           <Text style={{ fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
-                            {t('cancel') || (language === 'es' ? 'Cancelar' : 'Cancel')}
+                            {t('cancel')}
                           </Text>
                         </Pressable>
 
@@ -3972,7 +4082,7 @@ export default function Calendar() {
                           }}
                         >
                           <Text style={{ fontWeight: '800', color: accent }}>
-                              {language === 'es' ? 'Ahorrar' : (t('save') || 'Save')}
+                              {t('calendar.saveSavings')}
                           </Text>
                         </Pressable>
                       </View>
@@ -3982,17 +4092,15 @@ export default function Calendar() {
                           const act = savingsModalData?.activity;
                           if (!act?.habit_id || !act?.date) return;
                           Alert.alert(
-                            language === 'es' ? 'Finalizar hábito' : 'End habit',
-                            language === 'es'
-                              ? 'Esto eliminará las tarjetas futuras de este hábito. ¿Continuar?'
-                              : 'This will remove future cards for this habit. Continue?',
+                            t('calendar.endHabitTitle'),
+                            t('calendar.endHabitMessage'),
                             [
                               {
-                                text: language === 'es' ? 'Cancelar' : 'Cancel',
+                                text: t('cancel'),
                                 style: 'cancel',
                               },
                               {
-                                text: language === 'es' ? 'Finalizar' : 'End',
+                                text: t('calendar.endHabitConfirm'),
                                 style: 'destructive',
                                 onPress: () => {
                                   finalizeSavingsHabit(act.habit_id, act.date);
@@ -4013,7 +4121,7 @@ export default function Calendar() {
                         }}
                       >
                         <Text style={{ fontWeight: '800', color: isDark ? '#e5e7eb' : '#111827' }}>
-                          {language === 'es' ? 'Finalizar hábito' : 'End habit'}
+                          {t('calendar.endHabitConfirm')}
                         </Text>
                       </Pressable>
 
@@ -4083,7 +4191,7 @@ export default function Calendar() {
                       contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }}
                     >
                       <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
-                        {language === 'es' ? 'Progreso' : 'Progress'}
+                        {t('calendar.progressLabel')}
                       </Text>
                       <Text style={{ marginTop: 6, fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280' }}>
                         {`${Math.round(progress * 100)}% · ${consumed} / ${target} ml`}
@@ -4116,12 +4224,12 @@ export default function Calendar() {
                           color: isDark ? '#e5e7eb' : '#111827',
                         }}
                       >
-                        {language === 'es' ? 'Agregar agua' : 'Add water'}
+                        {t('calendar.addWater')}
                       </Text>
                       <TextInput
                         value={waterAddMlText}
                         onChangeText={setWaterAddMlText}
-                        placeholder={language === 'es' ? 'ML a agregar' : 'ml to add'}
+                        placeholder={t('calendar.addWaterPlaceholder')}
                         placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
                         keyboardType="numeric"
                         style={{
@@ -4150,7 +4258,7 @@ export default function Calendar() {
                           }}
                         >
                           <Text style={{ fontWeight: '700', color: isDark ? '#e5e7eb' : '#111827' }}>
-                            {t('cancel') || (language === 'es' ? 'Cancelar' : 'Cancel')}
+                            {t('cancel')}
                           </Text>
                         </Pressable>
 
@@ -4172,7 +4280,7 @@ export default function Calendar() {
                           }}
                         >
                           <Text style={{ fontWeight: '800', color: accent }}>
-                            {language === 'es' ? 'Agregar' : (t('save') || 'Add')}
+                            {t('calendar.saveWater')}
                           </Text>
                         </Pressable>
                       </View>
@@ -5110,6 +5218,10 @@ const styles = StyleSheet.create({
     borderColor: '#ffffff33',
     backgroundColor: '#0b1120',
   },
+  specialBannerCard: {
+    backgroundColor: '#0b1120',
+    borderColor: '#1e293b',
+  },
   birthdayBanner: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -5122,6 +5234,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   birthdayCompletedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    backgroundColor: 'rgba(20,83,45,0.28)',
+  },
+  specialBanner: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  specialBannerImage: {
+    borderRadius: 18,
+  },
+  specialOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.38)',
+  },
+  specialCompletedOverlay: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 18,
     backgroundColor: 'rgba(20,83,45,0.28)',
