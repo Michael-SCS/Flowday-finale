@@ -2957,9 +2957,9 @@ export default function Calendar() {
                 const waterProgress = waterTargetMl > 0
                   ? Math.max(0, Math.min(1, waterConsumedMl / waterTargetMl))
                   : 0;
-                const waterMotivation = isWaterHabit ? getWaterMotivation(waterProgress, language) : null;
+                const waterMotivation = isWaterHabit ? getWaterMotivation(waterProgress, t) : null;
                 const savingsMotivation = hasSavingsGoal
-                  ? getSavingsMotivation(savingsProgress, language)
+                  ? getSavingsMotivation(savingsProgress, t)
                   : null;
                 const currencySymbol = t('habitForm.marketPricePlaceholder') || '$';
 
@@ -3975,7 +3975,7 @@ export default function Calendar() {
                     : (parseMoneyLike(act?.data?.savingsSavedAmount) || 0);
                   const hasGoal = Number.isFinite(target) && target > 0;
                   const progress = hasGoal ? Math.max(0, Math.min(1, saved / target)) : 0;
-                  const motivation = hasGoal ? getSavingsMotivation(progress, language) : null;
+                  const motivation = hasGoal ? getSavingsMotivation(progress, t) : null;
 
                   return (
                     <ScrollView

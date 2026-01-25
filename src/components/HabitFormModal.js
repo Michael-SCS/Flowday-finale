@@ -48,6 +48,7 @@ const SAVINGS_FREQUENCIES = [
   { key: 'monthly', icon: 'calendar-outline' },
 ];
 
+// Opciones de color para los hábitos
 const COLOR_OPTIONS = [
   '#A8D8F0', // blue
   '#F5B3C1', // pink
@@ -58,48 +59,6 @@ const COLOR_OPTIONS = [
   '#FFDCB3', // orange
   '#F5B3A3', // red
 ];
-
-function getContrastColorLocal(hex) {
-  try {
-    if (!hex || typeof hex !== 'string') return '#ffffff';
-    let c = hex.replace('#', '');
-    if (c.length === 3) c = c.split('').map((ch) => ch + ch).join('');
-    const r = parseInt(c.substr(0, 2), 16);
-    const g = parseInt(c.substr(2, 2), 16);
-    const b = parseInt(c.substr(4, 2), 16);
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    // Prefer a darker check for better visibility in modals; lower the threshold
-    return luminance > 0.35 ? '#111827' : '#ffffff';
-  } catch {
-    return '#ffffff';
-  }
-}
-
-function normalizeMarketProductName(name) {
-  return String(name ?? '')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
-}
-
-function parseMoneyLike(value) {
-  const n = parseFloat(String(value ?? '').replace(',', '.'));
-  return Number.isFinite(n) ? n : null;
-}
-
-function normalizeTemplateType(type) {
-  return String(type || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, '');
-}
-
-function isBirthdayHabit(habit) {
-  const type = normalizeTemplateType(habit?.type);
-  if (type === 'birthday') return true;
-  const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
-  return titleLower.includes('cumple') || titleLower.includes('birthday') || titleLower.includes('anniversaire');
-}
 
 function isSavingsHabit(habit) {
   const titleLower = String(habit?.title || habit?.name || '').toLowerCase();
@@ -322,6 +281,38 @@ function clampToToday(date) {
   const d = date instanceof Date ? date : new Date(date);
   if (!(d instanceof Date) || Number.isNaN(d.getTime())) return today;
   return d < today ? today : d;
+}
+
+// Utilidad para detectar si el hábito es de cumpleaños
+function isBirthdayHabit(habit) {
+  const type = (habit?.type || '').toString().toLowerCase();
+  if (type === 'birthday') return true;
+  const title = (habit?.title || habit?.name || '').toString().toLowerCase();
+  return title.includes('cumple') || title.includes('birthday') || title.includes('anniversaire');
+}
+
+// Utilidad para normalizar el tipo de plantilla
+function normalizeTemplateType(type) {
+  return String(type || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+|_|-/g, '');
+}
+
+// Utilidad para obtener color de contraste para un fondo dado
+function getContrastColorLocal(hex) {
+  try {
+    if (!hex || typeof hex !== 'string') return '#ffffff';
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map((ch) => ch + ch).join('');
+    const r = parseInt(c.substr(0, 2), 16);
+    const g = parseInt(c.substr(2, 2), 16);
+    const b = parseInt(c.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.35 ? '#111827' : '#ffffff';
+  } catch {
+    return '#ffffff';
+  }
 }
 
 /* ======================
@@ -874,13 +865,12 @@ export default function HabitFormModal({
       case 'text':
       case 'number':
       {
-        const placeholder =
-          isBirthdayTemplate &&
-          birthdayTextField &&
-          field.key === birthdayTextField.key
-            ? (t('specialHabits.birthday.placeholder') || 'Nombre de la persona')
-            : field.label;
-
+        let placeholder = isBirthdayTemplate && birthdayTextField && field.key === birthdayTextField.key
+          ? (t('specialHabits.birthday.placeholder') || 'Nombre de la persona')
+          : field.label;
+        if (typeof placeholder !== 'string') placeholder = String(placeholder);
+        // Si la traducción devuelve un objeto, forzar a string
+        if (typeof t(field.label) !== 'string') placeholder = String(t(field.label));
         return (
           <TextInput
             style={[styles.input, isDark && styles.inputDark]}
@@ -897,65 +887,66 @@ export default function HabitFormModal({
         const items = value || [];
         return (
           <>
-            {items.length > 0 && (
-              <Text style={[styles.sectionLabel, isDark && { color: '#e5e7eb', marginBottom: 8 }]}>
-                {t('habitForm.marketSectionTitle') || 'Productos'}
-              </Text>
-            )}
+            {items.map((item, i) => {
+              let productPlaceholder = t('habitForm.marketProductPlaceholder');
+              if (typeof productPlaceholder !== 'string') productPlaceholder = String(productPlaceholder);
+              let qtyPlaceholder = t('habitForm.marketQtyPlaceholder');
+              if (typeof qtyPlaceholder !== 'string') qtyPlaceholder = String(qtyPlaceholder);
+              let pricePlaceholder = t('habitForm.marketPricePlaceholder');
+              if (typeof pricePlaceholder !== 'string') pricePlaceholder = String(pricePlaceholder);
+              return (
+                <View key={i} style={[styles.marketCard, isDark && styles.marketCardDark]}>
+                  <View style={styles.marketCardHeader}>
+                    <Pressable onPress={() => {
+                      const copy = items.filter((_, idx) => idx !== i);
+                      updateField(field.key, copy);
+                    }}>
+                      <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    </Pressable>
+                  </View>
 
-            {items.map((item, i) => (
-              <View key={i} style={[styles.marketCard, isDark && styles.marketCardDark]}>
-                <View style={styles.marketCardHeader}>
-                  <Text style={[styles.marketCardIndex, isDark && { color: '#cbd5e1' }]}>{i + 1}</Text>
-                  <Pressable onPress={() => {
-                    const copy = items.filter((_, idx) => idx !== i);
-                    updateField(field.key, copy);
-                  }}>
-                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                  </Pressable>
-                </View>
-
-                <TextInput
-                  style={[styles.input, isDark && styles.inputDark, { marginBottom: 8 }]}
-                  value={item.name}
-                  onChangeText={(v) => {
-                    const copy = [...items];
-                    copy[i].name = v;
-                    updateField(field.key, copy);
-                  }}
-                  placeholder={t('habitForm.marketProductPlaceholder')}
-                  placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
-                />
-
-                <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TextInput
-                    style={[styles.input, isDark && styles.inputDark, { flex: 1 }]}
-                    keyboardType="numeric"
-                    value={String(item.qty || '')}
+                    style={[styles.input, isDark && styles.inputDark, { marginBottom: 8 }]}
+                    value={item.name}
                     onChangeText={(v) => {
                       const copy = [...items];
-                      copy[i].qty = v;
+                      copy[i].name = v;
                       updateField(field.key, copy);
                     }}
-                    placeholder={t('habitForm.marketQtyPlaceholder')}
+                    placeholder={productPlaceholder}
                     placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
                   />
 
-                  <TextInput
-                    style={[styles.input, isDark && styles.inputDark, { width: 120 }]}
-                    keyboardType="numeric"
-                    value={String(item.price || '')}
-                    onChangeText={(v) => {
-                      const copy = [...items];
-                      copy[i].price = v;
-                      updateField(field.key, copy);
-                    }}
-                    placeholder={t('habitForm.marketPricePlaceholder')}
-                    placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
-                  />
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TextInput
+                      style={[styles.input, isDark && styles.inputDark, { flex: 1 }]}
+                      keyboardType="numeric"
+                      value={String(item.qty || '')}
+                      onChangeText={(v) => {
+                        const copy = [...items];
+                        copy[i].qty = v;
+                        updateField(field.key, copy);
+                      }}
+                      placeholder={qtyPlaceholder}
+                      placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                    />
+
+                    <TextInput
+                      style={[styles.input, isDark && styles.inputDark, { width: 120 }]}
+                      keyboardType="numeric"
+                      value={String(item.price || '')}
+                      onChangeText={(v) => {
+                        const copy = [...items];
+                        copy[i].price = v;
+                        updateField(field.key, copy);
+                      }}
+                      placeholder={pricePlaceholder}
+                      placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                    />
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
 
             <Pressable
               style={[styles.addBtn, { marginTop: 10 }]}
@@ -965,9 +956,6 @@ export default function HabitFormModal({
               }}
             >
               <Ionicons name="add-circle" size={20} color="#38BDF8" />
-              <Text style={styles.addTxt}>
-                {t('habitForm.marketAddButton')}
-              </Text>
             </Pressable>
 
             <MarketAddModal
@@ -1415,10 +1403,10 @@ export default function HabitFormModal({
           {isWaterTemplate ? (
             <View style={styles.section}>
               <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
-                {t('habitForm.waterTargetLabel') || '¿Cuánta agua tomarás al día? (ml)'}
+                {t('habitForm.waterTargetLabel', { lng: 'es' }) || '¿Cuánta agua tomarás al día? (ml)'}
               </Text>
               <Text style={[styles.sublabel, isDark && { color: '#9ca3af' }]}>
-                {t('habitForm.waterTargetInfo') || 'Una persona adulta necesita entre 2 y 3 litros (2000-3000 ml) de agua al día'}
+                {t('habitForm.waterTargetInfo', { lng: 'es' }) || 'Una persona adulta necesita entre 2 y 3 litros (2000-3000 ml) de agua al día'}
               </Text>
 
               {(() => {
@@ -2003,6 +1991,7 @@ export default function HabitFormModal({
                             isSelected && { color: selectedColor || '#38BDF8' },
                           ]}
                         >
+
                           {mins} min
                         </Text>
                       </Pressable>
@@ -2607,36 +2596,7 @@ export default function HabitFormModal({
             </View>
           ) : null}
 
-          {/* COLOR */}
-          {!isBirthdayTemplate && !isBannerLockedTemplate && !isFamilyTimeHabit ? (
-            <View style={styles.section}>
-              <Text style={[styles.label, styles.colorLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.colorLabel') || 'Color'}</Text>
-              <View style={{ marginTop: 8 }}>
-                <View style={styles.colorGrid}>
-                  {COLOR_OPTIONS.map((c) => (
-                    <Pressable
-                      key={c}
-                      onPress={() => {
-                        setSelectedColor(c);
-                        setHeaderColorPreviewEnabled(true);
-                      }}
-                      style={[
-                        styles.colorSwatch,
-                        selectedColor === c && styles.colorSwatchSelected,
-                        { backgroundColor: c },
-                      ]}
-                    >
-                      {selectedColor === c && (
-                        <Ionicons name="checkmark" size={14} color={getContrastColorLocal(c)} />
-                      )}
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            </View>
-          ) : null}
-
-              <View style={[styles.freqGrid, styles.freqGridCentered]}>
+          <View style={[styles.freqGrid, styles.freqGridCentered]}>
                 {(isSavingsTemplate ? SAVINGS_FREQUENCIES : FREQUENCIES).map((f) => (
                   <Pressable
                     key={f.key}
@@ -2684,8 +2644,7 @@ export default function HabitFormModal({
                     ))}
                   </View>
                 </>
-              )}
-          )}
+                )}
 
           {/* CAMPOS PERSONALIZADOS */}
           {!isBirthdayTemplate &&
@@ -2724,10 +2683,6 @@ export default function HabitFormModal({
               })
               .map((field) => (
                 <View key={field.key} style={styles.section}>
-                  <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
-                    {field.type === 'market' ? '🛒' : field.type === 'checklist' ? '✅' : '✏️'}{' '}
-                    {field.label}
-                  </Text>
                   {renderField(field)}
                 </View>
               ))}
