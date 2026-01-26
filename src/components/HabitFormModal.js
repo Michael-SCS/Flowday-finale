@@ -1179,6 +1179,11 @@ export default function HabitFormModal({
     if (isBirthdayTemplate) {
       // Birthday card uses a fixed banner background in Calendar.
       delete dataToSave.color;
+      // Guardar el año base si no existe o si cambia la edad
+      const currentYear = new Date().getFullYear();
+      if (!dataToSave.birthdayBaseYear || String(dataToSave.birthdayAge) !== String(formData.birthdayAge)) {
+        dataToSave.birthdayBaseYear = currentYear;
+      }
     } else if (isBannerLockedTemplate) {
       // Banner-backed cards use fixed backgrounds; ignore custom colors.
       delete dataToSave.color;
@@ -1252,7 +1257,13 @@ export default function HabitFormModal({
               )}
               <Image source={{ uri: habit.icon }} style={styles.icon} />
               <View>
-                <Text style={[styles.title, { color: headerFg }]}>{habit.title}</Text>
+                <Text
+                  style={[styles.title, { color: headerFg }]} 
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {habit.title}
+                </Text>
                 {habit.category && (
                       <Text style={[styles.category, { color: headerSubFg }]}>
                         {translateHabitCategory(habit.category, language)}
@@ -2596,55 +2607,107 @@ export default function HabitFormModal({
             </View>
           ) : null}
 
-          <View style={[styles.freqGrid, styles.freqGridCentered]}>
-                {(isSavingsTemplate ? SAVINGS_FREQUENCIES : FREQUENCIES).map((f) => (
-                  <Pressable
-                    key={f.key}
-                    style={[styles.freqBtn, frequency === f.key && styles.freqBtnActive]}
-                    onPress={() => setFrequency(f.key)}
-                  >
-                    <Ionicons
-                      name={f.icon}
-                      size={20}
-                      color={frequency === f.key ? '#fff' : '#38BDF8'}
-                    />
-                    <Text style={[styles.freqTxt, frequency === f.key && styles.freqTxtActive]}>
-                      {t(`habitForm.frequency${
-                        f.key.charAt(0).toUpperCase() + f.key.slice(1)
-                      }`)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
 
-              {!isSavingsTemplate && frequency === 'weekly' && (
-                <>
-                  <Text style={[styles.sublabel, styles.frequencySublabel, isDark && { color: '#9ca3af' }]}>
-                    {t('habitForm.weeklySelectDays')}
+
+          {/* Frecuencia: solo anual seleccionable para cumpleaños */}
+          <View style={[styles.freqGrid, styles.freqGridCentered]}>
+            {(isSavingsTemplate ? SAVINGS_FREQUENCIES : FREQUENCIES).map((f) => {
+              const isAnnual = f.key === 'yearly';
+              const isDisabled = isBirthdayTemplate && !isAnnual;
+              return (
+                <Pressable
+                  key={f.key}
+                  style={[
+                    styles.freqBtn,
+                    frequency === f.key && styles.freqBtnActive,
+                    isDisabled && { opacity: 0.4 },
+                  ]}
+                  onPress={() => {
+                    if (!isDisabled) setFrequency(f.key);
+                  }}
+                  disabled={isDisabled}
+                >
+                  <Ionicons
+                    name={f.icon}
+                    size={20}
+                    color={frequency === f.key ? '#fff' : '#38BDF8'}
+                  />
+                  <Text style={[styles.freqTxt, frequency === f.key && styles.freqTxtActive]}>
+                    {t(`habitForm.frequency${f.key.charAt(0).toUpperCase() + f.key.slice(1)}`)}
                   </Text>
-                  <View style={styles.daysRow}>
-                    {WEEK_DAYS.map((d) => (
-                      <Pressable
-                        key={d.key}
-                        style={[
-                          styles.dayBtn,
-                          daysOfWeek.includes(d.key) && styles.dayBtnActive,
-                        ]}
-                        onPress={() => toggleDay(d.key)}
-                      >
-                        <Text
-                          style={[
-                            styles.dayTxt,
-                            daysOfWeek.includes(d.key) && styles.dayTxtActive,
-                          ]}
-                        >
-                          {d?.[language] || d.es}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </>
-                )}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Days of week selection for weekly frequency */}
+          {frequency === 'weekly' && !isBirthdayTemplate && !isSavingsTemplate && (
+            <View style={{ alignItems: 'center', marginTop: 10 }}>
+              <Text style={[styles.label, { marginBottom: 8 }, isDark && { color: '#e5e7eb' }]}>Selecciona los días de la semana</Text>
+              <View style={styles.daysRow}>
+                {WEEK_DAYS.map((day) => {
+                  const isSelected = daysOfWeek.includes(day.key);
+                  let label = day.es;
+                  if (language === 'en') label = day.en;
+                  else if (language === 'pt') label = day.pt;
+                  else if (language === 'fr') label = day.fr;
+                  return (
+                    <Pressable
+                      key={day.key}
+                      onPress={() => toggleDay(day.key)}
+                      style={[
+                        styles.dayBtn,
+                        isSelected && styles.dayBtnActive,
+                        { marginHorizontal: 2 },
+                      ]}
+                    >
+                      <Text style={[
+                        styles.dayTxt,
+                        isSelected && { color: '#fff' },
+                        isDark && !isSelected && { color: '#e5e7eb' },
+                      ]}>
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {isBirthdayTemplate && (
+            <Text style={{ color: '#f43f5e', marginTop: 8, fontWeight: 'bold', textAlign: 'center' }}>🎂 Un cumpleaños es un evento anual. Solo puedes elegir frecuencia anual.</Text>
+          )}
+
+          {/* Campo de edad para cumpleaños */}
+          {isBirthdayTemplate && (() => {
+            // Buscar el campo de nombre de la persona (¿Quién cumplirá años?)
+            let nombre = '';
+            const config = habit?.config ? (typeof habit.config === 'object' ? habit.config : JSON.parse(habit.config)) : null;
+            if (config && Array.isArray(config.fields)) {
+              const textField = config.fields.find(f => String(f?.type).toLowerCase() === 'text');
+              if (textField && formData && formData[textField.key]) {
+                nombre = String(formData[textField.key]);
+              }
+            }
+            return (
+              <View style={styles.section}>
+                <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>¿Cuántos años cumplirá {nombre || 'esta persona'} en {new Date().getFullYear()}?</Text>
+                <TextInput
+                  style={[styles.input, isDark && styles.inputDark]}
+                  keyboardType="numeric"
+                  value={formData.birthdayAge ? String(formData.birthdayAge) : ''}
+                  onChangeText={(v) => {
+                    const n = parseInt(v, 10);
+                    updateField('birthdayAge', isNaN(n) ? '' : String(n));
+                  }}
+                  placeholder="Edad que cumplirá este año"
+                  placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
+                />
+                <Text style={[styles.sublabel, { marginTop: 4 }, isDark && { color: '#9ca3af' }]}>Este número aumentará automáticamente cada año.</Text>
+              </View>
+            );
+          })()}
 
           {/* CAMPOS PERSONALIZADOS */}
           {!isBirthdayTemplate &&
@@ -2804,9 +2867,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#111',
+    maxWidth: 220,
+    lineHeight: 22,
   },
   category: {
     fontSize: 13,

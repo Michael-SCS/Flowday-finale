@@ -3390,17 +3390,85 @@ export default function Calendar() {
                                 ) : null}
                               </View>
                             )}
-                            {friendlySubtitle && (
-                              <Text
-                                style={[
-                                  styles.cardSubtitle,
-                                  isCompleted && styles.cardSubtitleCompleted,
-                                  subtitleTextColor && { color: subtitleTextColor },
-                                ]}
-                              >
-                                {friendlySubtitle}
-                              </Text>
-                            )}
+
+                            {isBirthdayHabit && (() => {
+                              // Calcular edad y nombre
+                              const baseAge = parseInt(activityWithDate?.data?.birthdayAge, 10);
+                              let baseYear = parseInt(activityWithDate?.data?.birthdayBaseYear, 10);
+                              const eventYear = new Date(activityWithDate?.date).getFullYear();
+                              if (!Number.isFinite(baseYear)) {
+                                if (Number.isFinite(baseAge) && activityWithDate?.data) {
+                                  baseYear = eventYear;
+                                }
+                              }
+                              const name = (() => {
+                                const textFieldKey = (() => {
+                                  const habitTemplate = getHabitTemplateForActivity(activityWithDate);
+                                  const config = habitTemplate && habitTemplate.config ? (typeof habitTemplate.config === 'object' ? habitTemplate.config : JSON.parse(habitTemplate.config)) : null;
+                                  if (!config || !Array.isArray(config.fields)) return null;
+                                  const textField = config.fields.find(f => String(f?.type).toLowerCase() === 'text');
+                                  return textField ? textField.key : null;
+                                })();
+                                if (textFieldKey && activityWithDate.data && activityWithDate.data[textFieldKey]) {
+                                  return String(activityWithDate.data[textFieldKey]);
+                                }
+                                return '';
+                              })();
+                              if (!Number.isFinite(baseYear)) {
+                                baseYear = eventYear;
+                              }
+                              let age = null;
+                              if (Number.isFinite(baseAge) && Number.isFinite(baseYear)) {
+                                age = baseAge + (eventYear - baseYear);
+                              } else if (Number.isFinite(baseAge)) {
+                                age = baseAge;
+                              }
+
+                              // Mensaje multilenguaje organizado
+                              let msg = '';
+                              if (language === 'en') {
+                                msg = `🎉 Today we celebrate birthday #${Number.isFinite(age) && age > 0 ? age : '?'} of ${name || 'someone special'}`;
+                              } else if (language === 'fr') {
+                                const special = "quelqu'un de spécial";
+                                msg = `🎉 Aujourd'hui, nous célébrons l'anniversaire n°${Number.isFinite(age) && age > 0 ? age : '?'} de ${name || special}`;
+                              } else if (language === 'pt') {
+                                msg = `🎉 Hoje celebramos o aniversário nº${Number.isFinite(age) && age > 0 ? age : '?'} de ${name || 'alguém especial'}`;
+                              } else {
+                                msg = `🎉 Hoy celebramos el cumpleaños #${Number.isFinite(age) && age > 0 ? age : '¿?'} de ${name || 'alguien especial'}`;
+                              }
+                              return (
+                                <Text style={[styles.cardSubtitle, { fontWeight: 'normal', fontSize: 13, color: '#fff', marginTop: 2, textAlign: 'justify' }]}>{msg}</Text>
+                              );
+                            })()}
+
+                              {/* Card especial para llamar a un amigo */}
+                              {habitTypeForCard === 'call' && (() => {
+                                // Obtener el nombre ingresado en el modal
+                                const name = (() => {
+                                  const habitTemplate = getHabitTemplateForActivity(activityWithDate);
+                                  const config = habitTemplate && habitTemplate.config ? (typeof habitTemplate.config === 'object' ? habitTemplate.config : JSON.parse(habitTemplate.config)) : null;
+                                  if (!config || !Array.isArray(config.fields)) return '';
+                                  const textField = config.fields.find(f => String(f?.type).toLowerCase() === 'text');
+                                  if (textField && activityWithDate.data && activityWithDate.data[textField.key]) {
+                                    return String(activityWithDate.data[textField.key]);
+                                  }
+                                  return '';
+                                })();
+                                if (!name) return null;
+                                let msg = '';
+                                if (language === 'en') {
+                                  msg = `Remember to call ${name}`;
+                                } else if (language === 'fr') {
+                                  msg = `N'oublie pas d'appeler ${name}`;
+                                } else if (language === 'pt') {
+                                  msg = `Lembre-se de ligar para ${name}`;
+                                } else {
+                                  msg = `Recuerda llamar a ${name}`;
+                                }
+                                return (
+                                  <Text style={[styles.cardSubtitle, { fontWeight: 'normal', fontSize: 13, color: '#fff', marginTop: 2, textAlign: 'justify' }]}>{msg}</Text>
+                                );
+                              })()}
 
                             {studyMeta || courseMeta || researchMeta || podcastMeta || languagePracticeMeta ? (
                               <View style={styles.studyMetaRow}>
