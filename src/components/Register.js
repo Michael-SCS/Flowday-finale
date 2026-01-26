@@ -17,9 +17,7 @@ import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TOUR_PENDING_KEY = 'fluu_mascotTourPending';
 
 /* ======================
    HELPERS
@@ -95,14 +93,8 @@ export default function Register({ navigation }) {
     }
   };
 
-  const goToApp = async () => {
+  const goToApp = () => {
     // User decided not to register: return to the app (guest mode).
-    try {
-      await AsyncStorage.removeItem('onboarding_in_progress');
-    } catch {
-      // ignore
-    }
-
     const root = navigation?.getParent?.();
     try {
       root?.reset?.({ index: 0, routes: [{ name: 'App' }] });
@@ -117,7 +109,7 @@ export default function Register({ navigation }) {
     } catch {
       // ignore
     }
-
+  };
     try {
       navigation.goBack?.();
     } catch {
@@ -189,12 +181,7 @@ export default function Register({ navigation }) {
         // Do not block access if profile update fails.
       }
 
-      // Only brand-new users coming from Register should auto-see the mascot tour.
-      try {
-        await AsyncStorage.setItem(`${TOUR_PENDING_KEY}_${sessionUser.id}`, 'true');
-      } catch {
-        // ignore
-      }
+
 
       // Go directly to app
       try {
@@ -244,252 +231,155 @@ export default function Register({ navigation }) {
             {t('register.subtitle') || 'Empieza a organizar tu vida'}
           </Text>
 
-          {/* INDICADOR DE PASOS */}
-          <View style={styles.stepsRow}>
-            <View
-              style={[
-                styles.stepDot,
-                step >= 1 && styles.stepDotActive,
-              ]}
-            />
-            <View
-              style={[
-                styles.stepLine,
-                step >= 2 && styles.stepLineActive,
-              ]}
-            />
-            <View
-              style={[
-                styles.stepDot,
-                step >= 2 && styles.stepDotActive,
-              ]}
+
+
+          {/* NOMBRE / APELLIDO / EDAD */}
+          <View style={styles.genderField}>
+            <Text style={styles.genderLabel}>
+              {t('profile.firstName')}
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={nombre}
+              onChangeText={setNombre}
             />
           </View>
-          <Text style={styles.stepLabel}>
-            {step === 1
-              ? t('register.step1Title')
-              : t('register.step2Title')}
-          </Text>
-          <Text style={styles.helperText}>
-            {step === 1
-              ? t('register.step1Helper')
-              : t('register.step2Helper')}
-          </Text>
+          <View style={styles.genderField}>
+            <Text style={styles.genderLabel}>
+              {t('profile.lastName')}
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={apellido}
+              onChangeText={setApellido}
+            />
+          </View>
+          <View style={styles.genderField}>
+            <Text style={styles.genderLabel}>
+              {t('profile.age')}
+            </Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={edad}
+              onChangeText={setEdad}
+            />
+          </View>
 
-          {/* PASO 1: NOMBRE / APELLIDO / EDAD */}
-          {step === 1 && (
-            <>
-              <View style={styles.genderField}>
-                <Text style={styles.genderLabel}>
-                  {t('profile.firstName')}
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  value={nombre}
-                  onChangeText={setNombre}
+          {/* GÉNERO / EMAIL / CONTRASEÑA */}
+          <View style={styles.genderField}>
+            <Text style={styles.genderLabel}>{t('profile.gender')}</Text>
+            <Pressable
+              style={styles.genderSelect}
+              onPress={() => setShowGenderModal(true)}
+            >
+              <Text
+                style={
+                  genero
+                    ? styles.genderValue
+                    : styles.genderPlaceholder
+                }
+              >
+                {genero || t('profile.genderPlaceholder')}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={18}
+                color="#6b7280"
+              />
+            </Pressable>
+          </View>
+          <View style={styles.genderField}>
+            <Text style={styles.genderLabel}>
+              {t('auth.emailLabel')}
+            </Text>
+            <TextInput
+              style={styles.input}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+          <View style={styles.genderField}>
+            <Text style={styles.genderLabel}>
+              {t('auth.passwordLabel')}
+            </Text>
+            <View style={styles.passwordBox}>
+              <TextInput
+                style={[styles.passwordInput, !showPassword && styles.passwordMasked]}
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                onBlur={() => setPasswordTouched(true)}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                autoComplete="password"
+              />
+              <Pressable
+                onPress={() =>
+                  setShowPassword(!showPassword)
+                }
+              >
+                <Ionicons
+                  name={
+                    showPassword
+                      ? 'eye-off'
+                      : 'eye'
+                  }
+                  size={22}
+                  color="#6b7280"
                 />
-              </View>
-
-              <View style={styles.genderField}>
-                <Text style={styles.genderLabel}>
-                  {t('profile.lastName')}
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  value={apellido}
-                  onChangeText={setApellido}
-                />
-              </View>
-
-              <View style={styles.genderField}>
-                <Text style={styles.genderLabel}>
-                  {t('profile.age')}
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="numeric"
-                  value={edad}
-                  onChangeText={setEdad}
-                />
-              </View>
-            </>
-          )}
-
-          {/* PASO 2: GÉNERO / EMAIL / CONTRASEÑA */}
-          {step === 2 && (
-            <>
-              <View style={styles.genderField}>
-                <Text style={styles.genderLabel}>{t('profile.gender')}</Text>
-                <Pressable
-                  style={styles.genderSelect}
-                  onPress={() => setShowGenderModal(true)}
-                >
-                  <Text
-                    style={
-                      genero
-                        ? styles.genderValue
-                        : styles.genderPlaceholder
-                    }
-                  >
-                    {genero || t('profile.genderPlaceholder')}
-                  </Text>
-                  <Ionicons
-                    name="chevron-down"
-                    size={18}
-                    color="#6b7280"
-                  />
-                </Pressable>
-              </View>
-
-              <View style={styles.genderField}>
-                <Text style={styles.genderLabel}>
-                  {t('auth.emailLabel')}
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  value={email}
-                  onChangeText={setEmail}
-                />
-              </View>
-
-              <View style={styles.genderField}>
-                <Text style={styles.genderLabel}>
-                  {t('auth.passwordLabel')}
-                </Text>
-                <View style={styles.passwordBox}>
-                  <TextInput
-                    style={[styles.passwordInput, !showPassword && styles.passwordMasked]}
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={setPassword}
-                    onBlur={() => setPasswordTouched(true)}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    textContentType="password"
-                    autoComplete="password"
-                  />
-                  <Pressable
-                    onPress={() =>
-                      setShowPassword(!showPassword)
-                    }
-                  >
-                    <Ionicons
-                      name={
-                        showPassword
-                          ? 'eye-off'
-                          : 'eye'
-                      }
-                      size={22}
-                      color="#6b7280"
-                    />
-                  </Pressable>
-                </View>
-                {passwordTouched && String(password || '').length > 0 && String(password || '').length < 8 ? (
-                  <Text style={styles.inlineError}>La contraseña debe tener al menos 8 caracteres.</Text>
-                ) : null}
-              </View>
-            </>
-          )}
+              </Pressable>
+            </View>
+            {passwordTouched && String(password || '').length > 0 && String(password || '').length < 8 ? (
+              <Text style={styles.inlineError}>La contraseña debe tener al menos 8 caracteres.</Text>
+            ) : null}
+          </View>
 
           {error ? (
             <Text style={styles.error}>{error}</Text>
           ) : null}
 
-          {step === 2 && (
-            <View style={styles.legalCard}>
-              <Text style={styles.legalTitle}>{t('profile.privacyPolicy')}</Text>
-              <Text style={styles.legalNote}>{t('register.policyHelper')}</Text>
+          <View style={styles.legalCard}>
+            <Text style={styles.legalTitle}>{t('profile.privacyPolicy')}</Text>
+            <Text style={styles.legalNote}>{t('register.policyHelper')}</Text>
 
-              <View style={styles.acceptRow}>
-                <Pressable
-                  style={styles.checkbox}
-                  onPress={() => setAcceptedTerms(!acceptedTerms)}
-                >
-                  <Ionicons
-                    name={acceptedTerms ? 'checkbox' : 'square-outline'}
-                    size={20}
-                    color={acceptedTerms ? '#4c1d95' : '#6b7280'}
-                  />
-                </Pressable>
-                <Text style={styles.acceptText}>
-                  {t('register.policyAcceptPrefix') || 'Acepto la '}
-                  <Text style={styles.inlinePolicyLink} onPress={() => setShowPolicyModal(true)}>
-                    {t('register.policyAcceptLink') || 'Política de tratamiento de datos, uso y privacidad'}
-                  </Text>
+            <View style={styles.acceptRow}>
+              <Pressable
+                style={styles.checkbox}
+                onPress={() => setAcceptedTerms(!acceptedTerms)}
+              >
+                <Ionicons
+                  name={acceptedTerms ? 'checkbox' : 'square-outline'}
+                  size={20}
+                  color={acceptedTerms ? '#4c1d95' : '#6b7280'}
+                />
+              </Pressable>
+              <Text style={styles.acceptText}>
+                {t('register.policyAcceptPrefix') || 'Acepto la '}
+                <Text style={styles.inlinePolicyLink} onPress={() => setShowPolicyModal(true)}>
+                  {t('register.policyAcceptLink') || 'Política de tratamiento de datos, uso y privacidad'}
                 </Text>
-              </View>
+              </Text>
             </View>
-          )}
+          </View>
+
 
           <View style={styles.actionsRow}>
-            {step === 2 && (
-              <Pressable
-                style={styles.secondary}
-                onPress={() => {
-                  LayoutAnimation.configureNext(
-                    LayoutAnimation.Presets.easeInEaseOut
-                  );
-                  setStep(1);
-                  setError('');
-                }}
-                disabled={loading}
-              >
-                <Text style={styles.secondaryText}>
-                  {t('register.back')}
-                </Text>
-              </Pressable>
-            )}
-
             <Pressable
-              style={[
-                styles.primary,
-                step === 2 && !acceptedTerms
-                  ? styles.primaryDisabled
-                  : null,
-              ]}
-              onPress={
-                step === 1
-                  ? () => {
-                      if (!nombre.trim()) {
-                        setError(
-                          t('register.errorNameRequired') ||
-                            'Por favor, ingresa tu nombre.'
-                        );
-                        return;
-                      }
-                      setError('');
-                      LayoutAnimation.configureNext(
-                        LayoutAnimation.Presets.easeInEaseOut
-                      );
-                      setStep(2);
-                    }
-                  : handleRegister
-              }
-              disabled={
-                loading || (step === 2 && !acceptedTerms)
-              }
+              style={[styles.primary, !acceptedTerms ? styles.primaryDisabled : null]}
+              onPress={handleRegister}
+              disabled={loading || !acceptedTerms}
             >
               <Text style={styles.primaryText}>
                 {loading
                   ? t('register.creating') || 'Creando cuenta…'
-                  : step === 1
-                  ? t('register.next')
                   : t('register.submit')}
               </Text>
             </Pressable>
           </View>
-
-          {step === 2 && (
-            <>
-              <Pressable onPress={goToLogin}>
-                <Text style={styles.link}>
-                  {t('register.goToLogin') || '¿Ya tienes cuenta? Inicia sesión'}
-                </Text>
-              </Pressable>
-            </>
-          )}
 
           <Pressable onPress={goToApp}>
             <Text style={[styles.link, styles.linkSecondary]}>
