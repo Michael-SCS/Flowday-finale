@@ -142,12 +142,7 @@ export default function OnboardingFinal({ navigation }) {
           await updateProfileBestEffort(user.id, payload);
         }
 
-        const { error } = await supabase.from('user_onboarding').upsert({
-          user_id: user.id,
-          onboarding_completed: true,
-          completed_at: new Date().toISOString(),
-        });
-        if (error) throw error;
+        // (Eliminado: ya no se guarda en user_onboarding)
 
         await generateInitialHabits(user.id);
 

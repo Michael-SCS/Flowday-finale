@@ -89,10 +89,19 @@ export default function MarketTable({
     [isDark, accentColor, onToggle]
   );
 
+  // Prefer id, fallback to index (not ideal, but avoids duplicate keys)
   const keyExtractor = useCallback(
-    (item, index) => (item && item.id ? String(item.id) : String(index)),
+    (item, index) => (item && item.id != null ? String(item.id) : `idx_${index}`),
     []
   );
+
+  // Si los ítems tienen altura fija, esto mejora mucho el scroll
+  const ITEM_HEIGHT = 72; // Ajusta si tu item es más alto/bajo
+  const getItemLayout = useCallback((data, index) => ({
+    length: ITEM_HEIGHT,
+    offset: ITEM_HEIGHT * index,
+    index,
+  }), []);
 
   const { totalQuantity, totalAmount } = useMemo(() => {
     let tQty = 0;
@@ -138,9 +147,11 @@ export default function MarketTable({
           contentContainerStyle={[styles.scrollContent, embedded && styles.scrollContentEmbedded]}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          getItemLayout={getItemLayout}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
-          windowSize={5}
+          windowSize={7}
+          removeClippedSubviews
         />
       ) : (
         <View style={[styles.scrollContent, embedded && styles.scrollContentEmbedded]}>

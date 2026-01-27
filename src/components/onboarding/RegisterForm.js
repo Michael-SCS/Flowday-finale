@@ -9,7 +9,10 @@ export default function RegisterForm({ navigation, route }) {
   const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -17,6 +20,42 @@ export default function RegisterForm({ navigation, route }) {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
 
   const passwordTooShort = String(password || '').length > 0 && String(password || '').length < 8;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Validación en tiempo real
+  useEffect(() => {
+    if (email.length === 0) {
+      setEmailError('');
+    } else if (!emailRegex.test(email)) {
+      setEmailError(
+        t('auth.errorEmailInvalid') || {
+          es: 'Ingresa un correo electrónico válido.',
+          en: 'Enter a valid email address.',
+          pt: 'Digite um e-mail válido.',
+          fr: 'Saisis une adresse e-mail valide.',
+        }[t('lang') || 'es']
+      );
+    } else {
+      setEmailError('');
+    }
+  }, [email, t]);
+
+  useEffect(() => {
+    if (password.length === 0) {
+      setPasswordError('');
+    } else if (password.length < 8) {
+      setPasswordError(
+        t('auth.errorPasswordInvalid') || {
+          es: 'La contraseña debe tener al menos 8 caracteres.',
+          en: 'Password must be at least 8 characters.',
+          pt: 'A senha deve ter pelo menos 8 caracteres.',
+          fr: 'Le mot de passe doit comporter au moins 8 caractères.',
+        }[t('lang') || 'es']
+      );
+    } else {
+      setPasswordError('');
+    }
+  }, [password, t]);
   
   const mascotImages = [
     require('../../../assets/mascota_calendario.png'),
@@ -76,16 +115,33 @@ export default function RegisterForm({ navigation, route }) {
     };
   }, []);
 
-  async function handleRegister() {
-    if (!email || !password) {
-      alert('Ingresa correo y contraseña');
-      return;
-    }
 
-    if (String(password || '').length < 8) {
-      setPasswordTouched(true);
-      return;
+  async function handleRegister() {
+    setSubmitAttempted(true);
+    let valid = true;
+    let emailErr = '';
+    let passErr = '';
+    if (!email || !emailRegex.test(email)) {
+      emailErr = t('auth.errorEmailInvalid') || {
+        es: 'Ingresa un correo electrónico válido.',
+        en: 'Enter a valid email address.',
+        pt: 'Digite um e-mail válido.',
+        fr: 'Saisis une adresse e-mail valide.',
+      }[t('lang') || 'es'];
+      valid = false;
     }
+    if (!password || password.length < 8) {
+      passErr = t('auth.errorPasswordInvalid') || {
+        es: 'La contraseña debe tener al menos 8 caracteres.',
+        en: 'Password must be at least 8 characters.',
+        pt: 'A senha deve ter pelo menos 8 caracteres.',
+        fr: 'Le mot de passe doit comporter au moins 8 caractères.',
+      }[t('lang') || 'es'];
+      valid = false;
+    }
+    setEmailError(emailErr);
+    setPasswordError(passErr);
+    if (!valid) return;
 
     if (!acceptedPolicy) {
       alert(t('register.policyHelper') || 'Debes aceptar la política para continuar.');
@@ -201,11 +257,14 @@ export default function RegisterForm({ navigation, route }) {
                 <TextInput 
                   autoCapitalize="none" 
                   value={email} 
-                  onChangeText={setEmail} 
+                  onChangeText={text => { setEmail(text); setSubmitAttempted(false); }}
                   style={styles.input} 
                   keyboardType="email-address"
                 />
               </View>
+              {emailError ? (
+                <Text style={styles.inlineError}>{emailError}</Text>
+              ) : null}
             </View>
 
             <View style={styles.field}>
@@ -215,7 +274,7 @@ export default function RegisterForm({ navigation, route }) {
                 <TextInput 
                   secureTextEntry={!showPassword} 
                   value={password} 
-                  onChangeText={setPassword} 
+                  onChangeText={text => { setPassword(text); setSubmitAttempted(false); }}
                   onBlur={() => setPasswordTouched(true)}
                   style={[styles.input, !showPassword && styles.passwordMasked]}
                   autoCapitalize="none"
@@ -227,8 +286,8 @@ export default function RegisterForm({ navigation, route }) {
                   <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color="#6b7280" />
                 </TouchableOpacity>
               </View>
-              {passwordTouched && passwordTooShort ? (
-                <Text style={styles.inlineError}>La contraseña debe tener al menos 8 caracteres.</Text>
+              {passwordError ? (
+                <Text style={styles.inlineError}>{passwordError}</Text>
               ) : null}
             </View>
 
@@ -252,9 +311,9 @@ export default function RegisterForm({ navigation, route }) {
 
             <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
               <TouchableOpacity
-                style={[styles.btn, (!acceptedPolicy || loading || passwordTooShort) && styles.btnDisabled]}
+                style={[styles.btn, (!acceptedPolicy || loading || emailError || passwordError || !email || !password) && styles.btnDisabled]}
                 onPress={handleRegister}
-                disabled={loading || !acceptedPolicy || passwordTooShort}
+                disabled={loading || !acceptedPolicy || !!emailError || !!passwordError || !email || !password}
                 onPressIn={() => Animated.spring(buttonScale, { toValue: 0.96, useNativeDriver: true }).start()}
                 onPressOut={() => Animated.spring(buttonScale, { toValue: 1, useNativeDriver: true }).start()}
               >

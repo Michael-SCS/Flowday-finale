@@ -1103,8 +1103,7 @@ export default function Calendar() {
   const swipeableRefs = React.useRef({});
 
   // Estado para funciones inteligentes
-  const [overloadPromptShownForDates, setOverloadPromptShownForDates] = useState({});
-  const [overloadModalVisible, setOverloadModalVisible] = useState(false);
+  // Busy Day modal permanently removed
   const [moveTasksModalVisible, setMoveTasksModalVisible] = useState(false);
   const [moveTasksDate, setMoveTasksDate] = useState(null);
   const [moveTasksSelection, setMoveTasksSelection] = useState({});
@@ -1266,44 +1265,7 @@ export default function Calendar() {
           );
         }
 
-        if (candidate && !payload?.allowTimeConflict) {
-          const conflicts = getTimeConflictsForDate(
-            updated[nextDateKey] || [],
-            candidate,
-            targetId
-          );
-
-          if (conflicts.length) {
-            const first = conflicts[0];
-            const existingLabel =
-              t('calendar.timeConflictExistingActivity') ||
-              (language === 'es' ? 'Actividad en ese horario:' : 'Existing activity:');
-            Alert.alert(
-              t('calendar.timeConflictTitle'),
-              `${t('calendar.timeConflictMessage')}\n\n${existingLabel} ${first?.title || ''}`,
-              [
-                {
-                  text:
-                    t('calendar.timeConflictReplace') ||
-                    (language === 'es' ? 'Reemplazar' : 'Replace'),
-                  onPress: () =>
-                    handleSaveHabit({
-                      ...payload,
-                      replaceTimeConflicts: true,
-                    }),
-                },
-                {
-                  text:
-                    t('calendar.timeConflictKeepBoth') ||
-                    (language === 'es' ? 'Mantener ambas' : 'Schedule anyway'),
-                  onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
-                },
-                { text: t('calendar.cancel') || 'Cancelar', style: 'cancel' },
-              ]
-            );
-            return;
-          }
-        }
+        // Eliminada validación de conflicto de horario: ahora se permite cualquier horario
 
         const nextActivity = {
           ...targetActivity,
@@ -1454,35 +1416,7 @@ export default function Calendar() {
           }
         }
 
-        if (firstConflict) {
-          const existingLabel =
-            t('calendar.timeConflictExistingActivity') ||
-            (language === 'es' ? 'Actividad en ese horario:' : 'Existing activity:');
-          Alert.alert(
-            t('calendar.timeConflictTitle'),
-            `${t('calendar.timeConflictMessage')}\n\n${existingLabel} ${firstConflict.act?.title || ''}`,
-            [
-              {
-                text:
-                  t('calendar.timeConflictReplace') ||
-                  (language === 'es' ? 'Reemplazar' : 'Replace'),
-                onPress: () =>
-                  handleSaveHabit({
-                    ...payload,
-                    replaceTimeConflicts: true,
-                  }),
-              },
-              {
-                text:
-                  t('calendar.timeConflictKeepBoth') ||
-                  (language === 'es' ? 'Mantener ambas' : 'Schedule anyway'),
-                onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
-              },
-              { text: t('calendar.cancel') || 'Cancelar', style: 'cancel' },
-            ]
-          );
-          return;
-        }
+        // Eliminada alerta de conflicto de horario para hábitos en serie: ahora se permite cualquier horario
       }
 
       // Determinar solo la PRÓXIMA fecha futura para programar recordatorio,
@@ -1629,35 +1563,7 @@ export default function Calendar() {
         }
       }
 
-      if (firstConflict) {
-        const existingLabel =
-          t('calendar.timeConflictExistingActivity') ||
-          (language === 'es' ? 'Actividad en ese horario:' : 'Existing activity:');
-        Alert.alert(
-          t('calendar.timeConflictTitle'),
-          `${t('calendar.timeConflictMessage')}\n\n${existingLabel} ${firstConflict.act?.title || ''}`,
-          [
-            {
-              text:
-                t('calendar.timeConflictReplace') ||
-                (language === 'es' ? 'Reemplazar' : 'Replace'),
-              onPress: () =>
-                handleSaveHabit({
-                  ...payload,
-                  replaceTimeConflicts: true,
-                }),
-            },
-            {
-              text:
-                t('calendar.timeConflictKeepBoth') ||
-                (language === 'es' ? 'Mantener ambas' : 'Schedule anyway'),
-              onPress: () => handleSaveHabit({ ...payload, allowTimeConflict: true }),
-            },
-            { text: t('calendar.cancel') || 'Cancelar', style: 'cancel' },
-          ]
-        );
-        return;
-      }
+      
     }
 
     // Determinar solo la PRÓXIMA fecha futura para programar recordatorio
@@ -2430,17 +2336,7 @@ export default function Calendar() {
   }
 
   // Detectar día sobrecargado (muchas actividades)
-  const OVERLOAD_THRESHOLD = 8;
-
-  useEffect(() => {
-    const dayActs = activities[selectedDate] || [];
-    if (!dayActs || dayActs.length < OVERLOAD_THRESHOLD) return;
-
-    if (overloadPromptShownForDates[selectedDate]) return;
-
-    setOverloadPromptShownForDates((prev) => ({ ...prev, [selectedDate]: true }));
-    setOverloadModalVisible(true);
-  }, [activities, selectedDate, overloadPromptShownForDates, t]);
+  // Busy Day modal logic removed
 
   function toggleMoveTaskSelection(activityId) {
     setMoveTasksSelection((prev) => ({
@@ -3355,39 +3251,17 @@ export default function Calendar() {
                             >
                               {displayTitle}
                             </Text>
-                            {(timeRangeText || hasMarket) && (
+                            {hasMarket && (
                               <View style={styles.cardTimeRow}>
-                                {timeRangeText ? (
-                                  <>
-                                    <Ionicons
-                                      name="time-outline"
-                                      size={14}
-                                      color="#f97316"
-                                    />
-                                    <Text
-                                      style={[
-                                        styles.cardTimeText,
-                                        isCompleted && styles.cardSubtitleCompleted,
-                                        subtitleTextColor && { color: subtitleTextColor },
-                                      ]}
-                                    >
-                                      {timeRangeText}
-                                    </Text>
-                                  </>
-                                ) : null}
-
-                                {hasMarket ? (
-                                  <Text
-                                    style={[
-                                      styles.cardTimeText,
-                                      isCompleted && styles.cardSubtitleCompleted,
-                                      subtitleTextColor && { color: subtitleTextColor },
-                                    ]}
-                                  >
-                                    {timeRangeText ? '  ·  ' : ''}
-                                    {language === 'es' ? 'Lista' : 'List'}
-                                  </Text>
-                                ) : null}
+                                <Text
+                                  style={[
+                                    styles.cardTimeText,
+                                    isCompleted && styles.cardSubtitleCompleted,
+                                    subtitleTextColor && { color: subtitleTextColor },
+                                  ]}
+                                >
+                                  {language === 'es' ? 'Lista' : 'List'}
+                                </Text>
                               </View>
                             )}
 
@@ -3441,7 +3315,7 @@ export default function Calendar() {
                               );
                             })()}
 
-                              {/* Card especial para llamar a un amigo */}
+
                               {habitTypeForCard === 'call' && (() => {
                                 // Obtener el nombre ingresado en el modal
                                 const name = (() => {
@@ -3806,60 +3680,7 @@ export default function Calendar() {
         </View>
       </Modal>
 
-      {/* OVERLOAD PROMPT (custom modal) */}
-      <Modal
-        transparent
-        visible={overloadModalVisible}
-        animationType="fade"
-        onRequestClose={() => setOverloadModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setOverloadModalVisible(false)} />
-          <View style={[styles.modal, { padding: 22, maxWidth: 520 }]}>
-            <View style={[styles.modalHeader, { borderBottomWidth: 0, paddingBottom: 8 }]}>
-              <View style={styles.modalTitleContainer}>
-                <Ionicons name="alert-circle" size={28} color={accent} />
-                <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>{t('calendar.overloadDialogTitle')}</Text>
-              </View>
-              <Pressable onPress={() => setOverloadModalVisible(false)} style={styles.modalClose}>
-                <Ionicons name="close-circle" size={28} color={isDark ? '#9ca3af' : '#6b7280'} />
-              </Pressable>
-            </View>
-
-            <View style={{ paddingHorizontal: 6, paddingTop: 8 }}>
-              <Text style={{ fontSize: 15, color: isDark ? '#9ca3af' : '#374151', marginBottom: 14 }}>
-                {t('calendar.overloadDialogMessage')}
-              </Text>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-                <Pressable
-                  onPress={() => setOverloadModalVisible(false)}
-                  style={[styles.secondaryButton, { paddingHorizontal: 16, paddingVertical: 10 }]}
-                >
-                  <Text style={{ color: isDark ? '#e5e7eb' : '#374151' }}>{t('calendar.overloadDialogSecondary')}</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    // Prefill selection: prioritize moving tasks without a time first
-                    const initialSelection = {};
-                    (activities[selectedDate] || []).forEach((act) => {
-                      initialSelection[act.id] = act.time == null;
-                    });
-                    setMoveTasksSelection(initialSelection);
-                    setMoveTasksDate(selectedDate);
-                    setOverloadModalVisible(false);
-                    setMoveTasksModalVisible(true);
-                  }}
-                  style={[styles.primaryButton, { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: accent }]}
-                >
-                  <Text style={{ color: '#fff', fontWeight: '700' }}>{t('calendar.overloadDialogPrimary')}</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Busy Day modal permanently removed */}
 
       {/* MODAL: Planificación semanal guiada (domingo) */}
       <Modal

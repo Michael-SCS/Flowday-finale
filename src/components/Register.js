@@ -9,7 +9,6 @@ import {
   SafeAreaView,
   Modal,
   Platform,
-  LayoutAnimation,
   UIManager,
 } from 'react-native';
 import { supabase } from '../utils/supabase';
@@ -18,43 +17,36 @@ import { useSettings } from '../utils/settingsContext';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '@expo/vector-icons';
 
-
 /* ======================
    HELPERS
 ====================== */
-function capitalizeWords(text) {
+function capitalizeWords(text = '') {
   return text
     .trim()
     .toLowerCase()
     .split(' ')
     .filter(Boolean)
-    .map(
-      (word) =>
-        word.charAt(0).toUpperCase() + word.slice(1)
-    )
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
 export default function Register({ navigation }) {
   const { t } = useI18n();
   const { language } = useSettings();
-  // Paso actual del formulario
-  const [step, setStep] = useState(1);
 
-  // Datos de perfil
+  // Perfil
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [edad, setEdad] = useState('');
   const [genero, setGenero] = useState('');
 
-  // Datos de cuenta
+  // Cuenta
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordTouched, setPasswordTouched] = useState(false);
-  const [showPassword, setShowPassword] =
-    useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // UI y estados
+  // UI
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
@@ -71,49 +63,19 @@ export default function Register({ navigation }) {
   }, []);
 
   const genderKeys = ['male', 'female', 'nonBinary', 'genderFluid', 'preferNotSay', 'other'];
-  const genderOptions = useMemo(() => {
-    return genderKeys.map((k) => t(`profile.genderOptions.${k}`));
-  }, [t]);
-
-  const goToLogin = () => {
-    const canNavigate = (nav, name) => {
-      const state = nav?.getState?.();
-      return Array.isArray(state?.routeNames) && state.routeNames.includes(name);
-    };
-
-    if (canNavigate(navigation, 'Login')) {
-      navigation.navigate('Login');
-      return;
-    }
-
-    const parent = navigation?.getParent?.();
-    const root = parent?.getParent?.() || parent;
-    if (canNavigate(root, 'Auth')) {
-      root.navigate('Auth', { screen: 'Login' });
-    }
-  };
+  const genderOptions = useMemo(
+    () => genderKeys.map(k => t(`profile.genderOptions.${k}`)),
+    [t]
+  );
 
   const goToApp = () => {
-    // User decided not to register: return to the app (guest mode).
     const root = navigation?.getParent?.();
     try {
       root?.reset?.({ index: 0, routes: [{ name: 'App' }] });
-      return;
     } catch {
-      // ignore
-    }
-
-    try {
-      root?.navigate?.('App');
-      return;
-    } catch {
-      // ignore
-    }
-  };
-    try {
-      navigation.goBack?.();
-    } catch {
-      // ignore
+      try {
+        root?.navigate?.('App');
+      } catch {}
     }
   };
 
@@ -121,8 +83,7 @@ export default function Register({ navigation }) {
     setError('');
     setLoading(true);
 
-    const trimmedPassword = String(password || '');
-    if (trimmedPassword.length < 8) {
+    if (String(password).length < 8) {
       setPasswordTouched(true);
       setError('La contraseña debe tener al menos 8 caracteres.');
       setLoading(false);
@@ -130,7 +91,7 @@ export default function Register({ navigation }) {
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -145,27 +106,21 @@ export default function Register({ navigation }) {
 
       if (error) throw error;
 
-      // Ensure we have a session; some setups return user but no session.
       let sessionUser = null;
-      try {
-        const { data: sess0 } = await supabase.auth.getSession();
-        sessionUser = sess0?.session?.user ?? null;
-      } catch {
-        sessionUser = null;
+      const { data: sess } = await supabase.auth.getSession();
+      sessionUser = sess?.session?.user ?? null;
+
+      if (!sessionUser) {
+        const { data, error } =
+          await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        sessionUser = data?.user ?? null;
       }
 
       if (!sessionUser) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) throw signInError;
-        sessionUser = signInData?.user ?? null;
+        throw new Error('No se pudo iniciar sesión.');
       }
 
-      if (!sessionUser) {
-        throw new Error('No se pudo iniciar sesión. Intenta de nuevo.');
-      }
-
-      // Profile row is created by a DB trigger; never INSERT from the frontend.
-      // Best-effort: update profile fields without blocking the user.
       try {
         await supabase
           .from('profiles')
@@ -177,24 +132,14 @@ export default function Register({ navigation }) {
             language,
           })
           .eq('id', sessionUser.id);
-      } catch {
-        // Do not block access if profile update fails.
-      }
+      } catch {}
 
-
-
-      // Go directly to app
-      try {
-        navigation.reset({ index: 0, routes: [{ name: 'App', state: { index: 0, routes: [{ name: 'Calendar' }] } }] });
-      } catch {
-        try { navigation.navigate('App'); } catch {}
-      }
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'App' }],
+      });
     } catch (e) {
-      const message =
-        e && typeof e === 'object' && (e.message || e.error_description)
-          ? String(e.message || e.error_description)
-          : 'No se pudo crear la cuenta. Intenta de nuevo.';
-      setError(message);
+      setError(e?.message || 'No se pudo crear la cuenta.');
     } finally {
       setLoading(false);
     }
@@ -202,22 +147,9 @@ export default function Register({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAwareScrollView
-        contentContainerStyle={styles.scroll}
-        enableOnAndroid
-        extraScrollHeight={30}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+      <KeyboardAwareScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.card}>
-          {/* LOGO / MASCOTA */}
-          <Image
-            source={require('../../assets/login.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-
-          {/* Removed login prompt: app no longer uses a Login screen */}
+          <Image source={require('../../assets/login.png')} style={styles.logo} />
 
           <Text style={styles.mascotWelcome}>
             {language === 'es' && 'Kuro te da la bienvenida a Fluu 🐾'}
@@ -227,265 +159,39 @@ export default function Register({ navigation }) {
           </Text>
 
           <Text style={styles.title}>{t('register.title')}</Text>
-          <Text style={styles.subtitle}>
-            {t('register.subtitle') || 'Empieza a organizar tu vida'}
-          </Text>
+          <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
 
+          <TextInput style={styles.input} placeholder={t('profile.firstName')} value={nombre} onChangeText={setNombre} />
+          <TextInput style={styles.input} placeholder={t('profile.lastName')} value={apellido} onChangeText={setApellido} />
+          <TextInput style={styles.input} placeholder={t('profile.age')} keyboardType="numeric" value={edad} onChangeText={setEdad} />
 
+          <Pressable style={styles.genderSelect} onPress={() => setShowGenderModal(true)}>
+            <Text>{genero || t('profile.genderPlaceholder')}</Text>
+            <Ionicons name="chevron-down" size={18} />
+          </Pressable>
 
-          {/* NOMBRE / APELLIDO / EDAD */}
-          <View style={styles.genderField}>
-            <Text style={styles.genderLabel}>
-              {t('profile.firstName')}
+          <TextInput style={styles.input} placeholder={t('auth.emailLabel')} value={email} onChangeText={setEmail} autoCapitalize="none" />
+          <TextInput
+            style={styles.input}
+            placeholder={t('auth.passwordLabel')}
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Pressable style={styles.primary} onPress={handleRegister} disabled={!acceptedTerms || loading}>
+            <Text style={styles.primaryText}>
+              {loading ? 'Creando cuenta…' : t('register.submit')}
             </Text>
-            <TextInput
-              style={styles.input}
-              value={nombre}
-              onChangeText={setNombre}
-            />
-          </View>
-          <View style={styles.genderField}>
-            <Text style={styles.genderLabel}>
-              {t('profile.lastName')}
-            </Text>
-            <TextInput
-              style={styles.input}
-              value={apellido}
-              onChangeText={setApellido}
-            />
-          </View>
-          <View style={styles.genderField}>
-            <Text style={styles.genderLabel}>
-              {t('profile.age')}
-            </Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={edad}
-              onChangeText={setEdad}
-            />
-          </View>
-
-          {/* GÉNERO / EMAIL / CONTRASEÑA */}
-          <View style={styles.genderField}>
-            <Text style={styles.genderLabel}>{t('profile.gender')}</Text>
-            <Pressable
-              style={styles.genderSelect}
-              onPress={() => setShowGenderModal(true)}
-            >
-              <Text
-                style={
-                  genero
-                    ? styles.genderValue
-                    : styles.genderPlaceholder
-                }
-              >
-                {genero || t('profile.genderPlaceholder')}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color="#6b7280"
-              />
-            </Pressable>
-          </View>
-          <View style={styles.genderField}>
-            <Text style={styles.genderLabel}>
-              {t('auth.emailLabel')}
-            </Text>
-            <TextInput
-              style={styles.input}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
-          <View style={styles.genderField}>
-            <Text style={styles.genderLabel}>
-              {t('auth.passwordLabel')}
-            </Text>
-            <View style={styles.passwordBox}>
-              <TextInput
-                style={[styles.passwordInput, !showPassword && styles.passwordMasked]}
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-                onBlur={() => setPasswordTouched(true)}
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="password"
-                autoComplete="password"
-              />
-              <Pressable
-                onPress={() =>
-                  setShowPassword(!showPassword)
-                }
-              >
-                <Ionicons
-                  name={
-                    showPassword
-                      ? 'eye-off'
-                      : 'eye'
-                  }
-                  size={22}
-                  color="#6b7280"
-                />
-              </Pressable>
-            </View>
-            {passwordTouched && String(password || '').length > 0 && String(password || '').length < 8 ? (
-              <Text style={styles.inlineError}>La contraseña debe tener al menos 8 caracteres.</Text>
-            ) : null}
-          </View>
-
-          {error ? (
-            <Text style={styles.error}>{error}</Text>
-          ) : null}
-
-          <View style={styles.legalCard}>
-            <Text style={styles.legalTitle}>{t('profile.privacyPolicy')}</Text>
-            <Text style={styles.legalNote}>{t('register.policyHelper')}</Text>
-
-            <View style={styles.acceptRow}>
-              <Pressable
-                style={styles.checkbox}
-                onPress={() => setAcceptedTerms(!acceptedTerms)}
-              >
-                <Ionicons
-                  name={acceptedTerms ? 'checkbox' : 'square-outline'}
-                  size={20}
-                  color={acceptedTerms ? '#4c1d95' : '#6b7280'}
-                />
-              </Pressable>
-              <Text style={styles.acceptText}>
-                {t('register.policyAcceptPrefix') || 'Acepto la '}
-                <Text style={styles.inlinePolicyLink} onPress={() => setShowPolicyModal(true)}>
-                  {t('register.policyAcceptLink') || 'Política de tratamiento de datos, uso y privacidad'}
-                </Text>
-              </Text>
-            </View>
-          </View>
-
-
-          <View style={styles.actionsRow}>
-            <Pressable
-              style={[styles.primary, !acceptedTerms ? styles.primaryDisabled : null]}
-              onPress={handleRegister}
-              disabled={loading || !acceptedTerms}
-            >
-              <Text style={styles.primaryText}>
-                {loading
-                  ? t('register.creating') || 'Creando cuenta…'
-                  : t('register.submit')}
-              </Text>
-            </Pressable>
-          </View>
+          </Pressable>
 
           <Pressable onPress={goToApp}>
-            <Text style={[styles.link, styles.linkSecondary]}>
-              {t('register.backToApp') || 'Volver a la app'}
-            </Text>
+            <Text style={styles.linkSecondary}>{t('register.backToApp')}</Text>
           </Pressable>
         </View>
       </KeyboardAwareScrollView>
-
-      {/* MODAL GÉNERO */}
-      <Modal
-        visible={showGenderModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowGenderModal(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowGenderModal(false)}
-        >
-          <Pressable
-            style={styles.modalContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text style={styles.modalTitle}>
-              {t('register.genderModalTitle') || 'Selecciona tu género'}
-            </Text>
-            {genderOptions.map((option) => (
-              <Pressable
-                key={option}
-                style={styles.genderOption}
-                onPress={() => {
-                  setGenero(option);
-                  setShowGenderModal(false);
-                }}
-              >
-                <Text style={styles.genderOptionText}>
-                  {option}
-                </Text>
-              </Pressable>
-            ))}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* MODAL POLÍTICA (mismo contenido que Perfil) */}
-      <Modal
-        visible={showPolicyModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPolicyModal(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowPolicyModal(false)}
-        >
-          <Pressable
-            style={[styles.modalContent, { maxHeight: '75%' }]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text style={styles.modalTitle}>
-              {t('profile.privacyPolicy')}
-            </Text>
-            <KeyboardAwareScrollView
-              style={{ maxHeight: '70%' }}
-              showsVerticalScrollIndicator
-            >
-              <Text style={styles.modalBodyText}>{t('profile.privacyIntro')}</Text>
-
-              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyUseOfDataTitle')}</Text>
-              <Text style={styles.modalBodyText}>{t('profile.privacyUseOfDataText')}</Text>
-              <Text style={styles.modalBodyText}>• {t('profile.privacyUseOfDataBullet1')}</Text>
-              <Text style={styles.modalBodyText}>• {t('profile.privacyUseOfDataBullet2')}</Text>
-              <Text style={styles.modalBodyText}>• {t('profile.privacyUseOfDataBullet3')}</Text>
-
-              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacySharingTitle')}</Text>
-              <Text style={styles.modalBodyText}>{t('profile.privacySharingText')}</Text>
-
-              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyLiabilityTitle')}</Text>
-              <Text style={styles.modalBodyText}>{t('profile.privacyLiabilityText')}</Text>
-
-              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyNotAdviceTitle')}</Text>
-              <Text style={styles.modalBodyText}>{t('profile.privacyNotAdviceText')}</Text>
-
-              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyRightsTitle')}</Text>
-              <Text style={styles.modalBodyText}>{t('profile.privacyRightsText')}</Text>
-
-              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyMinorsTitle')}</Text>
-              <Text style={styles.modalBodyText}>{t('profile.privacyMinorsText')}</Text>
-
-              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyChangesTitle')}</Text>
-              <Text style={styles.modalBodyText}>{t('profile.privacyChangesText')}</Text>
-
-              <Text style={styles.modalBodyText}>{'\n' + t('profile.privacyAcceptanceText')}</Text>
-            </KeyboardAwareScrollView>
-            <Pressable
-              style={styles.modalPrimary}
-              onPress={() => setShowPolicyModal(false)}
-            >
-              <Text style={styles.modalPrimaryText}>
-                {t('profile.policyAccept')}
-              </Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -494,392 +200,17 @@ export default function Register({ navigation }) {
    ESTILOS
 ====================== */
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#fff7ed',
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 48,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 28,
-    padding: 24,
-    alignItems: 'center',
-  },
-  logo: {
-    width: 130,
-    height: 130,
-    marginBottom: 4,
-  },
-  loginPromptRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 8,
-  },
-  loginPromptText: {
-    color: '#6b7280',
-    fontSize: 13,
-  },
-  loginPromptLink: {
-    color: '#A8D8F0',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  mascotWelcome: {
-    fontSize: 14,
-    color: '#4b5563',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: '#6b7280',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  stepsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  stepDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: '#e5e7eb',
-  },
-  stepDotActive: {
-    backgroundColor: '#A8D8F0',
-  },
-  stepLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#e5e7eb',
-    marginHorizontal: 6,
-  },
-  stepLineActive: {
-    backgroundColor: '#A8D8F0',
-  },
-  stepLabel: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  helperText: {
-    fontSize: 13,
-    color: '#9ca3af',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  input: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#fde68a',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    marginBottom: 12,
-  },
-  passwordBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#fde68a',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    marginBottom: 12,
-  },
-  passwordInput: {
-    flex: 1,
-    paddingVertical: 14,
-    color: '#111827',
-    fontSize: 16,
-  },
-  passwordMasked: Platform.OS === 'android' ? { fontFamily: 'sans-serif' } : {},
-  actionsRow: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  primary: {
-    flex: 1,
-    backgroundColor: '#A8D8F0',
-    padding: 16,
-    borderRadius: 18,
-    marginTop: 8,
-  },
-  primaryDisabled: {
-    opacity: 0.6,
-  },
-  primaryText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  secondary: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 18,
-    marginTop: 8,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  secondaryText: {
-    color: '#4b5563',
-    textAlign: 'center',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  link: {
-    textAlign: 'center',
-    marginTop: 16,
-    color: '#A8D8F0',
-    fontWeight: '600',
-  },
-  linkSecondary: {
-    marginTop: 10,
-    color: '#64748b',
-  },
-  error: {
-    color: '#ef4444',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  inlineError: {
-    color: '#ef4444',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: -6,
-    marginBottom: 8,
-  },
-  languageBtn: {
-    width: '100%',
-    backgroundColor: '#111827',
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  languageBtnText: {
-    color: '#f9fafb',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  genderField: {
-    width: '100%',
-    marginBottom: 4,
-  },
-  genderLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#4b5563',
-    marginBottom: 6,
-  },
-  genderChipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  genderChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
-  genderChipActive: {
-    borderColor: '#38BDF8',
-    backgroundColor: '#dbeafe',
-  },
-  genderChipText: {
-    fontSize: 13,
-    color: '#4b5563',
-    fontWeight: '600',
-  },
-  genderChipTextActive: {
-    color: '#b91c1c',
-  },
-  genderSelect: {
-    width: '100%',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#fde68a',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  genderValue: {
-    color: '#111827',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  genderPlaceholder: {
-    color: '#9ca3af',
-    fontSize: 15,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  modalContent: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 18,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-    textAlign: 'center',
-    color: '#111827',
-  },
-  genderOption: {
-    paddingVertical: 10,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-  },
-  genderOptionText: {
-    fontSize: 15,
-    color: '#111827',
-    textAlign: 'center',
-  },
-  legalCard: {
-    width: '100%',
-    marginTop: 4,
-    marginBottom: 8,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: '#f5f3ff',
-    borderWidth: 1,
-    borderColor: '#e0e7ff',
-    alignItems: 'stretch',
-  },
-  legalTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#4c1d95',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  legalRecommended: {
-    fontSize: 12,
-    color: '#6b21a8',
-    marginBottom: 6,
-  },
-  legalDescription: {
-    fontSize: 12,
-    color: '#4b5563',
-    marginBottom: 4,
-  },
-  legalBulletRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  legalBulletIconCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#eef2ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  legalBulletText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#374151',
-  },
-  legalNote: {
-    fontSize: 10,
-    color: '#6b7280',
-    marginTop: 6,
-    textAlign: 'justify',
-    alignSelf: 'stretch',
-  },
-  acceptRow: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 8,
-    justifyContent: 'flex-start',
-    flexWrap: 'wrap',
-  },
-  checkbox: {
-    marginRight: 8,
-    marginTop: 2,
-    flexShrink: 0,
-  },
-  acceptText: {
-    flex: 1,
-    minWidth: 0,
-    fontSize: 10,
-    color: '#4b5563',
-    textAlign: 'justify',
-    alignSelf: 'stretch',
-  },
-  inlinePolicyLink: {
-    color: '#4c1d95',
-    fontWeight: '700',
-  },
-  legalLinksRow: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-  },
-  legalLink: {
-    fontSize: 10,
-    color: '#4c1d95',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  legalDot: {
-    marginHorizontal: 6,
-    color: '#9ca3af',
-  },
-  modalBodyText: {
-    fontSize: 13,
-    color: '#4b5563',
-    lineHeight: 20,
-  },
-  modalPrimary: {
-    backgroundColor: '#38BDF8',
-    paddingVertical: 14,
-    borderRadius: 18,
-    marginTop: 12,
-  },
-  modalPrimaryText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: '600',
-    fontSize: 15,
-  },
+  safe: { flex: 1, backgroundColor: '#fff7ed' },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  card: { backgroundColor: '#fff', borderRadius: 28, padding: 24 },
+  logo: { width: 130, height: 130, alignSelf: 'center' },
+  mascotWelcome: { textAlign: 'center', marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: '700', textAlign: 'center' },
+  subtitle: { textAlign: 'center', marginBottom: 16 },
+  input: { borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 12 },
+  primary: { backgroundColor: '#A8D8F0', padding: 16, borderRadius: 18 },
+  primaryText: { color: '#fff', textAlign: 'center', fontWeight: '600' },
+  linkSecondary: { textAlign: 'center', marginTop: 12, color: '#64748b' },
+  error: { color: '#ef4444', textAlign: 'center' },
+  genderSelect: { flexDirection: 'row', justifyContent: 'space-between', padding: 14, borderWidth: 1, borderRadius: 14, marginBottom: 12 },
 });

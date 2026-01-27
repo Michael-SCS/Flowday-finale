@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { parseMoneyLike } from '../utils/parseMoneyLike';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import MarketAddModal from './MarketAddModal';
@@ -692,8 +693,13 @@ export default function HabitFormModal({
 
   const STUDY_DURATION_OPTIONS = useMemo(() => [15, 30, 45, 60, 90, 120], []);
 
-  const CREATIVE_HOBBY_OPTIONS = useMemo(
-    () => [
+  const CREATIVE_HOBBY_OPTIONS = useMemo(() => {
+    if (language === 'fr' && t('creativeHobbyOptions')) return t('creativeHobbyOptions');
+    if (language === 'pt' && t('creativeHobbyOptions')) return t('creativeHobbyOptions');
+    if (language === 'en' && t('creativeHobbyOptions')) return t('creativeHobbyOptions');
+    if (language === 'es' && t('creativeHobbyOptions')) return t('creativeHobbyOptions');
+    // fallback español
+    return [
       'Ilustración digital',
       'Escritura de cuentos cortos',
       'Bordado creativo',
@@ -705,9 +711,8 @@ export default function HabitFormModal({
       'Repostería creativa',
       'Creación de contenido creativo (videos, reels)',
       'Otros',
-    ],
-    []
-  );
+    ];
+  }, [language, t]);
 
   const CREATIVE_HOBBY_EMOJI = useMemo(
     () => ({
@@ -2083,7 +2088,7 @@ export default function HabitFormModal({
 
                     {creativeHobbyDropdownOpen ? (
                       <View style={styles.spacesDropdownBody}>
-                        <View style={styles.waterOptionsRow}>
+                        <View style={[styles.waterOptionsRow, { justifyContent: 'center', flexWrap: 'wrap' }]}> 
                           {CREATIVE_HOBBY_OPTIONS.map((opt) => {
                             const isSelected = String(formData?.creativeHobbyOption ?? '') === String(opt);
                             return (
@@ -2092,7 +2097,6 @@ export default function HabitFormModal({
                                 onPress={() => {
                                   updateField('creativeHobbyOption', String(opt));
                                   if (String(opt) !== 'Otros') updateField('creativeHobbyOther', '');
-                                  setCreativeHobbyDropdownOpen(false);
                                 }}
                                 style={[
                                   styles.waterOptionPill,
@@ -2108,6 +2112,7 @@ export default function HabitFormModal({
                                     styles.waterOptionText,
                                     isDark && { color: '#e5e7eb' },
                                     isSelected && { color: selectedColor || '#38BDF8' },
+                                    { textAlign: 'center', minWidth: 120 },
                                   ]}
                                 >
                                   {withEmoji(opt)}

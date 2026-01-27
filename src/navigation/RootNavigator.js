@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../auth/AuthProvider';
 import AppNavigator from './AppNavigator';
 import AuthNavigator from './AuthNavigator';
+import OnboardingNavigator from './OnboardingNavigator';
 import MoodCheckInModal from '../components/MoodCheckInModal';
 import { getLastPromptDate, saveMoodForToday, setLastPromptDate, todayMoodKey } from '../utils/moodTracker';
 import { useI18n } from '../utils/i18n';
@@ -73,15 +74,12 @@ export default function RootNavigator({ navigationTheme }) {
     <NavigationContainer
       ref={navRef}
       onReady={() => setNavReady(true)}
-      onStateChange={() => {
-        // Keep desiredRoot in sync with AsyncStorage flags when screens navigate.
-        refreshFlags().catch(() => {});
-      }}
       theme={navigationTheme}
     >
       <Stack.Navigator initialRouteName={desiredRoot} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Auth" component={AuthNavigator} />
         <Stack.Screen name="App" component={AppNavigator} />
+        <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
       </Stack.Navigator>
 
       <MoodCheckInModal

@@ -46,36 +46,9 @@ export default function ProfileScreen() {
   const isDark = themeMode === 'dark';
   const isGuest = !(session?.user?.id || authUser?.id);
 
-  const startOnboardingSignup = useCallback(async ({ from = 'profile_guest' } = {}) => {
-    try { await AsyncStorage.setItem('onboarding_in_progress', 'true'); } catch {}
-
-    // Walk up to the root navigator (Stack) so we can reset reliably.
-    let nav = navigation;
-    for (let i = 0; i < 6; i += 1) {
-      const parent = nav?.getParent?.();
-      if (!parent) break;
-      nav = parent;
-    }
-
-    try {
-      nav.reset({
-        index: 0,
-        routes: [
-          {
-            name: 'Onboarding',
-            state: {
-              index: 0,
-              routes: [{ name: 'RegisterForm', params: { from } }],
-            },
-          },
-        ],
-      });
-      return;
-    } catch {}
-
-    try {
-      nav.navigate('Onboarding', { screen: 'RegisterForm', params: { from } });
-    } catch {}
+  // Navegación de onboarding eliminada porque las rutas ya no existen
+  const startOnboardingSignup = useCallback(() => {
+    navigation.navigate('Onboarding', { screen: 'RegisterForm', params: { from: 'profile_guest_cta' } });
   }, [navigation]);
 
   useEffect(() => {
@@ -89,17 +62,40 @@ export default function ProfileScreen() {
         if (cancelled) return;
         if (shown === 'true') return;
 
-        Alert.alert(
-          safeT('profile.guestModeTitle', 'Modo invitado'),
-          safeT('profile.guestModeMessage', 'Puedes usar la app sin cuenta. Si te registras, podrás sincronizar y guardar tu perfil.'),
-          [
-            { text: safeT('profile.guestModeLater', 'Más tarde'), style: 'cancel' },
-            {
-              text: safeT('profile.guestModeRegister', 'Registrarme'),
-              onPress: () => startOnboardingSignup({ from: 'profile_guest_prompt' }),
-            },
-          ]
-        );
+        // Mostrar el Alert en el siguiente tick para evitar problemas de render
+        setTimeout(() => {
+          Alert.alert(
+            safeT('profile.guestModeTitle', {
+              es: 'Modo invitado',
+              en: 'Guest mode',
+              pt: 'Modo convidado',
+              fr: 'Mode invité',
+            }[language] || 'Guest mode'),
+            safeT('profile.guestModeMessage', {
+              es: 'Puedes usar la app sin cuenta. Si te registras, podrás sincronizar y guardar tu perfil.',
+              en: 'You can use the app without an account. If you register, you can sync and save your profile.',
+              pt: 'Você pode usar o app sem conta. Se você se registrar, poderá sincronizar e salvar seu perfil.',
+              fr: 'Vous pouvez utiliser l’application sans compte. Si vous vous inscrivez, vous pourrez synchroniser et sauvegarder votre profil.',
+            }[language] || 'You can use the app without an account. If you register, you can sync and save your profile.'),
+            [
+              { text: safeT('profile.guestModeLater', {
+                  es: 'Más tarde',
+                  en: 'Later',
+                  pt: 'Mais tarde',
+                  fr: 'Plus tard',
+                }[language] || 'Later'), style: 'cancel' },
+              {
+                text: safeT('profile.guestModeRegister', {
+                  es: 'Registrarme',
+                  en: 'Register',
+                  pt: 'Registrar',
+                  fr: 'M’inscrire',
+                }[language] || 'Register'),
+                onPress: () => startOnboardingSignup(),
+              },
+            ]
+          );
+        }, 300);
 
         try { await AsyncStorage.setItem(key, 'true'); } catch {}
       } catch {
@@ -110,7 +106,37 @@ export default function ProfileScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isGuest, startOnboardingSignup]);
+  }, [isGuest, startOnboardingSignup, language]);
+
+  // Nuevo: actualizar perfil de invitado automáticamente al cambiar idioma
+  useEffect(() => {
+    if (!isGuest) return;
+    setProfile({
+      id: null,
+      nombre: safeT('profile.guestName', {
+        es: 'Invitado',
+        en: 'Guest',
+        pt: 'Convidado',
+        fr: 'Invité',
+      }[language] || 'Guest'),
+      apellido: null,
+      edad: null,
+      genero: null,
+      email: safeT('profile.guestEmail', {
+        es: 'Modo invitado',
+        en: 'Guest mode',
+        pt: 'Modo convidado',
+        fr: 'Mode invité',
+      }[language] || 'Guest mode'),
+      language: languageValue || language || 'es',
+      notifications_enabled: !!notificationsEnabled,
+      last_active_at: null,
+      pro: false,
+      pro_trial_used: false,
+      pro_until: null,
+      pro_lifetime: false,
+    });
+  }, [isGuest, language, languageValue, notificationsEnabled]);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
@@ -317,11 +343,21 @@ export default function ProfileScreen() {
         // Guest mode: don't show an error, just render a local profile shell.
         setProfile({
           id: null,
-          nombre: safeT('profile.guestName', 'Invitado'),
+          nombre: safeT('profile.guestName', {
+            es: 'Invitado',
+            en: 'Guest',
+            pt: 'Convidado',
+            fr: 'Invité',
+          }[language] || 'Guest'),
           apellido: null,
           edad: null,
           genero: null,
-          email: safeT('profile.guestEmail', 'Modo invitado'),
+          email: safeT('profile.guestEmail', {
+            es: 'Modo invitado',
+            en: 'Guest mode',
+            pt: 'Modo convidado',
+            fr: 'Mode invité',
+          }[language] || 'Guest mode'),
           language: languageValue || language || 'es',
           notifications_enabled: !!notificationsEnabled,
           last_active_at: null,
@@ -722,10 +758,20 @@ export default function ProfileScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}>
-                          {safeT('profile.guestCtaTitle', 'Crea tu cuenta')}
+                          {safeT('profile.guestCtaTitle', {
+                            es: 'Crea tu cuenta',
+                            en: 'Create your account',
+                            pt: 'Crie sua conta',
+                            fr: 'Crée ton compte',
+                          }[language] || 'Create your account')}
                         </Text>
                         <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}>
-                          {safeT('profile.guestCtaSubtitle', 'Sincroniza tu progreso y guarda tu perfil')}
+                          {safeT('profile.guestCtaSubtitle', {
+                            es: 'Sincroniza tu progreso y guarda tu perfil',
+                            en: 'Sync your progress and save your profile',
+                            pt: 'Sincronize seu progresso e salve seu perfil',
+                            fr: 'Synchronise tes progrès et sauvegarde ton profil',
+                          }[language] || 'Sync your progress and save your profile')}
                         </Text>
                       </View>
                     </View>
@@ -737,7 +783,12 @@ export default function ProfileScreen() {
                       }}
                     >
                       <Ionicons name="log-in-outline" size={18} color="#fff" />
-                      <Text style={styles.retryButtonText}>{safeT('profile.guestCtaButton', 'Registrarme')}</Text>
+                      <Text style={styles.retryButtonText}>{safeT('profile.guestCtaButton', {
+                        es: 'Registrarme',
+                        en: 'Register',
+                        pt: 'Registrar',
+                        fr: 'M’inscrire',
+                      }[language] || 'Register')}</Text>
                     </Pressable>
                   </View>
                 )}
@@ -1997,7 +2048,7 @@ export default function ProfileScreen() {
       </View>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   safeArea: {
