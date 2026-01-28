@@ -2571,14 +2571,14 @@ export default function HabitFormModal({
 
           {isSavingsTemplate ? (
             <View style={styles.section}>
-              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}>
-                {t('habitForm.savingsGoalLabel') || '¿Cuánto dinero quieres ahorrar?'}
+              <Text style={[styles.label, isDark && { color: '#e5e7eb' }]}> 
+                {t('specialHabits.savings.question')}
               </Text>
               <TextInput
                 value={String(formData?.savingsTargetAmount ?? '')}
                 onChangeText={(v) => updateField('savingsTargetAmount', v)}
                 keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
-                placeholder={t('habitForm.savingsGoalPlaceholder') || 'Ej: 500'}
+                placeholder={t('specialHabits.savings.placeholder')}
                 placeholderTextColor={isDark ? '#64748b' : '#9ca3af'}
                 style={[
                   styles.input,
@@ -2586,7 +2586,7 @@ export default function HabitFormModal({
                 ]}
               />
 
-              <Text style={[styles.label, { marginTop: 12 }, isDark && { color: '#e5e7eb' }]}>
+              <Text style={[styles.label, { marginTop: 12 }, isDark && { color: '#e5e7eb' }]}> 
                 {t('habitForm.savingsSavedLabel') || 'Meta ahorrada'}
               </Text>
               <Text
@@ -2756,7 +2756,7 @@ export default function HabitFormModal({
               ))}
 
           {/* COLOR */}
-          {!isBirthdayTemplate && !isBannerLockedTemplate ? (
+          {!isBirthdayTemplate && !isBannerLockedTemplate && !isSavingsTemplate && (
             <View style={styles.section}>
               <Text style={[styles.label, styles.colorLabel, isDark && { color: '#e5e7eb' }]}>{t('habitForm.colorLabel') || 'Color'}</Text>
               <View style={{ marginTop: 8 }}>
@@ -2782,7 +2782,7 @@ export default function HabitFormModal({
                 </View>
               </View>
             </View>
-          ) : null}
+          )}
 
           <View style={{ height: 100 }} />
         </ScrollView>

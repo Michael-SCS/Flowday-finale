@@ -880,11 +880,11 @@ export default function ProfileScreen() {
                         <Ionicons name="options" size={18} color={accent} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}>
-                          {safeT('profile.quickSettingsTitle', 'Ajustes rápidos')}
+                        <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}> 
+                          {t('settings.quickSectionTitle')}
                         </Text>
-                        <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}>
-                          {safeT('profile.quickSettingsSubtitle', 'Personaliza sin abrir el modal')}
+                        <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}> 
+                          {/* TODO: Add subtitle translation if needed */}
                         </Text>
                       </View>
                     </View>
@@ -908,10 +908,10 @@ export default function ProfileScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.quickSettingTitle, isDark && { color: '#e5e7eb' }]}>
-                            {safeT('profile.appearanceMode', 'Modo')}
+                            {t('profile.appearanceMode')}
                           </Text>
                           <Text style={[styles.quickSettingSubtitle, isDark && { color: '#94a3b8' }]}>
-                            {isDark ? safeT('profile.appearanceDark', 'Oscuro') : safeT('profile.appearanceLight', 'Claro')}
+                            {isDark ? t('profile.appearanceDark') : t('profile.appearanceLight')}
                           </Text>
                         </View>
                       </View>
@@ -930,10 +930,10 @@ export default function ProfileScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.quickSettingTitle, isDark && { color: '#e5e7eb' }]}>
-                            {safeT('profile.notificationsTitle', 'Notificaciones')}
+                            {t('profile.notificationsTitle')}
                           </Text>
                           <Text style={[styles.quickSettingSubtitle, isDark && { color: '#94a3b8' }]}>
-                            {notificationsEnabled ? safeT('profile.notificationsOn', 'Activadas') : safeT('profile.notificationsOff', 'Desactivadas')}
+                            {notificationsEnabled ? t('profile.notificationsOn') : t('profile.notificationsOff')}
                           </Text>
                         </View>
                       </View>
@@ -960,7 +960,7 @@ export default function ProfileScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.quickSettingTitle, isDark && { color: '#e5e7eb' }]}>
-                            {safeT('profile.appLanguage', 'Idioma')}
+                            {t('profile.appLanguage')}
                           </Text>
                           <Text style={[styles.quickSettingSubtitle, isDark && { color: '#94a3b8' }]}>
                             {getLanguageLabel(languageValue || language)}
@@ -980,14 +980,14 @@ export default function ProfileScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.quickSettingTitle, isDark && { color: '#e5e7eb' }]}>
-                            {safeT('profile.timeFormatTitle', 'Formato de hora')}
+                            {t('profile.timeFormatTitle')}
                           </Text>
                           <Text style={[styles.quickSettingSubtitle, isDark && { color: '#94a3b8' }]}>
                             {timeFormat === '12h'
-                              ? '12h'
+                              ? t('profile.timeFormat12h')
                               : timeFormat === '24h'
-                                ? '24h'
-                                : safeT('profile.timeFormatSystem', 'Sistema')}
+                                ? t('profile.timeFormat24h')
+                                : t('profile.timeFormatSystem')}
                           </Text>
                         </View>
                       </View>
@@ -1004,10 +1004,10 @@ export default function ProfileScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}>
-                        {safeT('profile.accountTitle', 'Cuenta')}
+                        {t('profile.accountTitle')}
                       </Text>
                       <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}>
-                        {safeT('profile.accountSubtitle', 'Soporte, privacidad y seguridad')}
+                        {t('profile.accountSubtitle')}
                       </Text>
                     </View>
                   </View>
@@ -1031,10 +1031,10 @@ export default function ProfileScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.rowButtonTitle, isDark && { color: '#e5e7eb' }]}>
-                          {safeT('profile.feedbackTitle', 'Feedback')}
+                          {t('profile.feedbackTitle')}
                         </Text>
                         <Text style={[styles.rowButtonSubtitle, isDark && { color: '#94a3b8' }]}>
-                          {safeT('profile.feedbackOpen', 'Cuéntanos tu experiencia')}
+                          {t('profile.feedbackOpen')}
                         </Text>
                       </View>
                     </View>
@@ -1051,10 +1051,10 @@ export default function ProfileScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.rowButtonTitle, isDark && { color: '#e5e7eb' }]}>
-                          {safeT('profile.privacyPolicy', 'Política de privacidad')}
+                          {t('profile.privacyPolicy')}
                         </Text>
                         <Text style={[styles.rowButtonSubtitle, isDark && { color: '#94a3b8' }]}>
-                          {safeT('profile.privacyOpenHint', 'Cómo usamos tus datos')}
+                          {t('profile.privacyOpenHint')}
                         </Text>
                       </View>
                     </View>
@@ -1080,10 +1080,10 @@ export default function ProfileScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.rowButtonTitle, { color: '#ef4444' }]}>
-                            {safeT('profile.deleteAccount', 'Eliminar cuenta')}
+                            {t('profile.deleteAccount')}
                           </Text>
                           <Text style={[styles.rowButtonSubtitle, isDark && { color: '#94a3b8' }]}>
-                            {safeT('profile.deleteAccountMessageShort', 'Esta acción es permanente')}
+                            {t('profile.deleteAccountMessageShort')}
                           </Text>
                         </View>
                       </View>
@@ -2712,12 +2712,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     paddingVertical: 16,
+    paddingHorizontal: 24,
     borderRadius: 16,
+    maxWidth: '90%',
+    alignSelf: 'center',
   },
   modalAcceptText: {
     color: '#fff',
     fontSize: 17,
     fontWeight: '800',
+    textAlign: 'center',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    maxWidth: 260,
   },
 
   // SETTINGS MODAL

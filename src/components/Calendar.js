@@ -211,7 +211,10 @@ function looksLikePlanningDayTitle(text) {
     t.includes('planear el día') ||
     t.includes('planear el dia') ||
     t.includes('planificar el día') ||
-    t.includes('planning day')
+    t.includes('planning day') ||
+    t.includes('planifier la journée') || // francés
+    t.includes('planejar o dia') || // portugués
+    t.includes('plan the day') // inglés
   );
 }
 
@@ -219,9 +222,17 @@ function looksLikeSunTitle(text) {
   const t = String(text || '').toLowerCase();
   return (
     t.includes('tomar el sol') ||
+    t.includes('tomar sol') ||
     (t.includes('tomar') && t.includes('sol')) ||
     t.includes('sunbath') ||
-    t.includes('sun bath')
+    t.includes('sun bath') ||
+    t.includes('get sunlight') ||
+    t.includes('get sun') ||
+    t.includes('prendre le soleil') || // francés
+    t.includes('prendre soleil') ||
+    (t.includes('prendre') && t.includes('soleil')) ||
+    t.includes('pegar sol') || // portugués
+    t.includes('sun') && t.includes('habit') // fallback for English
   );
 }
 
@@ -612,16 +623,7 @@ export default function Calendar() {
   const [habits, setHabits] = useState([]);
   const [habitsLoading, setHabitsLoading] = useState(true);
 
-  const CALENDAR_DRAG_HINT_KEY = 'FLUU_CALENDAR_DRAG_HINT_DISMISSED';
-  const CALENDAR_DRAG_HINT_COLLAPSE_KEY = 'FLUU_CALENDAR_DRAG_HINT_COLLAPSE_DISMISSED';
   const [calendarExpanded, setCalendarExpanded] = useState(false);
-  const [calendarDragHintVisible, setCalendarDragHintVisible] = useState(false);
-  const calendarDragHintAnim = useRef(new Animated.Value(0)).current;
-  const calendarDragHintLoopRef = useRef(null);
-
-  const [calendarDragHintCollapseVisible, setCalendarDragHintCollapseVisible] = useState(false);
-  const calendarDragHintCollapseAnim = useRef(new Animated.Value(0)).current;
-  const calendarDragHintCollapseLoopRef = useRef(null);
 
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [isChangingHabit, setIsChangingHabit] = useState(false);
@@ -668,153 +670,20 @@ export default function Calendar() {
     return refreshMoodForSelectedDate();
   }, [refreshMoodForSelectedDate]);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [dismissedExpand, dismissedCollapse] = await Promise.all([
-          AsyncStorage.getItem(CALENDAR_DRAG_HINT_KEY),
-          AsyncStorage.getItem(CALENDAR_DRAG_HINT_COLLAPSE_KEY),
-        ]);
-        if (!mounted) return;
-        if (!dismissedExpand) {
-          // Small delay so it doesn't flash during initial layout.
-          setTimeout(() => {
-            if (!mounted) return;
-            setCalendarDragHintVisible(true);
-          }, 650);
-        }
 
-        if (!dismissedCollapse) {
-          // We only show this when the user expands to month; so just mark it as eligible.
-          // (Visibility is controlled by calendarExpanded.)
-          setCalendarDragHintCollapseVisible(false);
-        }
-      } catch {
-        // If storage fails, still show the hint (best effort).
-        if (!mounted) return;
-        setCalendarDragHintVisible(true);
-      }
-    })();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
-  const dismissCalendarDragHint = useCallback(async () => {
-    setCalendarDragHintVisible(false);
-    try {
-      await AsyncStorage.setItem(CALENDAR_DRAG_HINT_KEY, '1');
-    } catch {
-      // best-effort
-    }
-  }, []);
-
-  const dismissCalendarDragHintCollapse = useCallback(async () => {
-    setCalendarDragHintCollapseVisible(false);
-    try {
-      await AsyncStorage.setItem(CALENDAR_DRAG_HINT_COLLAPSE_KEY, '1');
-    } catch {
-      // best-effort
-    }
-  }, []);
 
   const handleCalendarToggled = useCallback(
     (isOpen) => {
-      const open = !!isOpen;
-      setCalendarExpanded(open);
-      if (open && calendarDragHintVisible) {
-        dismissCalendarDragHint();
-      }
-
-      // Show collapse hint once the user reaches month view (only if not dismissed).
-      if (open) {
-        (async () => {
-          try {
-            const dismissed = await AsyncStorage.getItem(CALENDAR_DRAG_HINT_COLLAPSE_KEY);
-            if (!dismissed) setCalendarDragHintCollapseVisible(true);
-          } catch {
-            setCalendarDragHintCollapseVisible(true);
-          }
-        })();
-      }
-
-      // If the user collapses back to week while the hint is visible, dismiss it permanently.
-      if (!open && calendarDragHintCollapseVisible) {
-        dismissCalendarDragHintCollapse();
-      }
+      setCalendarExpanded(!!isOpen);
     },
-    [
-      calendarDragHintVisible,
-      dismissCalendarDragHint,
-      calendarDragHintCollapseVisible,
-      dismissCalendarDragHintCollapse,
-    ]
+    []
   );
 
-  const shouldShowCalendarDragHint = calendarDragHintVisible && !calendarExpanded;
-  const shouldShowCalendarDragHintCollapse = calendarDragHintCollapseVisible && calendarExpanded;
 
-  useEffect(() => {
-    if (!shouldShowCalendarDragHint) {
-      calendarDragHintLoopRef.current?.stop?.();
-      calendarDragHintAnim.setValue(0);
-      return;
-    }
 
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(calendarDragHintAnim, {
-          toValue: 4,
-          duration: 650,
-          useNativeDriver: true,
-        }),
-        Animated.timing(calendarDragHintAnim, {
-          toValue: 0,
-          duration: 650,
-          useNativeDriver: true,
-        }),
-      ])
-    );
 
-    calendarDragHintLoopRef.current = loop;
-    loop.start();
-
-    return () => {
-      loop.stop();
-    };
-  }, [calendarDragHintAnim, shouldShowCalendarDragHint]);
-
-  useEffect(() => {
-    if (!shouldShowCalendarDragHintCollapse) {
-      calendarDragHintCollapseLoopRef.current?.stop?.();
-      calendarDragHintCollapseAnim.setValue(0);
-      return;
-    }
-
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(calendarDragHintCollapseAnim, {
-          toValue: -4,
-          duration: 650,
-          useNativeDriver: true,
-        }),
-        Animated.timing(calendarDragHintCollapseAnim, {
-          toValue: 0,
-          duration: 650,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    calendarDragHintCollapseLoopRef.current = loop;
-    loop.start();
-
-    return () => {
-      loop.stop();
-    };
-  }, [calendarDragHintCollapseAnim, shouldShowCalendarDragHintCollapse]);
 
   useEffect(() => {
     if (selectedDate !== today) return;
@@ -2577,7 +2446,27 @@ export default function Calendar() {
 
   const selectedDayActsSorted = useMemo(() => {
     if (!selectedDayActs?.length) return [];
-    return [...selectedDayActs].sort((a, b) => {
+    // Crear un Map de hábitos por id para acceso rápido
+    const habitsById = new Map((habits || []).map(h => [String(h.id), h]));
+    // Identificar el hábito de ahorrar dinero
+    const isSavingsHabit = (act) => {
+      if (act?.type && String(act.type).toLowerCase() === 'savings') return true;
+      if (act?.title && looksLikeSavingsTitle(act.title)) return true;
+      if (act?.habit_id && habitsById.has(String(act.habit_id))) {
+        const h = habitsById.get(String(act.habit_id));
+        if (h?.type && String(h.type).toLowerCase() === 'savings') return true;
+        if (h?.title && looksLikeSavingsTitle(h.title)) return true;
+      }
+      return false;
+    };
+    const acts = [...selectedDayActs];
+    acts.sort((a, b) => {
+      // Savings primero
+      const aSavings = isSavingsHabit(a);
+      const bSavings = isSavingsHabit(b);
+      if (aSavings && !bSavings) return -1;
+      if (!aSavings && bSavings) return 1;
+      // Luego por allDay y hora
       const aAllDay = !!a?.allDay;
       const bAllDay = !!b?.allDay;
       if (aAllDay && !bAllDay) return -1;
@@ -2586,7 +2475,8 @@ export default function Calendar() {
       const bMin = timeStringToMinutes(b?.time) ?? Number.POSITIVE_INFINITY;
       return aMin - bMin;
     });
-  }, [selectedDayActs]);
+    return acts;
+  }, [selectedDayActs, habits]);
 
   return (
     <SafeAreaView style={[styles.safe, isDark && { backgroundColor: '#020617' }]}>
@@ -2599,7 +2489,6 @@ export default function Calendar() {
         <View
           style={[
             styles.calendarWrapper,
-            (shouldShowCalendarDragHint || shouldShowCalendarDragHintCollapse) && { marginBottom: 18 },
           ]}
         >
           <ExpandableCalendar
@@ -2611,71 +2500,9 @@ export default function Calendar() {
             onCalendarToggled={handleCalendarToggled}
           />
 
-          {shouldShowCalendarDragHint ? (
-            <View style={styles.calendarDragHintOverlay} pointerEvents="box-none">
-              <Pressable
-                onPress={dismissCalendarDragHint}
-                style={[
-                  styles.calendarDragHintPill,
-                  isDark && {
-                    backgroundColor: 'rgba(148, 163, 184, 0.12)',
-                    borderColor: 'rgba(148, 163, 184, 0.28)',
-                  },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={t('calendar.dragHintExpand') || 'Desliza hacia abajo para ver el mes'}
-              >
-                <Animated.View style={{ transform: [{ translateY: calendarDragHintAnim }] }}>
-                  <Ionicons
-                    name="chevron-down"
-                    size={18}
-                    color={isDark ? '#e5e7eb' : '#334155'}
-                  />
-                </Animated.View>
-                <Text
-                  style={[
-                    styles.calendarDragHintText,
-                    isDark && { color: '#e5e7eb' },
-                  ]}
-                >
-                  {t('calendar.dragHintExpand') || 'Desliza hacia abajo para ver el mes'}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
 
-          {shouldShowCalendarDragHintCollapse ? (
-            <View style={styles.calendarDragHintOverlay} pointerEvents="box-none">
-              <Pressable
-                onPress={dismissCalendarDragHintCollapse}
-                style={[
-                  styles.calendarDragHintPill,
-                  isDark && {
-                    backgroundColor: 'rgba(148, 163, 184, 0.12)',
-                    borderColor: 'rgba(148, 163, 184, 0.28)',
-                  },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={t('calendar.dragHintCollapse') || 'Desliza hacia arriba para ver la semana'}
-              >
-                <Animated.View style={{ transform: [{ translateY: calendarDragHintCollapseAnim }] }}>
-                  <Ionicons
-                    name="chevron-up"
-                    size={18}
-                    color={isDark ? '#e5e7eb' : '#334155'}
-                  />
-                </Animated.View>
-                <Text
-                  style={[
-                    styles.calendarDragHintText,
-                    isDark && { color: '#e5e7eb' },
-                  ]}
-                >
-                  {t('calendar.dragHintCollapse') || 'Desliza hacia arriba para ver la semana'}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
+
+
         </View>
 
         <View style={[styles.content, isDark && { backgroundColor: '#020617' }]}>
@@ -3112,23 +2939,25 @@ export default function Calendar() {
 
                 const bannerSource = !isBirthdayHabit
                   ? (
-                      isWaterHabit
-                        ? require('../../assets/Banners/agua.png')
-                        : isStudyHabit
-                          ? require('../../assets/Banners/estudiar.png')
-                          : isFamilyHabit
-                            ? require('../../assets/Banners/family.png')
-                            : isGymHabit
-                              ? require('../../assets/Banners/Gimnasio.png')
-                              : isInboxZeroHabit
-                                ? require('../../assets/Banners/inboxzero.png')
-                                : isMarketListHabit
-                                  ? require('../../assets/Banners/mercado.png')
-                                  : isPlanningDayHabit
-                                    ? require('../../assets/Banners/plannigDay.png')
-                                    : isSunHabit
-                                      ? require('../../assets/Banners/tomar-sol.png')
-                                      : null
+                      isSavingsHabit && hasSavingsGoal
+                        ? require('../../assets/Banners/ahorrardinero.png')
+                        : isWaterHabit
+                          ? require('../../assets/Banners/agua.png')
+                          : isStudyHabit
+                            ? require('../../assets/Banners/estudiar.png')
+                            : isFamilyHabit
+                              ? require('../../assets/Banners/family.png')
+                              : isGymHabit
+                                ? require('../../assets/Banners/Gimnasio.png')
+                                : isInboxZeroHabit
+                                  ? require('../../assets/Banners/inboxzero.png')
+                                  : isMarketListHabit
+                                    ? require('../../assets/Banners/mercado.png')
+                                    : isPlanningDayHabit
+                                      ? require('../../assets/Banners/plannigDay.png')
+                                      : isSunHabit
+                                        ? require('../../assets/Banners/tomar-sol.png')
+                                        : null
                     )
                   : null;
 
@@ -3269,14 +3098,23 @@ export default function Calendar() {
                         <View style={styles.cardHeaderText}>
                           <View style={{ flex: 1, minWidth: 0 }}>
                             <Text
-                              style={[
-                                styles.cardTitle,
-                                isCompleted && styles.cardTitleCompleted,
-                                titleTextColor && { color: titleTextColor },
-                              ]}
+                              style={[styles.cardTitle, isCompleted && styles.cardTitleCompleted, titleTextColor && { color: titleTextColor }]}
                             >
                               {displayTitle}
                             </Text>
+                            {/* Descripción del hábito debajo del título */}
+                            {habitTemplateForCard?.description ? (
+                              <Text
+                                style={[
+                                  styles.habitDescription,
+                                  { marginTop: 2 },
+                                  isCompleted && styles.cardTitleCompleted,
+                                  descTextColor && { color: descTextColor },
+                                ]}
+                              >
+                                {habitTemplateForCard.description}
+                              </Text>
+                            ) : null}
                             {/* Eliminado el label 'Lista' para mercado, solo se muestra el chip */}
 
                             {isBirthdayHabit && (() => {
@@ -3484,13 +3322,74 @@ export default function Calendar() {
                               </>
                             ) : null}
 
+
                             {(hasVitamins || isMarketListHabit) ? (
                               <View style={styles.studyMetaRow}>
                                 <View style={[styles.studyMetaChip, String(subtitleTextColor) === '#111827' ? styles.studyMetaChipOnLight : styles.studyMetaChipOnDark]}>
-                                  <Text style={[styles.studyMetaText, { color: subtitleTextColor || '#fff' }]}>Lista</Text>
+                                  <Text style={[styles.studyMetaText, { color: subtitleTextColor || '#fff' }]}> 
+                                    {t('chipList') || 'Lista'}
+                                  </Text>
                                 </View>
                               </View>
                             ) : null}
+
+                            {creativeHobbyMeta ? (
+                              <View style={styles.studyMetaRow}>
+                                <View style={[
+                                  styles.studyMetaChip,
+                                  { justifyContent: 'center', alignItems: 'center' },
+                                  String(subtitleTextColor) === '#111827' ? styles.studyMetaChipOnLight : styles.studyMetaChipOnDark
+                                ]}>
+                                  <Text style={[
+                                    styles.studyMetaText,
+                                    { color: subtitleTextColor || '#fff', textAlign: 'center', width: '100%' }
+                                  ]}>
+                                    {(() => {
+                                      const options = t('creativeHobbyOptions') || [];
+                                      let idx = -1;
+                                      for (const lang of ['es','en','pt','fr']) {
+                                        const arr = (require('../utils/i18n').default?.[lang]?.creativeHobbyOptions) || [];
+                                        const i = arr.indexOf(creativeHobbyMeta.subjectText);
+                                        if (i !== -1) { idx = i; break; }
+                                      }
+                                      if (Array.isArray(options) && idx !== -1 && options[idx]) return options[idx];
+                                      return creativeHobbyMeta.subjectText;
+                                    })()}
+                                  </Text>
+                                </View>
+                              </View>
+                            ) : null}
+
+                            {/* Chip for 'Leer un libro' habit */}
+                            {(() => {
+                              // Detect 'Leer un libro' habit by type or title
+                              const isReadBookHabit =
+                                habitTypeForCard === 'read_book' ||
+                                (habitTemplateForCard?.title || '').toLowerCase().includes('leer un libro') ||
+                                (habitTemplateForCard?.title || '').toLowerCase().includes('read a book') ||
+                                (displayTitle || '').toLowerCase().includes('leer un libro') ||
+                                (displayTitle || '').toLowerCase().includes('read a book');
+                              if (!isReadBookHabit) return null;
+                              // Try to get the book name from activityWithDate.data.bookName or similar
+                              const bookName = activityWithDate?.data?.bookName || activityWithDate?.data?.book || '';
+                              if (!bookName) return null;
+                              return (
+                                <View style={styles.studyMetaRow}>
+                                  <View style={[
+                                    styles.studyMetaChip,
+                                    { justifyContent: 'center', alignItems: 'center' },
+                                    String(subtitleTextColor) === '#111827' ? styles.studyMetaChipOnLight : styles.studyMetaChipOnDark
+                                  ]}>
+                                    <Text style={[
+                                      styles.studyMetaText,
+                                      { color: subtitleTextColor || '#fff', textAlign: 'center', width: '100%' }
+                                    ]}>
+                                      {bookName}
+                                    </Text>
+                                  </View>
+                                </View>
+                              );
+                            })()}
 
                             {isSavingsHabit && hasSavingsGoal ? (
                               <>
