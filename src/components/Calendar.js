@@ -1,3 +1,5 @@
+// ...existing code...
+// Mover la definición de creativeHobbyMeta justo después de habitTypeForCard en el cuerpo principal de Calendar
 import 'react-native-get-random-values';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -2750,6 +2752,30 @@ export default function Calendar() {
 
                 const habitTemplateForCard = getHabitTemplateForActivity(activityWithDate);
                 const habitTypeForCard = String(habitTemplateForCard?.type || '').toLowerCase();
+
+                // Meta para hobby creativo
+                const looksLikeCreativeHobbyTitle = (text) => {
+                  const t = String(text || '').toLowerCase();
+                  return (
+                    t.includes('hobby creativo') ||
+                    t.includes('creative hobby') ||
+                    t.includes('creatividad') ||
+                    t.includes('artesanía') ||
+                    t.includes('manualidad')
+                  );
+                };
+                const isCreativeHobbyHabit =
+                  habitTypeForCard === 'creative_hobby' ||
+                  looksLikeCreativeHobbyTitle(habitTemplateForCard?.title || habitTemplateForCard?.Title) ||
+                  looksLikeCreativeHobbyTitle(displayTitle);
+                const creativeHobbyMeta = (() => {
+                  if (!isCreativeHobbyHabit) return null;
+                  const hobbyRaw = String(activityWithDate?.data?.creativeHobbyOption ?? '').trim();
+                  const hobbyOther = String(activityWithDate?.data?.creativeHobbyOther ?? '').trim();
+                  const hobby = hobbyRaw === 'Otros' ? (hobbyOther || 'Otros') : (hobbyRaw || null);
+                  if (!hobby) return null;
+                  return { subjectText: hobby };
+                })();
                 const savingsTotals = activityWithDate?.habit_id
                   ? savingsByHabitId.get(activityWithDate.habit_id)
                   : null;
@@ -3251,19 +3277,7 @@ export default function Calendar() {
                             >
                               {displayTitle}
                             </Text>
-                            {hasMarket && (
-                              <View style={styles.cardTimeRow}>
-                                <Text
-                                  style={[
-                                    styles.cardTimeText,
-                                    isCompleted && styles.cardSubtitleCompleted,
-                                    subtitleTextColor && { color: subtitleTextColor },
-                                  ]}
-                                >
-                                  {language === 'es' ? 'Lista' : 'List'}
-                                </Text>
-                              </View>
-                            )}
+                            {/* Eliminado el label 'Lista' para mercado, solo se muestra el chip */}
 
                             {isBirthdayHabit && (() => {
                               // Calcular edad y nombre
@@ -3353,26 +3367,53 @@ export default function Calendar() {
                                       ? styles.studyMetaChipOnLight
                                       : styles.studyMetaChipOnDark;
 
-                                  const renderMeta = (meta) => {
+
+                                  const renderMeta = (meta, isLanguagePractice = false) => {
                                     if (!meta) return null;
+                                    // Para practicar idioma, mostrar idioma y tiempo en chips separados, pero solo una vez cada uno
+                                    if (isLanguagePractice) {
+                                      return (
+                                        <>
+                                          {meta.subjectText ? (
+                                            <View style={[styles.studyMetaChip, chipStyle]}>
+                                              <Text style={[styles.studyMetaText, { color: textColor }]}> 
+                                                {meta.subjectText}
+                                              </Text>
+                                            </View>
+                                          ) : null}
+                                          {meta.minutes ? (
+                                            <View style={[styles.studyMetaChip, chipStyle]}>
+                                              <Ionicons
+                                                name="time-outline"
+                                                size={14}
+                                                color={textColor}
+                                              />
+                                              <Text style={[styles.studyMetaText, { color: textColor }]}> 
+                                                {`${meta.minutes} min`}
+                                              </Text>
+                                            </View>
+                                          ) : null}
+                                        </>
+                                      );
+                                    }
+                                    // Para los demás, solo mostrar una vez cada chip
                                     return (
                                       <>
                                         {meta.subjectText ? (
                                           <View style={[styles.studyMetaChip, chipStyle]}>
-                                            <Text style={[styles.studyMetaText, { color: textColor }]}>
+                                            <Text style={[styles.studyMetaText, { color: textColor }]}> 
                                               {meta.subjectText}
                                             </Text>
                                           </View>
                                         ) : null}
-
-                                        {meta.minutes ? (
+                                        {!isLanguagePractice && meta.minutes ? (
                                           <View style={[styles.studyMetaChip, chipStyle]}>
                                             <Ionicons
                                               name="time-outline"
                                               size={14}
                                               color={textColor}
                                             />
-                                            <Text style={[styles.studyMetaText, { color: textColor }]}>
+                                            <Text style={[styles.studyMetaText, { color: textColor }]}> 
                                               {`${meta.minutes} min`}
                                             </Text>
                                           </View>
@@ -3381,18 +3422,34 @@ export default function Calendar() {
                                     );
                                   };
 
+                                  // Si es languagePracticeMeta, solo mostrar ese y no los demás
+                                  if (languagePracticeMeta) {
+                                    return renderMeta(languagePracticeMeta, true);
+                                  }
+                                  // Si es creativeHobbyMeta, mostrar el chip igual que idioma
+                                  if (creativeHobbyMeta) {
+                                    return (
+                                      <View style={styles.studyMetaRow}>
+                                        <View style={[styles.studyMetaChip, chipStyle]}>
+                                          <Text style={[styles.studyMetaText, { color: textColor }]}> 
+                                            {creativeHobbyMeta.subjectText}
+                                          </Text>
+                                        </View>
+                                      </View>
+                                    );
+                                  }
                                   return (
                                     <>
                                       {renderMeta(studyMeta)}
                                       {renderMeta(courseMeta)}
                                       {renderMeta(researchMeta)}
                                       {renderMeta(podcastMeta)}
-                                      {renderMeta(languagePracticeMeta)}
                                     </>
                                   );
                                 })()}
                               </View>
                             ) : null}
+
 
                             {isWaterHabit ? (
                               <>
@@ -3400,15 +3457,10 @@ export default function Calendar() {
                                   <Text
                                     numberOfLines={1}
                                     ellipsizeMode="tail"
-                                    style={[
-                                      styles.waterInlineStats,
-                                      isCompleted && styles.cardSubtitleCompleted,
-                                      subtitleTextColor && { color: subtitleTextColor },
-                                    ]}
+                                    style={[styles.waterInlineStats, isCompleted && styles.cardSubtitleCompleted, subtitleTextColor && { color: subtitleTextColor }]}
                                   >
                                     {`${waterConsumedMl} / ${waterTargetMl} ml`}
                                   </Text>
-
                                   <Ionicons
                                     name="add-circle-outline"
                                     size={18}
@@ -3416,51 +3468,28 @@ export default function Calendar() {
                                     style={{ opacity: 0.9 }}
                                   />
                                 </View>
-
                                 <View style={styles.waterProgressRow}>
-                                  <View
-                                    style={[
-                                      styles.waterProgressTrack,
-                                      { backgroundColor: subtitleTextColor ? `${subtitleTextColor}33` : 'rgba(255,255,255,0.25)' },
-                                    ]}
-                                  >
-                                    <View
-                                      style={[
-                                        styles.waterProgressFill,
-                                        {
-                                          width: `${Math.round(waterProgress * 100)}%`,
-                                          backgroundColor: isCompleted
-                                            ? '#ffffff'
-                                            : (subtitleTextColor || '#ffffff'),
-                                        },
-                                      ]}
-                                    />
+                                  <View style={[styles.waterProgressTrack, { backgroundColor: subtitleTextColor ? `${subtitleTextColor}33` : 'rgba(255,255,255,0.25)' }]}> 
+                                    <View style={[styles.waterProgressFill, { width: `${Math.round(waterProgress * 100)}%`, backgroundColor: isCompleted ? '#ffffff' : (subtitleTextColor || '#ffffff') }]} />
                                   </View>
-                                  <Text
-                                    style={[
-                                      styles.waterPercentText,
-                                      isCompleted && styles.cardSubtitleCompleted,
-                                      subtitleTextColor && { color: subtitleTextColor },
-                                    ]}
-                                  >
+                                  <Text style={[styles.waterPercentText, isCompleted && styles.cardSubtitleCompleted, subtitleTextColor && { color: subtitleTextColor }]}> 
                                     {`${Math.round(waterProgress * 100)}%`}
                                   </Text>
                                 </View>
-
                                 {waterMotivation ? (
-                                  <Text
-                                    numberOfLines={2}
-                                    ellipsizeMode="tail"
-                                    style={[
-                                      styles.waterMotivationText,
-                                      isCompleted && styles.cardSubtitleCompleted,
-                                      subtitleTextColor && { color: subtitleTextColor },
-                                    ]}
-                                  >
+                                  <Text numberOfLines={2} ellipsizeMode="tail" style={[styles.waterMotivationText, isCompleted && styles.cardSubtitleCompleted, subtitleTextColor && { color: subtitleTextColor }]}> 
                                     {waterMotivation}
                                   </Text>
                                 ) : null}
                               </>
+                            ) : null}
+
+                            {(hasVitamins || isMarketListHabit) ? (
+                              <View style={styles.studyMetaRow}>
+                                <View style={[styles.studyMetaChip, String(subtitleTextColor) === '#111827' ? styles.studyMetaChipOnLight : styles.studyMetaChipOnDark]}>
+                                  <Text style={[styles.studyMetaText, { color: subtitleTextColor || '#fff' }]}>Lista</Text>
+                                </View>
+                              </View>
                             ) : null}
 
                             {isSavingsHabit && hasSavingsGoal ? (
@@ -3516,19 +3545,7 @@ export default function Calendar() {
                                   </Text>
                                 </View>
 
-                                {savingsMotivation ? (
-                                  <Text
-                                    numberOfLines={2}
-                                    ellipsizeMode="tail"
-                                    style={[
-                                      styles.savingsMotivationText,
-                                      isCompleted && styles.cardSubtitleCompleted,
-                                      subtitleTextColor && { color: subtitleTextColor },
-                                    ]}
-                                  >
-                                    {savingsMotivation}
-                                  </Text>
-                                ) : null}
+                                {/* savingsMotivation message removed as requested */}
                               </>
                             ) : null}
                           </View>

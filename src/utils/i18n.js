@@ -293,6 +293,11 @@ const translations = {
         'Podrás cambiar de plan más adelante. Tu progreso y tus hábitos se mantienen.',
     },
     calendar: {
+            endHabitConfirm: 'Finalizar hábito',
+          saveSavings: 'Guardar ahorro',
+        addSavings: 'Agregar dinero ahorrado',
+        addSavingsPlaceholder: 'Ej: 100',
+        savingsStartToday: '¡Empieza a ahorrar hoy! Cada pequeño aporte cuenta.',
       title: 'Calendario',
       todayButton: 'Hoy',
       weeklyPlannerPromptTitle: 'Planificar semana',
