@@ -3,31 +3,103 @@ import { useSettings } from './settingsContext';
 
 const translations = {
   es: {
+        vitamins: {
+          question: '¿Qué vitamina tomaste?',
+          placeholder: 'ej: Vitamina D',
+          subtitlePrefix: '💊 Tomaste',
+          addButton: 'Agregar vitaminas',
+          modalTitle: 'Agregar medicamento',
+          nameLabel: 'Nombre del medicamento',
+          namePlaceholder: 'Vitamina C, Omega 3...',
+          qtyLabel: 'Cantidad',
+          qtyPlaceholder: '1',
+        },
+    mascotTour: {
+      welcomeTitle: 'Bienvenido a Fluu',
+      welcomeText: 'Hola, soy Fluffy. Te acompañaré en este recorrido rápido para que conozcas Fluu y empieces a crear hábitos a tu ritmo. Solo tomará unos segundos.',
+      calendarMainTitle: 'Tu calendario',
+      calendarMainText: 'Aquí verás todo lo que has planeado: hábitos, tareas y cosas importantes para cada día. Yo te ayudo a mantenerlo todo en orden.',
+
+      calendarPlusTitle: 'Agregar algo nuevo',
+      calendarPlusText: 'Toca el botón + que está abajo a la derecha y crea nuevos hábitos o actividades en segundos.',
+
+      pomodoroTitle: 'Pomodoro',
+      pomodoroText: 'Aquí puedes concentrarte por sesiones y tomar descansos. Yo te acompaño cuando necesites enfocarte en algo importante.',
+
+      profileTitle: 'Tu perfil',
+      profileText: 'Desde aquí puedes cambiar el color de la app, el idioma y tus datos. Siempre puedes volver si quieres ajustar algo.',
+
+      skip: 'Saltar recorrido',
+      next: 'Siguiente',
+      start: 'Empezar',
+
+    },
+    auth: {
+      errorTitle: 'Error de inicio de sesión',
+      errorInvalidCredentials: 'Correo o contraseña incorrectos',
+      errorTitle: 'Login error',
+      errorInvalidCredentials: 'Incorrect email or password',
+      errorTitle: 'Erro de login',
+      errorInvalidCredentials: 'E-mail ou senha incorretos',
+      errorTitle: 'Erreur de connexion',
+      errorInvalidCredentials: 'E-mail ou mot de passe incorrect',
+      loginTitle: 'Iniciar sesión',
+      emailFieldLabel: 'Correo electrónico',
+      passwordFieldLabel: 'Contraseña',
+      loginButton: 'Entrar',
+      noAccountLink: '¿No tienes cuenta? Regístrate',
+      emailLabel: 'Correo electrónico',
+      passwordLabel: 'Contraseña',
+    },
+    register: {
+      title: 'Crear cuenta',
+      subtitle: 'Regístrate para comenzar a usar la app',
+      policyAcceptPrefix: 'Acepto la ',
+      policyAcceptLink: 'política de privacidad',
+      submit: 'Registrarse',
+      goToLogin: '¿Ya tienes cuenta? Iniciar sesión',
+      step1Helper: 'Crea una cuenta para guardar tus hábitos en la nube y acceder desde cualquier dispositivo.',
+      finish: 'Finalizar registro',
+
+    },
     settings: {
       quickSectionTitle: 'Ajustes rápidos',
     },
     profile: {
-        // --- PRIVACY POLICY SECTION ---
-        privacyIntro: 'Tu privacidad es importante para nosotros. Lee cómo protegemos y usamos tus datos.',
-        privacyUseOfDataTitle: 'Uso de datos',
-        privacyUseOfDataText: 'Utilizamos tus datos solo para mejorar tu experiencia en la app.',
-        privacyUseOfDataBullet1: 'Nunca vendemos tu información.',
-        privacyUseOfDataBullet2: 'Tus datos se usan solo para funciones esenciales.',
-        privacyUseOfDataBullet3: 'Puedes solicitar la eliminación de tus datos en cualquier momento.',
-        privacySharingTitle: 'Compartir información',
-        privacySharingText: 'No compartimos tu información personal con terceros sin tu consentimiento.',
-        privacyLiabilityTitle: 'Limitación de responsabilidad',
-        privacyLiabilityText: 'No somos responsables por el mal uso de la app o por acciones de terceros.',
-        privacyNotAdviceTitle: 'No es consejo médico',
-        privacyNotAdviceText: 'La información proporcionada no sustituye el consejo de un profesional de la salud.',
-        privacyRightsTitle: 'Tus derechos',
-        privacyRightsText: 'Puedes acceder, corregir o eliminar tus datos personales.',
-        privacyMinorsTitle: 'Menores de edad',
-        privacyMinorsText: 'La app no está dirigida a menores de 13 años.',
-        privacyChangesTitle: 'Cambios en la política',
-        privacyChangesText: 'Te notificaremos sobre cambios importantes en esta política.',
-        privacyAcceptanceText: 'Al usar la app, aceptas nuestra política de privacidad.',
-        policyAccept: 'Aceptar política de privacidad',
+      languageEs: 'Español',
+      languageEn: 'Inglés',
+      languagePt: 'Portugués',
+      languageFr: 'Francés',
+
+      loading: 'Cargando perfil...',
+
+      personalSettingsTitle: 'Ajustes personales',
+      personalSettingsSubtitle: 'Gestiona tus ajustes personales',
+      // --- PRIVACY POLICY SECTION ---
+      save: 'Guardar',
+      settingsModalTitle: 'Configuración',
+      settingModalTitle: 'Configuración',
+      email: 'Correo electrónico',
+      privacyIntro: 'Tu privacidad es importante para nosotros. Lee cómo protegemos y usamos tus datos.',
+      privacyUseOfDataTitle: 'Uso de datos',
+      privacyUseOfDataText: 'Utilizamos tus datos solo para mejorar tu experiencia en la app.',
+      privacyUseOfDataBullet1: 'Nunca vendemos tu información.',
+      privacyUseOfDataBullet2: 'Tus datos se usan solo para funciones esenciales.',
+      privacyUseOfDataBullet3: 'Puedes solicitar la eliminación de tus datos en cualquier momento.',
+      privacySharingTitle: 'Compartir información',
+      privacySharingText: 'No compartimos tu información personal con terceros sin tu consentimiento.',
+      privacyLiabilityTitle: 'Limitación de responsabilidad',
+      privacyLiabilityText: 'No somos responsables por el mal uso de la app o por acciones de terceros.',
+      privacyNotAdviceTitle: 'No es consejo médico',
+      privacyNotAdviceText: 'La información proporcionada no sustituye el consejo de un profesional de la salud.',
+      privacyRightsTitle: 'Tus derechos',
+      privacyRightsText: 'Puedes acceder, corregir o eliminar tus datos personales.',
+      privacyMinorsTitle: 'Menores de edad',
+      privacyMinorsText: 'La app no está dirigida a menores de 13 años.',
+      privacyChangesTitle: 'Cambios en la política',
+      privacyChangesText: 'Te notificaremos sobre cambios importantes en esta política.',
+      privacyAcceptanceText: 'Al usar la app, aceptas nuestra política de privacidad.',
+      policyAccept: 'Aceptar política de privacidad',
       accountTitle: 'Cuenta',
       accountSubtitle: 'Gestiona tu cuenta y privacidad',
       feedbackTitle: 'Enviar feedback',
@@ -50,15 +122,34 @@ const translations = {
       timeFormatSystem: 'Sistema',
       personalinfo: 'Perfil',
       personalInfo: 'Perfil',
-      color: 'Color',
+      colorBlue: 'Azul',
+      colorPink: 'Rosa',
+      colorGreen: 'Verde',
+      colorPurple: 'Morado',
+      colorOrange: 'Naranja',
+      firstName: 'Nombre',
+      lastName: 'Apellido',
+      age: 'Edad',
+      gender: 'Género',
+      genderOptions: {
+        male: 'Masculino',
+        female: 'Femenino',
+        nonBinary: 'No binario',
+        genderFluid: 'Género fluido',
+        preferNotSay: 'Prefiero no decirlo',
+        other: 'Otro',
+      },
+
     },
-        mood: {
-          chartTitle: 'Gráfico de estado de ánimo',
-          chartSubtitle: 'Tu estado de ánimo a lo largo del tiempo',
-          todayLabel: 'Hoy',
-        },
+    mood: {
+      chartTitle: 'Gráfico de estado de ánimo',
+      chartSubtitle: 'Tu estado de ánimo a lo largo del tiempo',
+      todayLabel: 'Hoy',
+    },
     chipList: 'Ver más',
     calendar: {
+      emptyTitle: 'No hay eventos',
+      emptySubtitle: 'Aún no tienes hábitos ni actividades para este día.',
       title: 'Calendario',
       savingsHalfway: '¡Vas a mitad de tu meta de ahorro!',
       addSavings: 'Agregar ahorro',
@@ -76,6 +167,11 @@ const translations = {
       edit: 'Editar',
       delete: 'Eliminar',
       selectHabitTitle: 'Selecciona un hábito',
+      deleteOnlyThis: 'Eliminar solo esta',
+      deleteThisAndNext: 'Eliminar esta y las siguientes',
+      cancel: 'Cancelar',
+      deleteActivityTitle: '¿Qué deseas eliminar?',
+      deleteActivityMessage: '¿Quieres eliminar solo esta actividad o esta y todas las siguientes?',
     },
     pomodoro: {
       title: 'Pomodoro',
@@ -98,11 +194,15 @@ const translations = {
       total: 'Total de sesiones',
       saveConfig: 'Guardar',
     },
-      // ...existing code...
-    // ...existing code...
     habitForm: {
+      savingsSavedLabel: 'Ahorro guardado',
+      savingsSavedHelp: 'Registra cuánto dinero lograste ahorrar hoy.',
+      savingsSavedPlaceholder: 'Ejemplo: 50',
+      endLabel: 'Fin',
+      endLabel: 'End',
+      endLabel: 'Fim',
+      endLabel: 'Fin',
       marketPricePlaceholder: '$',
-      colorLabel: 'Color',
       colorLabel: 'Color',
       periodLabel: 'Período',
       startLabel: 'Inicio',
@@ -151,6 +251,12 @@ const translations = {
       'Otros',
     ],
     specialHabits: {
+      call: {
+        question: '¿A quién llamarás hoy?'
+      },
+      savingsSavedLabel: 'Ahorro guardado',
+      savingsSavedHelp: 'Registra cuánto dinero lograste ahorrar hoy.',
+      savingsSavedPlaceHolder: 'Ej: 50',
       birthday: {
         question: '¿De quién es el cumpleaños?',
         placeholder: 'Nombre',
@@ -160,6 +266,7 @@ const translations = {
         question: '¿Qué vitamina tomaste?',
         placeholder: 'ej: Vitamina D',
         subtitlePrefix: '💊 Tomaste',
+        addButton: 'Agregar vitaminas',
       },
       mood: {
         question: '¿Cómo te sientes hoy?',
@@ -181,41 +288,87 @@ const translations = {
         placeholder: 'Ej: 100',
         subtitlePrefix: '💰 Hoy tu meta de ahorro es',
       },
-        mood: {
-          chartTitle: 'Gráfico de estado de ánimo',
-          checkInButton: 'Registrar',
-          todayLabel: 'Hoy',
-          addNotePlaceholder: 'Agregar una nota...',
-        },
+      mood: {
+        chartTitle: 'Gráfico de estado de ánimo',
+        checkInButton: 'Registrar',
+        todayLabel: 'Hoy',
+        addNotePlaceholder: 'Agregar una nota...',
+      },
     },
   },
   en: {
+    mascotTour: {
+      welcomeTitle: 'Welcome to Fluu',
+      welcomeText: 'Hi, I’m Fluffy. I’ll guide you through a quick tour so you can get to know Fluu and start building habits at your own pace. It will only take a few seconds.',
+      calendarMainTitle: 'Your calendar',
+      calendarMainText: 'Here you will see everything you have planned: habits, tasks, and important things for each day. I help you keep it all organized.',
+      calendarPlusTitle: 'Add something new',
+      calendarPlusText: 'Tap the + button at the bottom right and create new habits or activities in seconds.',
+      pomodoroTitle: 'Pomodoro',
+      pomodoroText: 'Here you can focus in sessions and take breaks. Use it whenever you need to concentrate on something important.',
+      profileTitle: 'Your profile',
+      profileText: 'From here you can change the app color, language, and your info. You can always come back if you want to adjust something.',
+      skip: 'Skip tour',
+      next: 'Next',
+      start: 'Start',
+    },
+    auth: {
+      loginTitle: 'Log in',
+      emailFieldLabel: 'Email',
+      passwordFieldLabel: 'Password',
+      loginButton: 'Log in',
+      noAccountLink: 'Don\'t have an account? Sign up',
+      emailLabel: 'Email',
+      passwordLabel: 'Password',
+    },
+    register: {
+      title: 'Create Account',
+      subtitle: 'Sign up to start using the app',
+      policyAcceptPrefix: 'I accept the',
+      policyAcceptLink: 'privacy policy',
+      submit: 'Sign Up',
+      goToLogin: 'Already have an account? Log in',
+    },
     settings: {
       quickSectionTitle: 'Quick settings',
     },
     profile: {
+      languageEs: 'Spanish',
+      languageEn: 'English',
+      languagePt: 'Portuguese',
+      languageFr: 'French',
+
+      loading: 'Loading profile...',
+
       // --- PRIVACY POLICY SECTION ---
-        privacyIntro: 'Your privacy is important to us. Read how we protect and use your data.',
-        privacyUseOfDataTitle: 'Use of data',
-        privacyUseOfDataText: 'We use your data only to improve your app experience.',
-        privacyUseOfDataBullet1: 'We never sell your information.',
-        privacyUseOfDataBullet2: 'Your data is used only for essential features.',
-        privacyUseOfDataBullet3: 'You can request deletion of your data at any time.',
-        privacySharingTitle: 'Information sharing',
-        privacySharingText: 'We do not share your personal information with third parties without your consent.',
-        privacyLiabilityTitle: 'Limitation of liability',
-        privacyLiabilityText: 'We are not responsible for misuse of the app or actions of third parties.',
-        privacyNotAdviceTitle: 'Not medical advice',
-        privacyNotAdviceText: 'The information provided does not replace professional medical advice.',
-        privacyRightsTitle: 'Your rights',
-        privacyRightsText: 'You can access, correct, or delete your personal data.',
-        privacyMinorsTitle: 'Minors',
-        privacyMinorsText: 'The app is not intended for children under 13.',
-        privacyChangesTitle: 'Policy changes',
-        privacyChangesText: 'We will notify you of important changes to this policy.',
-        privacyAcceptanceText: 'By using the app, you accept our privacy policy.',
-        policyAccept: 'Accept Privacy Policy',
-        // --- PRIVACY POLICY SECTION ---
+      personalSettingsTitle: 'Personal settings',
+      save: 'Save',
+      settingsModalTitle: 'Settings',
+      email: 'Email',
+      privacyIntro: 'Your privacy is important to us. Read how we protect and use your data.',
+      privacyUseOfDataTitle: 'Use of data',
+      privacyUseOfDataText: 'We use your data only to improve your app experience.',
+      privacyUseOfDataBullet1: 'We never sell your information.',
+      privacyUseOfDataBullet2: 'Your data is used only for essential features.',
+      privacyUseOfDataBullet3: 'You can request deletion of your data at any time.',
+      privacySharingTitle: 'Information sharing',
+      privacySharingText: 'We do not share your personal information with third parties without your consent.',
+      privacyLiabilityTitle: 'Limitation of liability',
+      privacyLiabilityText: 'We are not responsible for misuse of the app or actions of third parties.',
+      privacyNotAdviceTitle: 'Not medical advice',
+      privacyNotAdviceText: 'The information provided does not replace professional medical advice.',
+      privacyRightsTitle: 'Your rights',
+      privacyRightsText: 'You can access, correct, or delete your personal data.',
+      privacyMinorsTitle: 'Minors',
+      privacyMinorsText: 'The app is not intended for children under 13.',
+      privacyChangesTitle: 'Policy changes',
+      privacyChangesText: 'We will notify you of important changes to this policy.',
+      privacyAcceptanceText: 'By using the app, you accept our privacy policy.',
+      policyAccept: 'Accept Privacy Policy',
+      // --- PRIVACY POLICY SECTION ---
+      save: 'Salvar',
+      settingModalTitle: 'Configurações',
+      email: 'E-mail',
       moreSettingsButton: 'More settings',
       appearanceMode: 'Mode',
       appearanceDark: 'Dark',
@@ -230,21 +383,29 @@ const translations = {
       timeFormatSystem: 'System',
       personalinfo: 'Profile',
       personalInfo: 'Profile',
-      color: 'Color',
-        accountTitle: 'Account', // New key
-        accountSubtitle: 'Manage your account and privacy', // New key
-        feedbackOpen: 'Open form', // New key
-        feedbackTitle: 'Send feedback', // New key
-        privacyPolicy: 'Privacy Policy', // New key
-        privacyOpenHint: 'View privacy details', // New key
+      colorBlue: 'Blue',
+      colorPink: 'Pink',
+      colorGreen: 'Green',
+      colorPurple: 'Purple',
+      colorOrange: 'Orange',
+      accountTitle: 'Account', // New key
+      accountSubtitle: 'Manage your account and privacy', // New key
+      feedbackOpen: 'Open form', // New key
+      feedbackTitle: 'Send feedback', // New key
+      privacyPolicy: 'Privacy Policy', // New key
+      privacyOpenHint: 'View privacy details', // New key
+
     },
-        mood: {
-          chartTitle: 'Mood Chart',
-          chartSubtitle: 'Your mood over time',
-          todayLabel: 'Today',
-        },
+    mood: {
+      chartTitle: 'Mood Chart',
+      chartSubtitle: 'Your mood over time',
+      todayLabel: 'Today',
+    },
     chipList: 'See more',
     calendar: {
+      emptyTitle: 'No events',
+      emptySubtitle: 'You have no habits or activities for this day yet.',
+
       title: 'Calendar',
       savingsHalfway: 'You are halfway to your savings goal!',
       addSavings: 'Add savings',
@@ -262,6 +423,11 @@ const translations = {
       edit: 'Edit',
       delete: 'Delete',
       selectHabitTitle: 'Select a habit',
+      deleteOnlyThis: 'Delete only this',
+      deleteThisAndNext: 'Delete this and next',
+      cancel: 'Cancel',
+      deleteActivityTitle: 'What do you want to delete?',
+      deleteActivityMessage: 'Do you want to delete only this activity or this and all following ones?',
     },
     pomodoro: {
       title: 'Pomodoro',
@@ -284,9 +450,12 @@ const translations = {
       total: 'Total sessions',
       saveConfig: 'Save',
     },
-    // ...existing code...
     habitForm: {
+      savingsSavedLabel: 'Savings saved',
+      savingsSavedHelp: 'Record how much money you managed to save today.',
+      savingsSavedPlaceholder: 'Example: 50',
       marketPricePlaceholder: '$',
+      colorLabel: 'Color',
       periodLabel: 'Period',
       startLabel: 'Start',
       hasEndDateQuestion: 'Does this habit have an end date?',
@@ -334,6 +503,13 @@ const translations = {
       'Other',
     ],
     specialHabits: {
+      call: {
+        question: 'Who will you call today?'
+      },
+      savingsSavedLabel: 'Savings saved',
+      savingsSavedHelp: 'Record how much money you managed to save today.',
+      savingsSavedPlaceHolder: 'Ex: 50',
+
       birthday: {
         question: 'Whose birthday is it?',
         placeholder: 'Name',
@@ -343,6 +519,7 @@ const translations = {
         question: 'Which vitamin did you take?',
         placeholder: 'e.g. Vitamin D',
         subtitlePrefix: '💊 You took',
+        addButton: 'Add vitamin',
       },
       mood: {
         question: 'How are you feeling today?',
@@ -364,40 +541,80 @@ const translations = {
         placeholder: 'Ex: 100',
         subtitlePrefix: '💰 Today your savings goal is',
       },
-        mood: {
-          chartTitle: 'Mood Chart',
-          checkInButton: 'Check In',
-          todayLabel: 'Today',
-          addNotePlaceholder: 'Add a note...',
-        },
+      mood: {
+        chartTitle: 'Mood Chart',
+        checkInButton: 'Check In',
+        todayLabel: 'Today',
+        addNotePlaceholder: 'Add a note...',
+      },
     },
   },
   pt: {
+    mascotTour: {
+      welcomeTitle: 'Bem-vindo ao Fluu',
+      welcomeText: 'Oi, eu sou o Fluffy. Vou te guiar por um tour rápido para você conhecer o Fluu e começar a criar hábitos no seu ritmo. Vai levar só alguns segundos.',
+      calendarMainTitle: 'Seu calendário',
+      calendarMainText: 'Aqui você verá tudo o que planejou: hábitos, tarefas e coisas importantes para cada dia. Eu te ajudo a manter tudo organizado.',
+      calendarPlusTitle: 'Adicionar algo novo',
+      calendarPlusText: 'Toque no botão + que está no canto inferior direito e crie novos hábitos ou atividades em segundos.',
+      pomodoroTitle: 'Pomodoro',
+      pomodoroText: 'Aqui você pode se concentrar em sessões e fazer pausas. Use-o sempre que precisar focar em algo importante.',
+      profileTitle: 'Seu perfil',
+      profileText: 'Aqui você pode mudar a cor do app, o idioma e suas informações. Você sempre pode voltar se quiser ajustar algo.',
+      skip: 'Pular tour',
+      next: 'Próximo',
+      start: 'Começar',
+    },
+    auth: {
+      loginTitle: 'Entrar',
+      emailFieldLabel: 'E-mail',
+      passwordFieldLabel: 'Senha',
+      loginButton: 'Entrar',
+      noAccountLink: 'Não tem conta? Cadastre-se',
+      emailLabel: 'E-mail',
+      passwordLabel: 'Senha',
+    },
+    register: {
+      title: 'Criar conta',
+      subtitle: 'Cadastre-se para começar a usar o app',
+      policyAcceptPrefix: 'Aceito a',
+      policyAcceptLink: 'política de privacidade',
+      submit: 'Registrar',
+      goToLogin: 'Já tem conta? Entrar',
+    },
     settings: {
       quickSectionTitle: 'Configurações rápidas',
     },
     profile: {
-      
-        privacyIntro: 'Sua privacidade é importante para nós. Veja como protegemos e usamos seus dados.',
-        privacyUseOfDataTitle: 'Uso de dados',
-        privacyUseOfDataText: 'Usamos seus dados apenas para melhorar sua experiência no app.',
-        privacyUseOfDataBullet1: 'Nunca vendemos suas informações.',
-        privacyUseOfDataBullet2: 'Seus dados são usados apenas para funções essenciais.',
-        privacyUseOfDataBullet3: 'Você pode solicitar a exclusão de seus dados a qualquer momento.',
-        privacySharingTitle: 'Compartilhamento de informações',
-        privacySharingText: 'Não compartilhamos suas informações pessoais com terceiros sem seu consentimento.',
-        privacyLiabilityTitle: 'Limitação de responsabilidade',
-        privacyLiabilityText: 'Não nos responsabilizamos pelo uso indevido do app ou por ações de terceiros.',
-        privacyNotAdviceTitle: 'Não é conselho médico',
-        privacyNotAdviceText: 'As informações fornecidas não substituem o aconselhamento de um profissional de saúde.',
-        privacyRightsTitle: 'Seus direitos',
-        privacyRightsText: 'Você pode acessar, corrigir ou excluir seus dados pessoais.',
-        privacyMinorsTitle: 'Menores de idade',
-        privacyMinorsText: 'O app não é destinado a menores de 13 anos.',
-        privacyChangesTitle: 'Alterações na política',
-        privacyChangesText: 'Notificaremos você sobre alterações importantes nesta política.',
-        privacyAcceptanceText: 'Ao usar o app, você aceita nossa política de privacidade.',
-        policyAccept: 'Aceitar Política de Privacidade',
+      languageEs: 'Espanhol',
+      languageEn: 'Inglês',
+      languagePt: 'Português',
+      languageFr: 'Francês',
+
+      loading: 'Carregando perfil...',
+
+      personalSettingsTitle: 'Ajustes pessoais',
+      settingsModalTitle: 'Configurações',
+      privacyIntro: 'Sua privacidade é importante para nós. Veja como protegemos e usamos seus dados.',
+      privacyUseOfDataTitle: 'Uso de dados',
+      privacyUseOfDataText: 'Usamos seus dados apenas para melhorar sua experiência no app.',
+      privacyUseOfDataBullet1: 'Nunca vendemos suas informações.',
+      privacyUseOfDataBullet2: 'Seus dados são usados apenas para funções essenciais.',
+      privacyUseOfDataBullet3: 'Você pode solicitar a exclusão de seus dados a qualquer momento.',
+      privacySharingTitle: 'Compartilhamento de informações',
+      privacySharingText: 'Não compartilhamos suas informações pessoais com terceiros sem seu consentimento.',
+      privacyLiabilityTitle: 'Limitação de responsabilidade',
+      privacyLiabilityText: 'Não nos responsabilizamos pelo uso indevido do app ou por ações de terceiros.',
+      privacyNotAdviceTitle: 'Não é conselho médico',
+      privacyNotAdviceText: 'As informações fornecidas não substituem o aconselhamento de um profissional de saúde.',
+      privacyRightsTitle: 'Seus direitos',
+      privacyRightsText: 'Você pode acessar, corrigir ou excluir seus dados pessoais.',
+      privacyMinorsTitle: 'Menores de idade',
+      privacyMinorsText: 'O app não é destinado a menores de 13 anos.',
+      privacyChangesTitle: 'Alterações na política',
+      privacyChangesText: 'Notificaremos você sobre alterações importantes nesta política.',
+      privacyAcceptanceText: 'Ao usar o app, você aceita nossa política de privacidade.',
+      policyAccept: 'Aceitar Política de Privacidade',
       moreSettingsButton: 'Mais ajustes',
       appearanceMode: 'Modo',
       appearanceDark: 'Escuro',
@@ -412,21 +629,28 @@ const translations = {
       timeFormatSystem: 'Sistema',
       personalinfo: 'Perfil',
       personalInfo: 'Perfil',
-      color: 'Cor',
-        accountTitle: 'Conta', // New key
-        accountSubtitle: 'Gerencie sua conta e privacidade', // New key
-        feedbackOpen: 'Abrir formulário', // New key
-        feedbackTitle: 'Enviar feedback', // New key
-        privacyPolicy: 'Política de Privacidade', // New key
-        privacyOpenHint: 'Ver detalhes de privacidade', // New key
+      colorBlue: 'Azul',
+      colorPink: 'Rosa',
+      colorGreen: 'Verde',
+      colorPurple: 'Roxo',
+      colorOrange: 'Laranja',
+      accountTitle: 'Conta', // New key
+      accountSubtitle: 'Gerencie sua conta e privacidade', // New key
+      feedbackOpen: 'Abrir formulário', // New key
+      feedbackTitle: 'Enviar feedback', // New key
+      privacyPolicy: 'Política de Privacidade', // New key
+      privacyOpenHint: 'Ver detalhes de privacidade', // New key
     },
-        mood: {
-          chartTitle: 'Gráfico de humor',
-          chartSubtitle: 'Seu humor ao longo do tempo',
-          todayLabel: 'Hoje',
-        },
+    mood: {
+      chartTitle: 'Gráfico de humor',
+      chartSubtitle: 'Seu humor ao longo do tempo',
+      todayLabel: 'Hoje',
+    },
     chipList: 'Ver mais',
     calendar: {
+      emptyTitle: 'Nenhum evento',
+      emptySubtitle: 'Você ainda não tem hábitos ou atividades para este dia.',
+
       title: 'Calendário',
       savingsHalfway: 'Você está na metade da sua meta de economia!',
       addSavings: 'Adicionar economia',
@@ -444,6 +668,11 @@ const translations = {
       edit: 'Editar',
       delete: 'Excluir',
       selectHabitTitle: 'Selecione um hábito',
+      deleteOnlyThis: 'Excluir apenas esta',
+      deleteThisAndNext: 'Excluir esta e as próximas',
+      cancel: 'Cancelar',
+      deleteActivityTitle: 'O que deseja excluir?',
+      deleteActivityMessage: 'Você quer excluir apenas esta atividade ou esta e todas as seguintes?',
     },
     pomodoro: {
       title: 'Pomodoro',
@@ -452,7 +681,7 @@ const translations = {
       preparing: 'Preparando',
       stop: 'Parar',
       start: 'Iniciar',
-      breakLabel: 'Pausa',
+      breakLabel: 'Pause',
       longBreakLabel: 'Pausa longa',
       startButton: 'Iniciar',
       stopButton: 'Parar',
@@ -466,8 +695,11 @@ const translations = {
       total: 'Total de sessões',
       saveConfig: 'Salvar',
     },
-    // ...existing code...
     habitForm: {
+      savingsSavedLabel: 'Economia salva',
+      savingsSavedHelp: 'Registre quanto dinheiro você conseguiu economizar hoje.',
+      savingsSavedPlaceholder: 'Exemplo: 50',
+      endLabel: 'Fim',
       marketPricePlaceholder: 'R$',
       colorLabel: 'Cor',
       periodLabel: 'Período',
@@ -517,6 +749,13 @@ const translations = {
       'Otros',
     ],
     specialHabits: {
+      call: {
+        question: 'Para quem você vai ligar hoje?'
+      },
+      savingsSavedLabel: 'Economia salva',
+      savingsSavedHelp: 'Registre quanto dinheiro você conseguiu economizar hoje.',
+      savingsSavedPlaceHolder: 'Ex: 50',
+
       birthday: {
         question: 'De quem é o aniversário?',
         placeholder: 'Nome',
@@ -526,6 +765,7 @@ const translations = {
         question: 'Qual vitamina você tomou?',
         placeholder: 'ex: Vitamina D',
         subtitlePrefix: '💊 Você tomou',
+        addButton: 'Adicionar vitamina',
       },
       mood: {
         question: 'Como você está se sentindo hoje?',
@@ -547,41 +787,94 @@ const translations = {
         placeholder: 'Ex: 100',
         subtitlePrefix: '💰 Hoje sua meta de economia é',
       },
-        mood: {
-          chartTitle: 'Gráfico de humor',
-          checkInButton: 'Registrar',
-          todayLabel: 'Hoje',
-          addNotePlaceholder: 'Adicionar uma nota...',
-        },
+      mood: {
+        chartTitle: 'Gráfico de humor',
+        checkInButton: 'Registrar',
+        todayLabel: 'Hoje',
+        addNotePlaceholder: 'Adicionar uma nota...',
+      },
     },
   },
   fr: {
+        creativeHobbyOptions: [
+          'Illustration numérique',
+          'Écriture de nouvelles',
+          'Broderie créative',
+          'Fabrication de bougies artisanales',
+          'Photographie esthétique',
+          'Production musicale de base',
+          'Journaling créatif (journaux visuels)',
+          'Macramé décoratif',
+          'Pâtisserie créative',
+          'Création de contenu créatif (vidéos, reels)',
+          'Autre',
+        ],
+    mascotTour: {
+      welcomeTitle: 'Bienvenue sur Fluu',
+      welcomeText: 'Salut, je suis Fluffy. Je vais te guider à travers une visite rapide pour que tu puisses découvrir Fluu et commencer à créer des habitudes à ton rythme. Cela ne prendra que quelques secondes.',
+      calendarMainTitle: 'Ton calendrier',
+      calendarMainText: 'Ici, tu verras tout ce que tu as planifié : habitudes, tâches et choses importantes pour chaque jour. Je t’aide à tout organiser.',
+      calendarPlusTitle: 'Ajouter quelque chose de nouveau',
+      calendarPlusText: 'Appuie sur le bouton + en bas à droite et crée de nouvelles habitudes ou activités en quelques secondes.',
+      pomodoroTitle: 'Pomodoro',
+      pomodoroText: 'Ici, tu peux te concentrer par sessions et faire des pauses. Utilise-le chaque fois que tu as besoin de te concentrer sur quelque chose d\'important.',
+      profileTitle: 'Ton profil',
+      profileText: 'Depuis ici, tu peux changer la couleur de l\'application, la langue et tes informations. Tu peux toujours revenir si tu veux ajuster quelque chose.',
+      skip: 'Passer la visite',
+      next: 'Suivant',
+      start: 'Commencer',
+    },
+    auth: {
+      loginTitle: 'Connexion',
+      emailFieldLabel: 'E-mail',
+      passwordFieldLabel: 'Mot de passe',
+      loginButton: 'Se connecter',
+      noAccountLink: 'Pas de compte ? Inscris-toi',
+      emailLabel: 'E-mail',
+      passwordLabel: 'Mot de passe',
+    },
+    register: {
+      title: 'Créer un compte',
+      subtitle: 'Inscris-toi pour commencer à utiliser l’app',
+      policyAcceptPrefix: 'J’accepte la',
+      policyAcceptLink: 'politique de confidentialité',
+      submit: 'S’inscrire',
+      goToLogin: 'Tu as déjà un compte ? Connecte-toi',
+    },
     settings: {
       quickSectionTitle: 'Réglages rapides',
     },
     profile: {
-      
-        // --- PRIVACY POLICY SECTION ---
-        privacyIntro: 'Ta vie privée est importante pour nous. Lis comment nous protégeons et utilisons tes données.',
-        privacyUseOfDataTitle: 'Utilisation des données',
-        privacyUseOfDataText: 'Nous utilisons tes données uniquement pour améliorer ton expérience sur l’app.',
-        privacyUseOfDataBullet1: 'Nous ne vendons jamais tes informations.',
-        privacyUseOfDataBullet2: 'Tes données sont utilisées uniquement pour des fonctions essentielles.',
-        privacyUseOfDataBullet3: 'Tu peux demander la suppression de tes données à tout moment.',
-        privacySharingTitle: 'Partage d’informations',
-        privacySharingText: 'Nous ne partageons pas tes informations personnelles avec des tiers sans ton consentement.',
-        privacyLiabilityTitle: 'Limitation de responsabilité',
-        privacyLiabilityText: 'Nous ne sommes pas responsables d’une mauvaise utilisation de l’app ou des actions de tiers.',
-        privacyNotAdviceTitle: 'Pas un avis médical',
-        privacyNotAdviceText: 'Les informations fournies ne remplacent pas l’avis d’un professionnel de santé.',
-        privacyRightsTitle: 'Tes droits',
-        privacyRightsText: 'Tu peux accéder, corriger ou supprimer tes données personnelles.',
-        privacyMinorsTitle: 'Mineurs',
-        privacyMinorsText: 'L’app n’est pas destinée aux enfants de moins de 13 ans.',
-        privacyChangesTitle: 'Changements de politique',
-        privacyChangesText: 'Nous te préviendrons des changements importants de cette politique.',
-        privacyAcceptanceText: 'En utilisant l’app, tu acceptes notre politique de confidentialité.',
-        policyAccept: 'Accepter la politique de confidentialité',
+      languageEs: 'Espagnol',
+      languageEn: 'Anglais',
+      languagePt: 'Portugais',
+      languageFr: 'Français',
+      loading: 'Chargement du profil...',
+      personalSettingsTitle: 'Paramètres personnels',
+      // --- PRIVACY POLICY SECTION ---
+      save: 'Enregistrer',
+      settingsModalTitle: 'Paramètres',
+      email: 'E-mail',
+      privacyIntro: 'Ta vie privée est importante pour nous. Lis comment nous protégeons et utilisons tes données.',
+      privacyUseOfDataTitle: 'Utilisation des données',
+      privacyUseOfDataText: 'Nous utilisons tes données uniquement pour améliorer ton expérience sur l’app.',
+      privacyUseOfDataBullet1: 'Nous ne vendons jamais tes informations.',
+      privacyUseOfDataBullet2: 'Tes données sont utilisées uniquement pour des fonctions essentielles.',
+      privacyUseOfDataBullet3: 'Tu peux demander la suppression de tes données à tout moment.',
+      privacySharingTitle: 'Partage d’informations',
+      privacySharingText: 'Nous ne partageons pas tes informations personnelles avec des tiers sans ton consentement.',
+      privacyLiabilityTitle: 'Limitation de responsabilité',
+      privacyLiabilityText: 'Nous ne sommes pas responsables d’une mauvaise utilisation de l’app ou des actions de tiers.',
+      privacyNotAdviceTitle: 'Pas un avis médical',
+      privacyNotAdviceText: 'Les informations fournies ne remplacent pas l’avis d’un professionnel de santé.',
+      privacyRightsTitle: 'Tes droits',
+      privacyRightsText: 'Tu peux accéder, corriger ou supprimer tes données personnelles.',
+      privacyMinorsTitle: 'Mineurs',
+      privacyMinorsText: 'L’app n’est pas destinée aux enfants de moins de 13 ans.',
+      privacyChangesTitle: 'Changements de politique',
+      privacyChangesText: 'Nous te préviendrons des changements importants de cette politique.',
+      privacyAcceptanceText: 'En utilisant l’app, tu acceptes notre politique de confidentialité.',
+      policyAccept: 'Accepter la politique de confidentialité',
       moreSettingsButton: 'Plus de réglages',
       appearanceMode: 'Mode',
       appearanceDark: 'Sombre',
@@ -596,21 +889,27 @@ const translations = {
       timeFormatSystem: 'Système',
       personalinfo: 'Profil',
       personalInfo: 'Profil',
-      color: 'Couleur',
-        accountTitle: 'Compte', // New key
-        accountSubtitle: 'Gère ton compte et ta confidentialité', // New key
-        feedbackOpen: 'Ouvrir le formulaire', // New key
-        feedbackTitle: 'Envoyer un retour', // New key
-        privacyPolicy: 'Politique de confidentialité', // New key
-        privacyOpenHint: 'Voir les détails de confidentialité', // New key
+      colorBlue: 'Bleu',
+      colorPink: 'Rose',
+      colorGreen: 'Vert',
+      colorPurple: 'Violet',
+      colorOrange: 'Orange',
+      accountTitle: 'Compte', // New key
+      accountSubtitle: 'Gère ton compte et ta confidentialité', // New key
+      feedbackOpen: 'Ouvrir le formulaire', // New key
+      feedbackTitle: 'Envoyer un retour', // New key
+      privacyPolicy: 'Politique de confidentialité', // New key
+      privacyOpenHint: 'Voir les détails de confidentialité', // New key
     },
-        mood: {
-          chartTitle: 'Graphique d’humeur',
-          chartSubtitle: 'Votre humeur au fil du temps',
-          todayLabel: 'Aujourd’hui',
-        },
+    mood: {
+      chartTitle: 'Graphique d’humeur',
+      chartSubtitle: 'Votre humeur au fil du temps',
+      todayLabel: 'Aujourd’hui',
+    },
     chipList: 'Voir plus',
     calendar: {
+      emptyTitle: 'Aucun événement',
+      emptySubtitle: 'Tu n’as pas encore d’habitudes ou d’activités pour ce jour.',
       title: 'Calendrier',
       savingsHalfway: 'Vous êtes à mi-chemin de votre objectif d’épargne !',
       addSavings: 'Ajouter une épargne',
@@ -624,10 +923,15 @@ const translations = {
       saveWater: 'Enregistrer l’eau',
       waterStartGlass: 'Buvez votre premier verre d’eau !',
       waterDoingGreat: 'Vous faites du bon travail, continuez comme ça !',
-      todayButton: 'Aujourd\'hui',
+      todayButton: 'Aujourd’hui',
       edit: 'Éditer',
       delete: 'Supprimer',
       selectHabitTitle: 'Sélectionnez une habitude',
+      deleteOnlyThis: 'Supprimer seulement celle-ci',
+      deleteThisAndNext: 'Supprimer celle-ci et les suivantes',
+      cancel: 'Annuler',
+      deleteActivityTitle: 'Que souhaitez-vous supprimer ?',
+      deleteActivityMessage: 'Voulez-vous supprimer seulement cette activité ou celle-ci et toutes les suivantes ?',
     },
     pomodoro: {
       title: 'Pomodoro',
@@ -650,8 +954,11 @@ const translations = {
       total: 'Total de sessions',
       saveConfig: 'Enregistrer',
     },
-    // ...existing code...
     habitForm: {
+      savingsSavedLabel: 'Épargne enregistrée',
+      savingsSavedHelp: 'Enregistre combien d’argent tu as réussi à économiser aujourd’hui.',
+      savingsSavedPlaceholder: 'Exemple : 50',
+      endLabel: 'Fin',
       marketPricePlaceholder: '€',
       colorLabel: 'Couleur',
       periodLabel: 'Période',
@@ -701,6 +1008,12 @@ const translations = {
       'Other',
     ],
     specialHabits: {
+      call: {
+        question: 'Qui vas-tu appeler aujourd’hui ?'
+      },
+      savingsSavedLabel: 'Épargne enregistrée',
+      savingsSavedHelp: 'Indique combien d’argent tu as réussi à économiser aujourd’hui.',
+      savingsSavedPlaceHolder: 'Ex : 50',
       birthday: {
         question: 'C’est l’anniversaire de qui ?',
         placeholder: 'Nom',
@@ -710,6 +1023,7 @@ const translations = {
         question: 'Quelle vitamine avez-vous prise ?',
         placeholder: 'ex : Vitamine D',
         subtitlePrefix: '💊 Vous avez pris',
+        addButton: 'Ajouter une vitamine',
       },
       mood: {
         question: 'Comment vous sentez-vous aujourd’hui ?',
@@ -718,7 +1032,7 @@ const translations = {
       },
       pomodoro: {
         question: 'Sur quoi allez-vous vous concentrer ?',
-        placeholder: 'ex : Étude',
+        placeholder: 'ex : Estude',
         subtitlePrefix: '🍅 Pomodoro :',
       },
       water: {
@@ -731,12 +1045,12 @@ const translations = {
         placeholder: 'Ex : 100',
         subtitlePrefix: '💰 Aujourd\'hui votre objectif d\'épargne est',
       },
-        mood: {
-          chartTitle: 'Graphique d’humeur',
-          checkInButton: 'Enregistrer',
-          todayLabel: 'Aujourd’hui',
-          addNotePlaceholder: 'Ajouter une note…',
-        },
+      mood: {
+        chartTitle: 'Graphique d’humeur',
+        checkInButton: 'Enregistrer',
+        todayLabel: 'Aujourd’hui',
+        addNotePlaceholder: 'Ajouter une note…',
+      },
     },
   },
 };

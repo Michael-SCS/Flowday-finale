@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettings } from '../utils/settingsContext';
+import { useI18n } from '../utils/i18n';
 import { useAuth } from '../auth/AuthProvider';
 import imgIcon from '../../assets/icon.png';
 import imgMascotaCalendario from '../../assets/mascota_calendario.png';
@@ -14,99 +15,49 @@ const PENDING_KEY = 'fluu_mascotTourPending';
 
 export default function MascotTour({ visible, onClose, onRequestTabChange }) {
   const { language } = useSettings();
+  const { t } = useI18n();
   const { user } = useAuth();
-  const isEn = language === 'en';
   const [step, setStep] = useState(0);
   const storageKey = user?.id ? `${STORAGE_KEY}_${user.id}` : null;
   const pendingKey = user?.id ? `${PENDING_KEY}_${user.id}` : null;
-
-  const steps = isEn
-    ? [
-        {
-          key: 'welcome',
-          title: '',
-          text:
-            'I will walk you through the main parts of the app so you can start organizing your days. It will only take a few seconds.',
-          tab: 'Calendar',
-          image: imgLogin,
-        },
-        {
-          key: 'calendarMain',
-          title: 'Calendar',
-          text:
-            'In Calendar you will see everything you have scheduled: your habits, tasks and important things for each day.',
-          tab: 'Calendar',
-          image: imgMascotaCalendario,
-        },
-        {
-          key: 'calendarPlus',
-          title: 'Calendar + button',
-          text:
-            'Use the floating + button at the bottom right of Calendar to create new habits and activities in a simple way.',
-          tab: 'Calendar',
-          image: imgMascotaCalendario,
-          imageStyle: 'button',
-        },
-        {
-          key: 'pomodoro',
-          title: 'Pomodoro',
-          text:
-            'In Pomodoro you can focus using work and break sessions. Use it when you want to concentrate on studying or an important task.',
-          tab: 'Pomodoro',
-          image: imgMascotaPomodoro,
-        },
-        {
-          key: 'profile',
-          title: 'Profile',
-          text:
-            'In Profile you can change the app color, language and your personal info. If you get lost, you can always come back here.',
-          tab: 'Perfil',
-          image: imgMascotaFinal,
-        },
-      ]
-    : [
-        {
-          key: 'welcome',
-          title: '',
-          text:
-            'Te voy a acompañar en un recorrido rápido para que sepas dónde está todo. Solo tomará unos segundos.',
-          tab: 'Calendar',
-          image: imgLogin,
-        },
-        {
-          key: 'calendarMain',
-          title: 'Calendario',
-          text:
-            'En el Calendario verás todo lo que has agendado: tus hábitos, tareas y cosas importantes para cada día.',
-          tab: 'Calendar',
-          image: imgMascotaCalendario,
-        },
-        {
-          key: 'calendarPlus',
-          title: 'Botón + del calendario',
-          text:
-            'Usa el botón flotante + que ves abajo a la derecha en el Calendario para agregar nuevos hábitos y actividades de forma sencilla.',
-          tab: 'Calendar',
-          image: imgMascotaCalendario,
-          imageStyle: 'button',
-        },
-        {
-          key: 'pomodoro',
-          title: 'Pomodoro',
-          text:
-            'En Pomodoro puedes hacer sesiones de concentración con descansos. Úsalo cuando quieras enfocarte en estudiar o en una tarea importante.',
-          tab: 'Pomodoro',
-          image: imgMascotaPomodoro,
-        },
-        {
-          key: 'profile',
-          title: 'Perfil',
-          text:
-            'En Perfil puedes cambiar el color de la app, el idioma y tus datos. Si te pierdes, siempre puedes volver aquí para ajustar todo.',
-          tab: 'Perfil',
-          image: imgMascotaFinal,
-        },
-      ];
+  const steps = [
+    {
+      key: 'welcome',
+      title: t('mascotTour.welcomeTitle'),
+      text: t('mascotTour.welcomeText'),
+      tab: 'Calendar',
+      image: imgLogin,
+    },
+    {
+      key: 'calendarMain',
+      title: t('mascotTour.calendarMainTitle'),
+      text: t('mascotTour.calendarMainText'),
+      tab: 'Calendar',
+      image: imgMascotaCalendario,
+    },
+    {
+      key: 'calendarPlus',
+      title: t('mascotTour.calendarPlusTitle'),
+      text: t('mascotTour.calendarPlusText'),
+      tab: 'Calendar',
+      image: imgMascotaCalendario,
+      imageStyle: 'button',
+    },
+    {
+      key: 'pomodoro',
+      title: t('mascotTour.pomodoroTitle'),
+      text: t('mascotTour.pomodoroText'),
+      tab: 'Pomodoro',
+      image: imgMascotaPomodoro,
+    },
+    {
+      key: 'profile',
+      title: t('mascotTour.profileTitle'),
+      text: t('mascotTour.profileText'),
+      tab: 'Perfil',
+      image: imgMascotaFinal,
+    },
+  ];
 
   const current = steps[step] || steps[0];
   const isLast = step === steps.length - 1;
@@ -184,14 +135,12 @@ export default function MascotTour({ visible, onClose, onRequestTabChange }) {
 
           <View style={styles.footerRow}>
             <Pressable onPress={handleSkip} style={styles.secondaryButton}>
-              <Text style={styles.secondaryText}>
-                {isEn ? 'Skip tour' : 'Saltar recorrido'}
-              </Text>
+              <Text style={styles.secondaryText}>{t('mascotTour.skip')}</Text>
             </Pressable>
 
             <Pressable onPress={handleNext} style={styles.primaryButton}>
               <Text style={styles.primaryText}>
-                {isLast ? (isEn ? "Let's start" : 'Empezar') : isEn ? 'Next' : 'Siguiente'}
+                {isLast ? t('mascotTour.start') : t('mascotTour.next')}
               </Text>
             </Pressable>
           </View>

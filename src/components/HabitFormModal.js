@@ -181,7 +181,11 @@ function isCreativeHobbyHabit(habit) {
     type === 'creativehobby' ||
     type === 'hobbycreativo' ||
     type === 'creative_hobby' ||
-    type === 'hobby_creativo'
+    type === 'hobby_creativo' ||
+    type === 'hobbycriativo' || // portugués
+    type === 'hobby_criativo' || // portugués
+    type === 'hobbycréatif' || // francés
+    type === 'hobby_créatif' // francés
   ) {
     return true;
   }
@@ -189,7 +193,11 @@ function isCreativeHobbyHabit(habit) {
   return (
     titleLower.includes('hobby creativo') ||
     titleLower.includes('hobbies creativos') ||
-    titleLower.includes('creative hobby')
+    titleLower.includes('creative hobby') ||
+    titleLower.includes('hobby criativo') || // portugués
+    titleLower.includes('hobbies criativos') || // portugués
+    titleLower.includes('hobby créatif') || // francés
+    titleLower.includes('hobbies créatifs') // francés
   );
 }
 
@@ -1063,7 +1071,7 @@ export default function HabitFormModal({
                 setVitaminsAddVisible(true);
               }}
             >
-              <Ionicons name="add" size={22} color="#22c55e" />
+              <Text style={{ color: '#22c55e', fontWeight: '700', fontSize: 16 }}>{t('vitamins.addButton')}</Text>
             </Pressable>
 
             <VitaminsAddModal
@@ -2680,9 +2688,7 @@ export default function HabitFormModal({
             </View>
           )}
 
-          {isBirthdayTemplate && (
-            <Text style={{ color: '#f43f5e', marginTop: 8, fontWeight: 'bold', textAlign: 'center' }}>🎂 Un cumpleaños es un evento anual. Solo puedes elegir frecuencia anual.</Text>
-          )}
+
 
           {/* Campo de edad para cumpleaños */}
           {isBirthdayTemplate && (() => {
@@ -2709,7 +2715,7 @@ export default function HabitFormModal({
                   placeholder="Edad que cumplirá este año"
                   placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
                 />
-                <Text style={[styles.sublabel, { marginTop: 4 }, isDark && { color: '#9ca3af' }]}>Este número aumentará automáticamente cada año.</Text>
+
               </View>
             );
           })()}

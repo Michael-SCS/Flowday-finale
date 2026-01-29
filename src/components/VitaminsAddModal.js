@@ -16,6 +16,7 @@ import { useSettings } from '../utils/settingsContext';
 
 export default function VitaminsAddModal({ visible, onClose, onAdd }) {
   const { themeMode } = useSettings();
+  const { t } = require('../utils/i18n').useI18n();
   const isDark = themeMode === 'dark';
 
   const [name, setName] = useState('');
@@ -54,7 +55,7 @@ export default function VitaminsAddModal({ visible, onClose, onAdd }) {
             <View style={[styles.card, isDark && styles.cardDark]}>
               <View style={styles.header}>
                 <Text style={[styles.title, isDark && styles.titleDark]}>
-                  Agregar medicamento
+                  {t('vitamins.modalTitle')}
                 </Text>
                 <Pressable onPress={onClose} style={styles.closeBtn}>
                   <Ionicons
@@ -67,13 +68,13 @@ export default function VitaminsAddModal({ visible, onClose, onAdd }) {
 
             <View style={styles.field}>
               <Text style={[styles.label, isDark && styles.labelDark]}>
-                Nombre del medicamento
+                {t('vitamins.nameLabel')}
               </Text>
               <TextInput
                 style={[styles.input, isDark && styles.inputDark, { minHeight: 48 }]}
                 value={name}
                 onChangeText={setName}
-                placeholder="Vitamina C, Omega 3..."
+                placeholder={t('vitamins.namePlaceholder')}
                 placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
                 autoCorrect
                 autoCapitalize="words"
@@ -82,14 +83,14 @@ export default function VitaminsAddModal({ visible, onClose, onAdd }) {
 
             <View style={styles.field}>
               <Text style={[styles.label, isDark && styles.labelDark]}>
-                Cantidad
+                {t('vitamins.qtyLabel')}
               </Text>
               <TextInput
                 style={[styles.input, isDark && styles.inputDark]}
                 value={quantity}
                 onChangeText={(v) => setQuantity(String(v).replace(/[^0-9,\.]/g, ''))}
                 keyboardType="numeric"
-                placeholder="1"
+                placeholder={t('vitamins.qtyPlaceholder')}
                 placeholderTextColor={isDark ? '#94a3af' : '#9ca3af'}
               />
             </View>

@@ -143,6 +143,7 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [showPersonalModal, setShowPersonalModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showQuickLanguageModal, setShowQuickLanguageModal] = useState(false);
@@ -285,8 +286,7 @@ export default function ProfileScreen() {
     const normalized = String(code).toLowerCase();
     const key = `profile.language${normalized.charAt(0).toUpperCase() + normalized.slice(1)}`;
     const label = t(key);
-    if (label && label !== key) return label;
-    return normalized.toUpperCase();
+    return label && label !== key ? label : '';
   };
 
   const quickLanguageOptions = [
@@ -703,12 +703,6 @@ export default function ProfileScreen() {
             <View style={styles.headerSection}>
               <View style={styles.headerTopRow}>
                 <View style={{ flex: 1 }} />
-                <Pressable
-                  style={[styles.settingsIconButton, { backgroundColor: `${accent}DD` }]}
-                  onPress={() => setShowSettingsModal(true)}
-                >
-                  <Ionicons name="settings-outline" size={22} color="#fff" />
-                </Pressable>
               </View>
 
               <View style={styles.avatarSection}>
@@ -830,11 +824,7 @@ export default function ProfileScreen() {
                     </View>
 
                     <View style={styles.preferencesRow}>
-                      <View style={[styles.preferenceChip, { backgroundColor: `${accent}10` }]}>
-                        <Ionicons name="color-palette" size={14} color={accent} />
-                        <Text style={[styles.preferenceText, { color: accent }]}>{t(`profile.color${themeColor.charAt(0).toUpperCase() + themeColor.slice(1)}`) || themeColor}</Text>
-                      </View>
-                      <View style={[styles.preferenceChip, { backgroundColor: `${accent}10` }]}>
+                      <View style={[styles.preferenceChip, { backgroundColor: `${accent}10` }]}> 
                         <Ionicons name="language" size={14} color={accent} />
                         <Text style={[styles.preferenceText, { color: accent }]}>{getLanguageLabel(language)}</Text>
                       </View>
@@ -889,15 +879,6 @@ export default function ProfileScreen() {
                       </View>
                     </View>
 
-                    <Pressable
-                      style={[styles.quickSettingsHeaderAction, { borderColor: `${accent}55` }]}
-                      onPress={() => setShowSettingsModal(true)}
-                    >
-                      <Text style={[styles.sectionHeaderActionText, { color: accent }]}>
-                        {safeT('profile.moreSettingsButton', 'Más ajustes')}
-                      </Text>
-                      <Ionicons name="chevron-forward" size={16} color={accent} />
-                    </Pressable>
                   </View>
 
                   <View style={styles.quickSettingsRows}>
@@ -1011,6 +992,178 @@ export default function ProfileScreen() {
                       </Text>
                     </View>
                   </View>
+
+                  {/* NUEVA CARD: AJUSTES PERSONALES */}
+                  <Pressable
+                    style={[styles.sectionCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
+                    onPress={() => setShowPersonalModal(true)}
+                  >
+                    <View style={styles.sectionHeader}>
+                      <View style={[styles.sectionHeaderIcon, { backgroundColor: `${accent}20` }]}> 
+                        <Ionicons name="settings-outline" size={18} color={accent} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.sectionHeaderTitle, isDark && { color: '#e5e7eb' }]}>
+                          {t('profile.personalSettingsTitle')}
+                        </Text>
+                        <Text style={[styles.sectionHeaderSubtitle, isDark && { color: '#94a3b8' }]}>
+                          {t('profile.personalSettingsSubtitle')}
+                        </Text>
+                      </View>
+                    </View>
+                  </Pressable>
+        {/* MODAL AJUSTES PERSONALES */}
+        <Modal
+          visible={showPersonalModal}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowPersonalModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <SafeAreaView
+              edges={['bottom']}
+              style={[
+                styles.modalContent,
+                isDark && { backgroundColor: '#020617' },
+              ]}
+            >
+              <View style={styles.modalHeader}>
+                <View className="modalHandle" style={styles.modalHandle} />
+                <View style={styles.modalTitleRow}>
+                  <View style={[styles.modalIconCircle, { backgroundColor: `${accent}20` }]}> 
+                    <Ionicons name="settings-outline" size={24} color={accent} />
+                  </View>
+                  <Text style={[styles.modalTitle, isDark && { color: '#e5e7eb' }]}>{t('profile.personalSettingsTitle')}</Text>
+                </View>
+                <Pressable
+                  onPress={() => setShowPersonalModal(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons name="close" size={26} color="#6b7280" />
+                </Pressable>
+              </View>
+              <View style={styles.settingsBody}>
+                <ScrollView
+                  style={styles.modalScroll}
+                  contentContainerStyle={styles.modalScrollContent}
+                  showsVerticalScrollIndicator
+                >
+                  <View style={[styles.settingsCard, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
+                    <View style={styles.inputGroup}>
+                      <View style={styles.inputField}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.firstName')}</Text>
+                        <View style={[styles.inputContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
+                          <Ionicons name="person-outline" size={18} color="#9ca3af" />
+                          <TextInput
+                            style={[styles.textInput, isDark && { color: '#e5e7eb' }]}
+                            value={nombre}
+                            onChangeText={setNombre}
+                            placeholder={t('profile.firstName')}
+                            placeholderTextColor="#9ca3af"
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.inputField}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.lastName')}</Text>
+                        <View style={[styles.inputContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
+                          <Ionicons name="person-outline" size={18} color="#9ca3af" />
+                          <TextInput
+                            style={[styles.textInput, isDark && { color: '#e5e7eb' }]}
+                            value={apellido}
+                            onChangeText={setApellido}
+                            placeholder={t('profile.lastName')}
+                            placeholderTextColor="#9ca3af"
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.inputField}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.age')}</Text>
+                        <View style={[styles.inputContainer, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }] }>
+                          <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
+                          <TextInput
+                            style={[styles.textInput, isDark && { color: '#e5e7eb' }]}
+                            value={edad}
+                            onChangeText={setEdad}
+                            placeholder={t('profile.age')}
+                            placeholderTextColor="#9ca3af"
+                            keyboardType="numeric"
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.inputField}>
+                        <Text style={[styles.inputLabel, isDark && { color: '#cbd5e1' }]}>{t('profile.gender')}</Text>
+                        <Pressable
+                          style={[styles.genderSelector, isDark && { backgroundColor: '#020617', borderColor: '#1e293b' }]}
+                          onPress={() => setShowGenderModal(true)}
+                        >
+                          <View style={styles.genderSelectorContent}>
+                            <Ionicons name="people-outline" size={18} color={genero ? (isDark ? '#e5e7eb' : '#111827') : '#9ca3af'} />
+                            <Text
+                              style={genero
+                                ? [styles.genderValue, isDark && { color: '#e5e7eb' }]
+                                : [styles.genderPlaceholder, isDark && { color: '#6b7280' }]}
+                            >
+                              {genero || t('profile.genderPlaceholder')}
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+                        </Pressable>
+                      </View>
+                    </View>
+                  </View>
+                </ScrollView>
+              </View>
+              <View
+                style={[
+                  styles.floatingButtonContainer,
+                  { paddingBottom: 16 + (insets?.bottom || 0) },
+                  isDark && { backgroundColor: '#020617', borderTopColor: '#1e293b' },
+                ]}
+              >
+                <Pressable
+                  style={[
+                    styles.saveButton,
+                    { backgroundColor: accent },
+                    saving && styles.saveButtonDisabled,
+                  ]}
+                  onPress={async () => {
+                    setSaving(true);
+                    setSuccessMessage(null);
+                    try {
+                      const updates = {
+                        nombre,
+                        apellido,
+                        edad,
+                        genero,
+                        id: profile.id,
+                        email: profile.email,
+                        last_active_at: new Date().toISOString(),
+                      };
+                      const { error: updateError } = await supabase.from('profiles').upsert(updates, { returning: 'minimal' });
+                      if (updateError) throw updateError;
+                      setProfile((prev) => ({ ...prev, ...updates }));
+                      setSuccessMessage(t('profile.saveSuccess'));
+                      setShowPersonalModal(false);
+                    } catch (err) {
+                      Alert.alert(t('profile.saveError'), err.message || String(err));
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  disabled={saving}
+                >
+                  <Ionicons name={saving ? 'hourglass' : 'checkmark-circle'} size={22} color="#fff" />
+                  <Text style={styles.saveButtonText}>
+                    {saving ? t('profile.saving') : t('profile.save')}
+                  </Text>
+                </Pressable>
+              </View>
+            </SafeAreaView>
+          </View>
+        </Modal>
 
                   <Pressable
                     style={[styles.rowButton, isDark && { backgroundColor: '#0b1120', borderColor: '#1e293b' }]}
@@ -1790,27 +1943,27 @@ export default function ProfileScreen() {
                 </Text>
               </View>
               <View style={styles.genderOptions}>
-                {genderOptions.map((option, index) => (
+                {genderKeys.map((key, index) => (
                   <Pressable
-                    key={option}
+                    key={key}
                     style={[
                       styles.genderOptionItem,
-                      index !== genderOptions.length - 1 && styles.genderOptionBorder,
-                      genero === option && [styles.genderOptionItemActive, { backgroundColor: `${accent}10` }]
+                      index !== genderKeys.length - 1 && styles.genderOptionBorder,
+                      genero === key && [styles.genderOptionItemActive, { backgroundColor: `${accent}10` }]
                     ]}
                     onPress={() => {
-                      setGenero(option);
+                      setGenero(key);
                       setShowGenderModal(false);
                     }}
                   >
                     <Text style={[
                       styles.genderOptionText,
                       isDark && { color: '#cbd5e1' },
-                      genero === option && [styles.genderOptionTextActive, { color: accent }]
+                      genero === key && [styles.genderOptionTextActive, { color: accent }]
                     ]}>
-                      {option}
+                      {t(`profile.genderOptions.${key}`)}
                     </Text>
-                    {genero === option && (
+                    {genero === key && (
                       <Ionicons name="checkmark-circle" size={20} color={accent} />
                     )}
                   </Pressable>
@@ -2133,7 +2286,8 @@ const styles = StyleSheet.create({
   sectionCard: {
     backgroundColor: '#fff',
     borderRadius: 24,
-    padding: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#f1f5f9',
