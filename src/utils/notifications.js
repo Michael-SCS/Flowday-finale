@@ -88,78 +88,78 @@ export async function cancelAllScheduledNotifications() {
  * dateStr: 'YYYY-MM-DD'
  * timeStr: 'HH:MM'
  */
-export async function scheduleReminderForActivity({ date, time, title, body }) {
-  const { notificationsEnabled = true } = arguments?.[0] || {};
 
-  if (!notificationsEnabled) return;
-  if (!date || !time) return;
+/**
+ * Centraliza la programación de notificaciones para hábitos/eventos.
+ * Cancela la notificación previa (si notificationId existe), traduce el texto, y programa la nueva.
+ * Devuelve el nuevo notificationId (o null si no se programa).
+ * @param {Object} params
+ * @param {string} params.date - Fecha 'YYYY-MM-DD'
+ * @param {string} params.time - Hora 'HH:MM'
+ * @param {string} params.habitTitle - Título del hábito/evento (ya traducido)
+ * @param {string} params.language - Idioma ('es', 'en', 'pt', 'fr')
+ * @param {boolean} params.notificationsEnabled
+ * @param {string|null} params.previousNotificationId
+ * @returns {Promise<string|null>} notificationId
+ */
+import { translate } from './i18n';
+
+export async function rescheduleHabitNotification({ date, time, habitTitle, language, notificationsEnabled = true, previousNotificationId = null }) {
+  if (!notificationsEnabled) return null;
+  if (!date || !time) return null;
 
   const [year, month, day] = String(date).split('-').map(Number);
   const [hour, minute] = String(time).split(':').map(Number);
-
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-    return;
-  }
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
-    return;
-  }
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
 
   const target = new Date(year, month - 1, day, hour, minute, 0, 0);
   let triggerTime = new Date(target.getTime() - 30 * 60 * 1000); // 30 min antes
-
   const now = new Date();
-
-  // Si la hora de la actividad ya pasó, no tiene sentido programar
-  if (target.getTime() <= now.getTime()) {
-    console.log('[notifications] Hora de la actividad ya pasada, no se programa', {
-      date,
-      time,
-      target: target.toString(),
-      now: now.toString(),
-    });
-    return;
-  }
-
-  // Si el recordatorio de 30 min ya pasó, no programamos nada.
-  // El usuario tendrá que crear la actividad con al menos 30 minutos de antelación.
-  if (triggerTime.getTime() <= now.getTime()) {
-    console.log('[notifications] Trigger 30min ya pasado, no se programa', {
-      date,
-      time,
-      triggerTime: triggerTime.toString(),
-      now: now.toString(),
-    });
-    return;
-  }
-
+  if (target.getTime() <= now.getTime() || triggerTime.getTime() <= now.getTime()) return null;
   const diffMs = triggerTime.getTime() - now.getTime();
   const diffSeconds = Math.round(diffMs / 1000);
-
-  if (!Number.isFinite(diffSeconds) || diffSeconds <= 0) {
-    console.log('[notifications] diffSeconds inválido, no se programa', {
-      date,
-      time,
-      triggerTime: triggerTime.toString(),
-      now: now.toString(),
-      diffSeconds,
-    });
-    return;
-  }
+  if (!Number.isFinite(diffSeconds) || diffSeconds <= 0) return null;
 
   try {
     const Notifications = await getNotificationsModule();
-    if (!Notifications) return;
-
+    if (!Notifications) return null;
     const ok = await requestNotificationPermissions();
-    if (!ok) return;
+    if (!ok) return null;
 
-    console.log('[notifications] Programando notificación', {
-      date,
-      time,
-      triggerTime: triggerTime.toString(),
-      now: now.toString(),
-      diffSeconds,
-    });
+    // Cancelar notificación previa si existe
+    if (previousNotificationId) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(previousNotificationId);
+      } catch (e) {
+        console.warn('[notifications] Error cancelando notificación previa', e);
+      }
+    }
+
+    // Traducción de textos (NO pasar keys de i18n)
+    let title = '';
+    let body = '';
+    switch (language) {
+      case 'es':
+        title = 'Recordatorio';
+        body = `Es momento de ${habitTitle}`;
+        break;
+      case 'en':
+        title = 'Reminder';
+        body = `Time for your ${habitTitle}`;
+        break;
+      case 'pt':
+        title = 'Lembrete';
+        body = `Hora do seu ${habitTitle}`;
+        break;
+      case 'fr':
+        title = 'Rappel';
+        body = `C’est le moment de votre ${habitTitle}`;
+        break;
+      default:
+        title = 'Reminder';
+        body = `Time for your ${habitTitle}`;
+    }
 
     const trigger =
       Platform.OS === 'android'
@@ -173,16 +173,13 @@ export async function scheduleReminderForActivity({ date, time, title, body }) {
             seconds: diffSeconds,
           };
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title,
-        body,
-      },
-      // En SDK 53+ el trigger debe ser un objeto con `type`.
-      // Usamos un trigger relativo en segundos (TIME_INTERVAL) y canal por defecto en Android.
+    const id = await Notifications.scheduleNotificationAsync({
+      content: { title, body },
       trigger,
     });
+    return id;
   } catch (e) {
     console.warn('[notifications] Error programando notificación', e);
+    return null;
   }
 }

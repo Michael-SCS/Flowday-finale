@@ -20,6 +20,7 @@ import { useI18n } from '../utils/i18n';
 import { useSettings } from '../utils/settingsContext';
 import { formatTimeFromDate } from '../utils/timeFormat';
 import { translateHabitCategory } from '../utils/habitCategories';
+import { normalizeMarketProductName } from '../utils/marketProductName';
 
 /* ======================
    CONSTANTES
@@ -671,8 +672,11 @@ export default function HabitFormModal({
     []
   );
 
-  const STUDY_SUBJECT_OPTIONS = useMemo(
-    () => [
+  const STUDY_SUBJECT_OPTIONS = useMemo(() => {
+    const opts = t('studySubjectOptions');
+    if (Array.isArray(opts) && opts.length > 0) return opts;
+    // fallback to Spanish if translation missing
+    return [
       'Matemáticas',
       'Lenguaje / Español',
       'Inglés',
@@ -681,9 +685,8 @@ export default function HabitFormModal({
       'Geografía',
       'Filosofía',
       'Otros',
-    ],
-    []
-  );
+    ];
+  }, [language, t]);
 
   const STUDY_SUBJECT_EMOJI = useMemo(
     () => ({
@@ -2015,7 +2018,6 @@ export default function HabitFormModal({
                             isSelected && { color: selectedColor || '#38BDF8' },
                           ]}
                         >
-
                           {mins} min
                         </Text>
                       </Pressable>

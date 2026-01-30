@@ -46,7 +46,7 @@ import {
   loadActivities as loadUserActivities,
   saveActivities as saveUserActivities,
 } from '../utils/localActivities';
-import { scheduleReminderForActivity } from '../utils/notifications';
+import { rescheduleHabitNotification } from '../utils/notifications';
 import { formatTimeFromHHmm } from '../utils/timeFormat';
 import { getDismissedMoodBannerDate, getMoodForDate, setDismissedMoodBannerDate } from '../utils/moodTracker';
 import { pickMoodMessage } from '../utils/moodMessages';
@@ -886,8 +886,11 @@ export default function Calendar() {
         const habitId = act?.habit_id;
         if (!habitId) continue;
 
-        const target = parseMoneyLike(act?.data?.savingsTargetAmount);
-        const saved = parseMoneyLike(act?.data?.savingsSavedAmount);
+        let target = parseMoneyLike(act?.data?.savingsTargetAmount);
+        let saved = parseMoneyLike(act?.data?.savingsSavedAmount);
+        // Formatear con puntos de miles si es número válido
+        if (Number.isFinite(target)) target = target.toLocaleString('es-ES');
+        if (Number.isFinite(saved)) saved = saved.toLocaleString('es-ES');
 
         if (!Number.isFinite(target) || target <= 0) continue;
 
@@ -1180,12 +1183,20 @@ export default function Calendar() {
         saveActivities(updated);
 
         if (nextActivity && nextActivity.time) {
-          scheduleReminderForActivity({
+          // Usar idioma del usuario o del hábito
+          const lang = habit.language || language || 'en';
+          const prevId = nextActivity.notificationId || null;
+          rescheduleHabitNotification({
             date: nextDateKey,
             time: nextActivity.time,
-            title: t('calendar.reminderTitle'),
-            body: `${t('calendar.reminderBodyPrefix')} ${nextActivity.title}`,
+            habitTitle: nextActivity.title,
+            language: lang,
             notificationsEnabled,
+            previousNotificationId: prevId,
+          }).then((notificationId) => {
+            // Guardar notificationId en la actividad
+            nextActivity.notificationId = notificationId;
+            saveActivities({ ...updated });
           });
         }
 
@@ -1337,12 +1348,18 @@ export default function Calendar() {
 
         // Solo programamos notificación para la siguiente ocurrencia futura
         if (newActivity.time && nextReminderDate && date === nextReminderDate) {
-          scheduleReminderForActivity({
+          const lang = habit.language || language || 'en';
+          const prevId = newActivity.notificationId || null;
+          rescheduleHabitNotification({
             date,
             time: newActivity.time,
-            title: t('calendar.reminderTitle'),
-            body: `${t('calendar.reminderBodyPrefix')} ${newActivity.title}`,
+            habitTitle: newActivity.title,
+            language: lang,
             notificationsEnabled,
+            previousNotificationId: prevId,
+          }).then((notificationId) => {
+            newActivity.notificationId = notificationId;
+            saveActivities({ ...updated });
           });
         }
       });
@@ -1517,12 +1534,18 @@ export default function Calendar() {
 
       // Solo programamos notificación para la siguiente ocurrencia futura
       if (newActivity.time && nextReminderDate && date === nextReminderDate) {
-        scheduleReminderForActivity({
+        const lang = habit.language || language || 'en';
+        const prevId = newActivity.notificationId || null;
+        rescheduleHabitNotification({
           date,
           time: newActivity.time,
-          title: t('calendar.reminderTitle'),
-          body: `${t('calendar.reminderBodyPrefix')} ${newActivity.title}`,
+          habitTitle: newActivity.title,
+          language: lang,
           notificationsEnabled,
+          previousNotificationId: prevId,
+        }).then((notificationId) => {
+          newActivity.notificationId = notificationId;
+          saveActivities({ ...updated });
         });
       }
     });
@@ -2599,9 +2622,34 @@ export default function Calendar() {
                   if (!isCreativeHobbyHabit) return null;
                   const hobbyRaw = String(activityWithDate?.data?.creativeHobbyOption ?? '').trim();
                   const hobbyOther = String(activityWithDate?.data?.creativeHobbyOther ?? '').trim();
-                  const hobby = hobbyRaw === 'Otros' ? (hobbyOther || 'Otros') : (hobbyRaw || null);
-                  if (!hobby) return null;
-                  return { subjectText: hobby };
+                  // Find the index of the selected hobby in any language
+                  let idx = -1;
+                  let foundLang = null;
+                  for (const lang of ['es','en','pt','fr']) {
+                    const arr = (require('../utils/i18n').default?.[lang]?.creativeHobbyOptions) || [];
+                    const i = arr.indexOf(hobbyRaw);
+                    if (i !== -1) { idx = i; foundLang = lang; break; }
+                  }
+                  // If 'Otros'/'Others'/etc, use the free text or fallback
+                  let isOther = false;
+                  if (idx === -1) {
+                    // Try to match 'Otros', 'Others', etc. in any language
+                    for (const lang of ['es','en','pt','fr']) {
+                      const arr = (require('../utils/i18n').default?.[lang]?.creativeHobbyOptions) || [];
+                      const i = arr.findIndex(opt => opt.toLowerCase().includes('otro') || opt.toLowerCase().includes('other'));
+                      if (i !== -1 && hobbyRaw.toLowerCase() === arr[i].toLowerCase()) {
+                        idx = i;
+                        isOther = true;
+                        break;
+                      }
+                    }
+                  }
+                  if (idx === -1 && !hobbyRaw && hobbyOther) {
+                    // Only free text
+                    return { subjectText: hobbyOther, idx: -1 };
+                  }
+                  if (idx === -1 && !isOther) return null;
+                  return { subjectText: isOther ? (hobbyOther || hobbyRaw) : hobbyRaw, idx };
                 })();
                 const savingsTotals = activityWithDate?.habit_id
                   ? savingsByHabitId.get(activityWithDate.habit_id)
@@ -2717,10 +2765,35 @@ export default function Calendar() {
 
                   const subjectRaw = String(activityWithDate?.data?.studySubject ?? '').trim();
                   const otherTopic = String(activityWithDate?.data?.studySubjectOther ?? '').trim();
-                  const subject =
-                    subjectRaw === 'Otros'
-                      ? (otherTopic || 'Otros')
-                      : (subjectRaw || null);
+                  // Find the index of the selected subject in any language
+                  let idx = -1;
+                  for (const lang of ['es','en','pt','fr']) {
+                    const arr = (require('../utils/i18n').default?.[lang]?.studySubjectOptions) || [];
+                    const i = arr.indexOf(subjectRaw);
+                    if (i !== -1) { idx = i; break; }
+                  }
+                  // If 'Otros'/'Others'/etc, use the free text or fallback
+                  let isOther = false;
+                  if (idx === -1) {
+                    for (const lang of ['es','en','pt','fr']) {
+                      const arr = (require('../utils/i18n').default?.[lang]?.studySubjectOptions) || [];
+                      const i = arr.findIndex(opt => opt.toLowerCase().includes('otro') || opt.toLowerCase().includes('other'));
+                      if (i !== -1 && subjectRaw.toLowerCase() === arr[i].toLowerCase()) {
+                        idx = i;
+                        isOther = true;
+                        break;
+                      }
+                    }
+                  }
+                  let subject = null;
+                  if (idx === -1 && !subjectRaw && otherTopic) {
+                    subject = otherTopic;
+                  } else if (idx !== -1) {
+                    const options = t('studySubjectOptions') || [];
+                    subject = Array.isArray(options) && options[idx] ? options[idx] : subjectRaw;
+                  } else {
+                    subject = subjectRaw;
+                  }
 
                   const minutes =
                     typeof activityWithDate?.durationMinutes === 'number' && activityWithDate.durationMinutes > 0
@@ -2732,19 +2805,9 @@ export default function Calendar() {
 
                   if (!subject && !minutes) return null;
 
-                  const EMOJI = {
-                    'Matemáticas': '🧮',
-                    'Lenguaje / Español': '📝',
-                    'Inglés': '🗣️',
-                    'Ciencias': '🔬',
-                    'Historia': '📜',
-                    'Geografía': '🌍',
-                    'Filosofía': '🧠',
-                    'Otros': '📚',
-                  };
-
-                  const emojiKey = subjectRaw === 'Otros' ? 'Otros' : subjectRaw;
-                  const emoji = EMOJI[emojiKey] || '📚';
+                  // Emoji map for all languages (index-based)
+                  const EMOJIS = ['🧮','📝','🗣️','🔬','📜','🌍','🧠','📚'];
+                  const emoji = idx !== -1 && EMOJIS[idx] ? EMOJIS[idx] : '📚';
 
                   return {
                     subjectText: subject ? `${emoji} ${subject}` : null,
@@ -3192,7 +3255,7 @@ export default function Calendar() {
                                   msg = `Recuerda llamar a ${name}`;
                                 }
                                 return (
-                                  <Text style={[styles.cardSubtitle, { fontWeight: 'normal', fontSize: 13, color: '#fff', marginTop: 2, textAlign: 'justify' }]}>{msg}</Text>
+                                  <Text style={[styles.cardSubtitle, { fontWeight: 'normal', fontSize: 13, color: '#000', marginTop: 2, textAlign: 'justify' }]}>{msg}</Text>
                                 );
                               })()}
 
@@ -3346,13 +3409,9 @@ export default function Calendar() {
                                   ]}>
                                     {(() => {
                                       const options = t('creativeHobbyOptions') || [];
-                                      let idx = -1;
-                                      for (const lang of ['es','en','pt','fr']) {
-                                        const arr = (require('../utils/i18n').default?.[lang]?.creativeHobbyOptions) || [];
-                                        const i = arr.indexOf(creativeHobbyMeta.subjectText);
-                                        if (i !== -1) { idx = i; break; }
+                                      if (creativeHobbyMeta.idx !== undefined && creativeHobbyMeta.idx !== -1 && Array.isArray(options) && options[creativeHobbyMeta.idx]) {
+                                        return options[creativeHobbyMeta.idx];
                                       }
-                                      if (Array.isArray(options) && idx !== -1 && options[idx]) return options[idx];
                                       return creativeHobbyMeta.subjectText;
                                     })()}
                                   </Text>

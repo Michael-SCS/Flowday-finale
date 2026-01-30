@@ -110,49 +110,45 @@ export function SettingsProvider({ children }) {
           if (next !== storedTheme) {
             try {
               await AsyncStorage.setItem(THEME_KEY, next);
-            } catch {
-              // ignore
-            }
+            } catch {}
           }
         }
         if (storedThemeMode === 'dark' || storedThemeMode === 'light') {
           setThemeModeState(storedThemeMode);
         }
-
         if (storedNotificationsEnabled === '0' || storedNotificationsEnabled === '1') {
           setNotificationsEnabledState(storedNotificationsEnabled === '1');
         }
         if (storedTimeFormat) {
           setTimeFormatState(normalizeTimeFormat(storedTimeFormat));
         }
-        // Idioma:
-        // - Si el usuario eligió manualmente -> respetar.
-        // - Si no (incluye compatibilidad con instalaciones viejas sin LANG_SOURCE) -> sincronizar con idioma del sistema.
-        if (storedLangSource === 'user' && storedLang) {
-          const normalized = mapLocaleToLang(storedLang);
-          setLanguageState(normalized);
-          setLanguageSource('user');
-          if (normalized !== storedLang) {
-            try {
-              await AsyncStorage.setItem(LANG_KEY, normalized);
-            } catch {
-              // ignore
-            }
-          }
-        } else {
+        // Selección automática de idioma SOLO en primer launch
+        if (!storedLang) {
+          // Primer launch: detectar idioma del sistema
           const systemLanguage = mapLocaleToLang(getSystemLocaleString());
           setLanguageState(systemLanguage);
           setLanguageSource('system');
           try {
             await AsyncStorage.setItem(LANG_KEY, systemLanguage);
             await AsyncStorage.setItem(LANG_SOURCE_KEY, 'system');
-          } catch {
-            // ignorar error de persistencia
+          } catch {}
+        } else if (storedLangSource === 'user') {
+          // Usuario eligió manualmente
+          const normalized = mapLocaleToLang(storedLang);
+          setLanguageState(normalized);
+          setLanguageSource('user');
+          if (normalized !== storedLang) {
+            try {
+              await AsyncStorage.setItem(LANG_KEY, normalized);
+            } catch {}
           }
+        } else {
+          // Ya existe idioma guardado, usarlo
+          const normalized = mapLocaleToLang(storedLang);
+          setLanguageState(normalized);
+          setLanguageSource('system');
         }
-      } catch {
-        // si falla, usamos defaults
-      }
+      } catch {}
     })();
   }, []);
 

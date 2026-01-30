@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSettings } from '../utils/settingsContext';
+import { useI18n } from '../utils/i18n';
 
 export default function MarketAddModal({ visible, onClose, onAdd }) {
   const { themeMode } = useSettings();
   const isDark = themeMode === 'dark';
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [price, setPrice] = useState('');
@@ -92,10 +94,10 @@ export default function MarketAddModal({ visible, onClose, onAdd }) {
 
             <View style={styles.actionsRow}>
               <Pressable style={[styles.btn, styles.cancel]} onPress={onClose}>
-                <Text style={styles.cancelText}>Cancelar</Text>
+                <Text style={styles.cancelText}>{t('cancel')}</Text>
               </Pressable>
               <Pressable style={[styles.btn, styles.confirm]} onPress={handleAdd}>
-                <Text style={styles.confirmText}>Agregar</Text>
+                <Text style={styles.confirmText}>{t('specialHabits.market.addButton')}</Text>
               </Pressable>
             </View>
             </View>
