@@ -1271,7 +1271,10 @@ export default function HabitFormModal({
                   />
                 </Pressable>
               )}
-              <Image source={{ uri: habit.icon }} style={styles.icon} />
+              {/* Quitar imagen de fondo solo para practicar idioma */}
+              {!isLanguagePracticeTemplate && (
+                <Image source={{ uri: habit.icon }} style={styles.icon} />
+              )}
               <View>
                 <Text
                   style={[styles.title, { color: headerFg }]} 
@@ -1686,7 +1689,8 @@ export default function HabitFormModal({
             <>
               <View style={styles.section}>
                 {(() => {
-                  const selected = String(formData?.studySubject ?? '').trim();
+
+                  const selectedIdx = Number.isFinite(formData?.studySubject) ? formData.studySubject : null;
                   const selectedOther = String(formData?.studySubjectOther ?? '').trim();
 
                   const withEmoji = (label) => {
@@ -1698,12 +1702,17 @@ export default function HabitFormModal({
                     return `${emoji} ${clean}`;
                   };
 
-                  const selectedDisplay =
-                    selected === 'Otros' && selectedOther
-                      ? `${withEmoji('Otros')}: ${selectedOther}`
-                      : withEmoji(selected);
+                  let selectedLabel = null;
+                  if (selectedIdx !== null && STUDY_SUBJECT_OPTIONS[selectedIdx]) {
+                    selectedLabel = STUDY_SUBJECT_OPTIONS[selectedIdx];
+                  }
 
-                  const summary = selected
+                  const selectedDisplay =
+                    selectedLabel === 'Otros' && selectedOther
+                      ? `${withEmoji('Otros')}: ${selectedOther}`
+                      : withEmoji(selectedLabel);
+
+                  const summary = selectedLabel
                     ? selectedDisplay
                     : (language === 'es'
                         ? 'Selecciona una opción'
@@ -1754,14 +1763,14 @@ export default function HabitFormModal({
                       {studyDropdownOpen ? (
                         <View style={styles.spacesDropdownBody}>
                           <View style={styles.waterOptionsRow}>
-                            {STUDY_SUBJECT_OPTIONS.map((opt) => {
-                              const isSelected = String(formData?.studySubject ?? '') === String(opt);
+                            {STUDY_SUBJECT_OPTIONS.map((opt, idx) => {
+                              const isSelected = Number(formData?.studySubject) === idx;
                               return (
                                 <Pressable
                                   key={opt}
                                   onPress={() => {
-                                    updateField('studySubject', String(opt));
-                                    if (String(opt) !== 'Otros') updateField('studySubjectOther', '');
+                                    updateField('studySubject', idx);
+                                    if (opt !== 'Otros') updateField('studySubjectOther', '');
                                     setStudyDropdownOpen(false);
                                   }}
                                   style={[
@@ -1787,7 +1796,10 @@ export default function HabitFormModal({
                             })}
                           </View>
 
-                          {String(formData?.studySubject ?? '') === 'Otros' ? (
+                          {(() => {
+                            const idx = Number(formData?.studySubject);
+                            return STUDY_SUBJECT_OPTIONS[idx] === 'Otros';
+                          })() ? (
                             <View style={{ marginTop: 10 }}>
                               <TextInput
                                 value={String(formData?.studySubjectOther ?? '')}
@@ -2031,7 +2043,7 @@ export default function HabitFormModal({
           {isCreativeHobbyTemplate ? (
             <View style={styles.section}>
               {(() => {
-                const selected = String(formData?.creativeHobbyOption ?? '').trim();
+                const selectedIdx = Number.isFinite(formData?.creativeHobbyOption) ? formData.creativeHobbyOption : null;
                 const selectedOther = String(formData?.creativeHobbyOther ?? '').trim();
 
                 const withEmoji = (label) => {
@@ -2043,12 +2055,17 @@ export default function HabitFormModal({
                   return `${emoji} ${clean}`;
                 };
 
-                const selectedDisplay =
-                  selected === 'Otros' && selectedOther
-                    ? `${withEmoji('Otros')}: ${selectedOther}`
-                    : withEmoji(selected);
+                let selectedLabel = null;
+                if (selectedIdx !== null && CREATIVE_HOBBY_OPTIONS[selectedIdx]) {
+                  selectedLabel = CREATIVE_HOBBY_OPTIONS[selectedIdx];
+                }
 
-                const summary = selected
+                const selectedDisplay =
+                  selectedLabel === 'Otros' && selectedOther
+                    ? `${withEmoji('Otros')}: ${selectedOther}`
+                    : withEmoji(selectedLabel);
+
+                const summary = selectedLabel
                   ? selectedDisplay
                   : (language === 'es'
                       ? 'Selecciona una opción'
@@ -2099,14 +2116,14 @@ export default function HabitFormModal({
                     {creativeHobbyDropdownOpen ? (
                       <View style={styles.spacesDropdownBody}>
                         <View style={[styles.waterOptionsRow, { justifyContent: 'center', flexWrap: 'wrap' }]}> 
-                          {CREATIVE_HOBBY_OPTIONS.map((opt) => {
-                            const isSelected = String(formData?.creativeHobbyOption ?? '') === String(opt);
+                          {CREATIVE_HOBBY_OPTIONS.map((opt, idx) => {
+                            const isSelected = Number(formData?.creativeHobbyOption) === idx;
                             return (
                               <Pressable
                                 key={opt}
                                 onPress={() => {
-                                  updateField('creativeHobbyOption', String(opt));
-                                  if (String(opt) !== 'Otros') updateField('creativeHobbyOther', '');
+                                  updateField('creativeHobbyOption', idx);
+                                  if (opt !== 'Otros') updateField('creativeHobbyOther', '');
                                 }}
                                 style={[
                                   styles.waterOptionPill,
@@ -2132,7 +2149,10 @@ export default function HabitFormModal({
                           })}
                         </View>
 
-                        {String(formData?.creativeHobbyOption ?? '') === 'Otros' ? (
+                        {(() => {
+                          const idx = Number(formData?.creativeHobbyOption);
+                          return CREATIVE_HOBBY_OPTIONS[idx] === 'Otros';
+                        })() ? (
                           <View style={{ marginTop: 10 }}>
                             <TextInput
                               value={String(formData?.creativeHobbyOther ?? '')}
@@ -2363,7 +2383,8 @@ export default function HabitFormModal({
             <>
               <View style={styles.section}>
                 {(() => {
-                  const selected = String(formData?.languagePracticeLanguage ?? '').trim();
+
+                  const selectedIdx = Number.isFinite(formData?.languagePracticeLanguage) ? formData.languagePracticeLanguage : null;
                   const other = String(formData?.languagePracticeOther ?? '').trim();
 
                   const withEmoji = (label) => {
@@ -2375,12 +2396,17 @@ export default function HabitFormModal({
                     return `${emoji} ${clean}`;
                   };
 
-                  const selectedDisplay =
-                    selected === 'Otros' && other
-                      ? `${withEmoji('Otros')}: ${other}`
-                      : withEmoji(selected);
+                  let selectedLabel = null;
+                  if (selectedIdx !== null && LANGUAGE_OPTIONS[selectedIdx]) {
+                    selectedLabel = LANGUAGE_OPTIONS[selectedIdx];
+                  }
 
-                  const summary = selected
+                  const selectedDisplay =
+                    selectedLabel === 'Otros' && other
+                      ? `${withEmoji('Otros')}: ${other}`
+                      : withEmoji(selectedLabel);
+
+                  const summary = selectedLabel
                     ? selectedDisplay
                     : (language === 'es'
                         ? 'Selecciona un idioma'
@@ -2431,14 +2457,14 @@ export default function HabitFormModal({
                       {languageDropdownOpen ? (
                         <View style={styles.spacesDropdownBody}>
                           <View style={styles.waterOptionsRow}>
-                            {LANGUAGE_OPTIONS.map((opt) => {
-                              const isSelected = String(formData?.languagePracticeLanguage ?? '') === String(opt);
+                            {LANGUAGE_OPTIONS.map((opt, idx) => {
+                              const isSelected = Number(formData?.languagePracticeLanguage) === idx;
                               return (
                                 <Pressable
                                   key={opt}
                                   onPress={() => {
-                                    updateField('languagePracticeLanguage', String(opt));
-                                    if (String(opt) !== 'Otros') updateField('languagePracticeOther', '');
+                                    updateField('languagePracticeLanguage', idx);
+                                    if (opt !== 'Otros') updateField('languagePracticeOther', '');
                                     setLanguageDropdownOpen(false);
                                   }}
                                   style={[
@@ -2464,7 +2490,10 @@ export default function HabitFormModal({
                             })}
                           </View>
 
-                          {String(formData?.languagePracticeLanguage ?? '') === 'Otros' ? (
+                          {(() => {
+                            const idx = Number(formData?.languagePracticeLanguage);
+                            return LANGUAGE_OPTIONS[idx] === 'Otros';
+                          })() ? (
                             <View style={{ marginTop: 10 }}>
                               <TextInput
                                 value={String(formData?.languagePracticeOther ?? '')}

@@ -2620,36 +2620,20 @@ export default function Calendar() {
                   looksLikeCreativeHobbyTitle(displayTitle);
                 const creativeHobbyMeta = (() => {
                   if (!isCreativeHobbyHabit) return null;
-                  const hobbyRaw = String(activityWithDate?.data?.creativeHobbyOption ?? '').trim();
+                  const idx = Number.isFinite(activityWithDate?.data?.creativeHobbyOption) ? activityWithDate.data.creativeHobbyOption : -1;
                   const hobbyOther = String(activityWithDate?.data?.creativeHobbyOther ?? '').trim();
-                  // Find the index of the selected hobby in any language
-                  let idx = -1;
-                  let foundLang = null;
-                  for (const lang of ['es','en','pt','fr']) {
-                    const arr = (require('../utils/i18n').default?.[lang]?.creativeHobbyOptions) || [];
-                    const i = arr.indexOf(hobbyRaw);
-                    if (i !== -1) { idx = i; foundLang = lang; break; }
-                  }
-                  // If 'Otros'/'Others'/etc, use the free text or fallback
-                  let isOther = false;
-                  if (idx === -1) {
-                    // Try to match 'Otros', 'Others', etc. in any language
-                    for (const lang of ['es','en','pt','fr']) {
-                      const arr = (require('../utils/i18n').default?.[lang]?.creativeHobbyOptions) || [];
-                      const i = arr.findIndex(opt => opt.toLowerCase().includes('otro') || opt.toLowerCase().includes('other'));
-                      if (i !== -1 && hobbyRaw.toLowerCase() === arr[i].toLowerCase()) {
-                        idx = i;
-                        isOther = true;
-                        break;
-                      }
+                  const options = t('creativeHobbyOptions') || [];
+                  let subjectText = null;
+                  if (idx !== -1 && options[idx]) {
+                    if (options[idx] === 'Otros' || options[idx] === 'Others' || options[idx].toLowerCase().includes('otro') || options[idx].toLowerCase().includes('other')) {
+                      subjectText = hobbyOther ? `${options[idx]}: ${hobbyOther}` : options[idx];
+                    } else {
+                      subjectText = options[idx];
                     }
+                  } else if (hobbyOther) {
+                    subjectText = hobbyOther;
                   }
-                  if (idx === -1 && !hobbyRaw && hobbyOther) {
-                    // Only free text
-                    return { subjectText: hobbyOther, idx: -1 };
-                  }
-                  if (idx === -1 && !isOther) return null;
-                  return { subjectText: isOther ? (hobbyOther || hobbyRaw) : hobbyRaw, idx };
+                  return { subjectText, idx };
                 })();
                 const savingsTotals = activityWithDate?.habit_id
                   ? savingsByHabitId.get(activityWithDate.habit_id)
@@ -2762,39 +2746,19 @@ export default function Calendar() {
 
                 const studyMeta = (() => {
                   if (!isStudyHabit) return null;
-
-                  const subjectRaw = String(activityWithDate?.data?.studySubject ?? '').trim();
+                  const idx = Number.isFinite(activityWithDate?.data?.studySubject) ? activityWithDate.data.studySubject : -1;
                   const otherTopic = String(activityWithDate?.data?.studySubjectOther ?? '').trim();
-                  // Find the index of the selected subject in any language
-                  let idx = -1;
-                  for (const lang of ['es','en','pt','fr']) {
-                    const arr = (require('../utils/i18n').default?.[lang]?.studySubjectOptions) || [];
-                    const i = arr.indexOf(subjectRaw);
-                    if (i !== -1) { idx = i; break; }
-                  }
-                  // If 'Otros'/'Others'/etc, use the free text or fallback
-                  let isOther = false;
-                  if (idx === -1) {
-                    for (const lang of ['es','en','pt','fr']) {
-                      const arr = (require('../utils/i18n').default?.[lang]?.studySubjectOptions) || [];
-                      const i = arr.findIndex(opt => opt.toLowerCase().includes('otro') || opt.toLowerCase().includes('other'));
-                      if (i !== -1 && subjectRaw.toLowerCase() === arr[i].toLowerCase()) {
-                        idx = i;
-                        isOther = true;
-                        break;
-                      }
-                    }
-                  }
+                  const options = t('studySubjectOptions') || [];
                   let subject = null;
-                  if (idx === -1 && !subjectRaw && otherTopic) {
+                  if (idx !== -1 && options[idx]) {
+                    if (options[idx] === 'Otros' || options[idx] === 'Others' || options[idx].toLowerCase().includes('otro') || options[idx].toLowerCase().includes('other')) {
+                      subject = otherTopic ? `${options[idx]}: ${otherTopic}` : options[idx];
+                    } else {
+                      subject = options[idx];
+                    }
+                  } else if (otherTopic) {
                     subject = otherTopic;
-                  } else if (idx !== -1) {
-                    const options = t('studySubjectOptions') || [];
-                    subject = Array.isArray(options) && options[idx] ? options[idx] : subjectRaw;
-                  } else {
-                    subject = subjectRaw;
                   }
-
                   const minutes =
                     typeof activityWithDate?.durationMinutes === 'number' && activityWithDate.durationMinutes > 0
                       ? activityWithDate.durationMinutes
@@ -2802,13 +2766,10 @@ export default function Calendar() {
                         const n = parseInt(String(activityWithDate?.data?.studyDurationMinutes ?? ''), 10);
                         return Number.isFinite(n) && n > 0 ? n : null;
                       })();
-
                   if (!subject && !minutes) return null;
-
                   // Emoji map for all languages (index-based)
                   const EMOJIS = ['🧮','📝','🗣️','🔬','📜','🌍','🧠','📚'];
                   const emoji = idx !== -1 && EMOJIS[idx] ? EMOJIS[idx] : '📚';
-
                   return {
                     subjectText: subject ? `${emoji} ${subject}` : null,
                     minutes,
@@ -2904,11 +2865,26 @@ export default function Calendar() {
 
                 const languagePracticeMeta = (() => {
                   if (!isLanguagePracticeHabit) return null;
-
-                  const langRaw = String(activityWithDate?.data?.languagePracticeLanguage ?? '').trim();
+                  const idx = Number.isFinite(activityWithDate?.data?.languagePracticeLanguage) ? activityWithDate.data.languagePracticeLanguage : -1;
                   const other = String(activityWithDate?.data?.languagePracticeOther ?? '').trim();
-                  const lang = langRaw === 'Otros' ? (other || 'Otros') : (langRaw || null);
-
+                  // Opciones de idioma (igual que en el modal)
+                  const LANGUAGE_OPTIONS = [
+                    'Inglés',
+                    'Francés',
+                    'Portugués',
+                    'Italiano',
+                    'Alemán',
+                    'Japonés',
+                    'Coreano',
+                    'Chino',
+                    'Otros',
+                  ];
+                  let lang = null;
+                  if (idx !== -1 && LANGUAGE_OPTIONS[idx]) {
+                    lang = LANGUAGE_OPTIONS[idx] === 'Otros' ? (other || 'Otros') : LANGUAGE_OPTIONS[idx];
+                  } else if (other) {
+                    lang = other;
+                  }
                   const minutes =
                     typeof activityWithDate?.durationMinutes === 'number' && activityWithDate.durationMinutes > 0
                       ? activityWithDate.durationMinutes
@@ -2916,11 +2892,11 @@ export default function Calendar() {
                         const n = parseInt(String(activityWithDate?.data?.languagePracticeDurationMinutes ?? ''), 10);
                         return Number.isFinite(n) && n > 0 ? n : null;
                       })();
-
                   if (!lang && !minutes) return null;
-
+                  // Emoji para idioma
+                  const EMOJI = '🗣️';
                   return {
-                    subjectText: lang ? `🗣️ ${lang}` : null,
+                    subjectText: lang ? `${EMOJI} ${lang}` : null,
                     minutes,
                   };
                 })();

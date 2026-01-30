@@ -30,6 +30,8 @@ const translations = {
       'Historia',
       'Geografía',
       'Filosofía',
+      'Investigar',
+      'Tomar un curso',
       'Otros',
     ],
 
@@ -189,10 +191,13 @@ const translations = {
       privacyOpenHint: 'Ver detalles de privacidad',
 
       deleteAccount: 'Eliminar cuenta',
+      deleteAccountTitle: 'Eliminar cuenta',
+      deleteAccountMessage: '¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer.',
+      deleteAccountConfirm: 'Eliminar cuenta',
+      deleteAccountCancel: 'Cancelar',
       deleteAccountMessageShort: 'Esta acción es permanente',
-
       moreSettingsButton: 'Más ajustes',
-
+      Cancel: 'Cancelar',
       appearanceMode: 'Modo',
       appearanceDark: 'Oscuro',
       appearanceLight: 'Claro',
@@ -465,8 +470,10 @@ const translations = {
       'Science',
       'History',
       'Geography',
-      'Philosophy',
-      'Others',
+        'Philosophy',
+        'Research',
+        'Take a course',
+        'Others',
     ],
 
     // ======================
@@ -625,7 +632,11 @@ const translations = {
       privacyOpenHint: 'View privacy details',
 
       deleteAccount: 'Delete account',
+      deleteAccountTitle: 'Delete account',
+      deleteAccountMessage: 'Are you sure you want to delete your account? This action cannot be undone.',
+      deleteAccountConfirm: 'Delete account',
       deleteAccountMessageShort: 'This action is permanent',
+      Cancel: 'Cancel',
 
       moreSettingsButton: 'More settings',
 
@@ -906,6 +917,8 @@ const translations = {
       'História',
       'Geografia',
       'Filosofia',
+      'Pesquisar',
+      'Fazer um curso',
       'Outros',
     ],
 
@@ -1065,7 +1078,12 @@ const translations = {
       privacyOpenHint: 'Ver detalhes de privacidade',
 
       deleteAccount: 'Excluir conta',
+      deleteAccountTitle: 'Excluir conta',
+      deleteAccountMessage: 'Tem certeza de que deseja excluir sua conta? Esta ação não pode ser desfeita.',
+      deleteAccountConfirm: 'Excluir conta',
+      deleteAccountCancel: 'Cancelar',
       deleteAccountMessageShort: 'Esta ação é permanente',
+      Cancel: 'Cancelar',
 
       moreSettingsButton: 'Mais ajustes',
 
@@ -1346,6 +1364,8 @@ const translations = {
       'Histoire',
       'Géographie',
       'Philosophie',
+      'Faire des recherches',
+      'Suivre un cours',
       'Autres',
     ],
 
@@ -1505,8 +1525,12 @@ const translations = {
       privacyOpenHint: 'Voir les détails de confidentialité',
 
       deleteAccount: 'Supprimer le compte',
-      deleteAccountMessageShort: 'Cette action est définitive',
-
+      deleteAccountTitle: 'Supprimer le compte',
+      deleteAccountMessage: 'Es-tu sûr de vouloir supprimer ton compte ? Cette action est irréversible.',
+      deleteAccountConfirm: 'Supprimer le compte',
+      deleteAccountCancel: 'Annuler',
+      deleteAccountMessageShort: 'Cette action est permanente',
+      Cancel: 'Annuler',
       moreSettingsButton: 'Plus de paramètres',
 
       appearanceMode: 'Mode',
